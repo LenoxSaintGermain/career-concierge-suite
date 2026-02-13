@@ -1,55 +1,61 @@
+export type SuiteModuleId = 'intake' | 'brief' | 'profile' | 'ai_profile' | 'gaps' | 'plan' | 'assets';
+export type SuiteModuleKind = 'flow' | 'artifact' | 'collection';
 
-export type Role = 'Exec' | 'Operator' | 'Product';
-export type Industry = 'Auto' | 'Logistics' | 'Retail' | 'Manufacturing' | 'Finance' | 'Healthcare' | 'SaaS';
-
-export interface Signal {
-  id: string;
-  index: string;
+export interface SuiteModule {
+  id: SuiteModuleId;
+  index: string; // e.g. "01"
   title: string;
-  truth: string;
-  default_outcome_anchor?: string;
-  relatedIds?: string[]; // IDs of signals this compounds with visually on the grid
+  subtitle: string;
+  kind: SuiteModuleKind;
+  relatedIds?: SuiteModuleId[];
 }
 
-export interface OutcomeAnchor {
-  metric: string;
-  direction: 'up' | 'down';
-  note: string;
+export type ClientIntent = 'current_role' | 'target_role' | 'not_sure';
+export type PacePreference = 'straight' | 'standard' | 'story';
+export type FocusPreference = 'job_search' | 'skills' | 'leadership';
+
+export type IntakeAnswers = Record<string, string>;
+
+export interface ClientPreferences {
+  pace: PacePreference;
+  focus: FocusPreference;
 }
 
-export interface GeneratedScenario {
-  scenario_title: string;
-  scenario: string;
-  why_it_matters: string;
-  outcome_anchors: OutcomeAnchor[];
-  hidden_failure_mode: string;
-  compounds_with: string[];
-}
-
-export interface Gem {
-  id?: string; // Optional because Firestore generates it
-  user_email: string;
+export interface ClientDoc {
+  uid: string;
   created_at: any; // Firestore Timestamp
-  
-  // Signal Context
-  signal_id: string;
-  signal_title: string;
-  signal_truth: string;
-  
-  // Generation Context
-  role: Role;
-  industry: Industry;
-  
-  // Full Scenario
-  scenario: GeneratedScenario;
-  
-  // Metadata
-  generation_model: string;
-  generation_latency_ms: number;
+  updated_at: any; // Firestore Timestamp
+
+  intro_seen_at?: any; // Firestore Timestamp
+
+  intent?: ClientIntent;
+  preferences?: ClientPreferences;
+  intake?: {
+    answers: IntakeAnswers;
+    completed_at?: any; // Firestore Timestamp
+  };
 }
 
-export interface SignalState {
-  selectedSignalId: string | null;
-  role: Role;
-  industry: Industry;
+export type ArtifactType = 'brief' | 'profile' | 'ai_profile' | 'gaps' | 'plan';
+
+export interface BriefContent {
+  learned: string[]; // 3 bullets
+  needle: string[]; // 3 bullets
+  next_72_hours: { id: string; label: string; done: boolean }[];
+}
+
+export interface PlanContent {
+  next_72_hours: { id: string; label: string; done: boolean }[];
+  next_2_weeks: { goal: string; cadence: string[] };
+  needs_from_you: string[];
+}
+
+export interface ArtifactDoc<T = unknown> {
+  id: string; // Firestore document id
+  type: ArtifactType;
+  title: string;
+  version: number;
+  created_at: any; // Firestore Timestamp
+  updated_at: any; // Firestore Timestamp
+  content: T;
 }

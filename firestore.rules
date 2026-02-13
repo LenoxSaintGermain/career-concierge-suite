@@ -1,17 +1,45 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /gems/{document=**} {
-      // ---------------------------------------------------------
-      // SIGNAL ATLAS RULES
-      // ---------------------------------------------------------
-      // Since this application does not use Firebase Authentication 
-      // (it uses a simple email gate), we must allow public access 
-      // so the client can write and read gems.
-      //
-      // COPY THESE RULES TO THE "RULES" TAB IN YOUR FIREBASE CONSOLE.
-      // ---------------------------------------------------------
-      allow read, write: if true;
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Staff access is managed via custom claims (set with Admin SDK).
+    function isStaff() {
+      return isSignedIn() && request.auth.token.staff == true;
+    }
+
+    function isClient(clientId) {
+      return isSignedIn() && request.auth.uid == clientId;
+    }
+
+    // ---------------------------------------------------------
+    // CAREER CONCIERGE RULES (AUTH REQUIRED)
+    // ---------------------------------------------------------
+    // Data model (MVP):
+    // - clients/{clientId}
+    // - clients/{clientId}/artifacts/{artifactType}
+    //
+    // Principle:
+    // - Clients can only read/write their own documents.
+    // - Staff (claim: staff=true) can read client docs (write can be tightened later).
+    // ---------------------------------------------------------
+    match /clients/{clientId} {
+      allow read: if isClient(clientId) || isStaff();
+      allow create, update: if isClient(clientId);
+      allow delete: if false;
+
+      match /artifacts/{artifactId} {
+        allow read: if isClient(clientId) || isStaff();
+        allow create, update: if isClient(clientId);
+        allow delete: if false;
+      }
+
+      // Future subcollections (placeholders)
+      match /{subCollection}/{docId} {
+        allow read, write: if false;
+      }
     }
   }
 }

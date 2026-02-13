@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBwnynX4I8IlUeIwBwuD3Es13qKZzXnPKM",
@@ -15,8 +16,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
+const auth = getAuth(app);
 
 // Initialize Firestore with the named database 'signal-atlas'
 const db = getFirestore(app, "signal-atlas");
 
-export { app, analytics, db };
+export { app, analytics, auth, db };
