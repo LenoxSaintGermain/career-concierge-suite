@@ -10,6 +10,10 @@ import { IntakeFlow } from './components/IntakeFlow';
 import { BriefView } from './components/BriefView';
 import { PlanView } from './components/PlanView';
 import { JsonDoc } from './components/JsonDoc';
+import { ProfileView } from './components/ProfileView';
+import { AIProfileView } from './components/AIProfileView';
+import { GapsView } from './components/GapsView';
+import { BingeFeedView } from './components/BingeFeedView';
 
 type IntroPhase = 'prologue' | 'complete';
 
@@ -134,6 +138,9 @@ const App: React.FC = () => {
     // Mobile: 1st tap focuses, 2nd tap opens.
     if (isMobile) {
       if (hoveredModuleId === module.id) {
+        setArtifact(null);
+        setArtifactError(null);
+        setArtifactLoading(false);
         setOpenModuleId(module.id);
       } else {
         setHoveredModuleId(module.id);
@@ -141,10 +148,20 @@ const App: React.FC = () => {
       return;
     }
 
+    setArtifact(null);
+    setArtifactError(null);
+    setArtifactLoading(false);
     setOpenModuleId(module.id);
   };
 
   const handleCloseModal = () => setOpenModuleId(null);
+
+  const openModuleById = (id: SuiteModuleId) => {
+    setArtifact(null);
+    setArtifactError(null);
+    setArtifactLoading(false);
+    setOpenModuleId(id);
+  };
 
   if (!authReady) {
     return (
@@ -296,7 +313,7 @@ const App: React.FC = () => {
             <div className="w-full md:w-1/3 bg-[#111] text-white p-8 md:p-12 flex flex-col justify-between shrink-0">
               <div>
                 <div className="text-xs font-mono opacity-50 mb-8 flex justify-between">
-                  <span>{openModule.index} / 07</span>
+                  <span>{openModule.index} / 08</span>
                   <span className="opacity-50">MODULE</span>
                 </div>
                 <h2 className="text-4xl md:text-5xl font-editorial leading-none mb-8">{openModule.title}</h2>
@@ -324,9 +341,11 @@ const App: React.FC = () => {
                         : prev
                     );
                     // Close intake and open brief next.
-                    setOpenModuleId('brief');
+                    openModuleById('brief');
                   }}
                 />
+              ) : openModule.id === 'episodes' ? (
+                <BingeFeedView onOpenPlan={() => openModuleById('plan')} />
               ) : (
                 <>
                   {/* Locked state (until we wire real intakeComplete/artifact checks) */}
@@ -339,7 +358,7 @@ const App: React.FC = () => {
                       </p>
                       <div className="mt-6">
                         <button
-                          onClick={() => setOpenModuleId('intake')}
+                          onClick={() => openModuleById('intake')}
                           className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
                         >
                           Start Intake
@@ -357,11 +376,42 @@ const App: React.FC = () => {
                   {artifactError && (
                     <div className="py-10 text-red-600 text-sm">{artifactError}</div>
                   )}
-                  {artifact && openModule.id === 'brief' && artifact.content && (
-                    <BriefView brief={artifact.content} onOpenPlan={() => setOpenModuleId('plan')} />
+                  {artifact && artifact.type === 'brief' && openModule.id === 'brief' && artifact.content && (
+                    <BriefView brief={artifact.content} onOpenPlan={() => openModuleById('plan')} />
                   )}
-                  {artifact && openModule.id === 'plan' && artifact.content && <PlanView plan={artifact.content} />}
-                  {artifact && !['brief', 'plan'].includes(openModule.id) && <JsonDoc value={artifact.content} />}
+                  {artifact && artifact.type === 'plan' && openModule.id === 'plan' && artifact.content && (
+                    <PlanView plan={artifact.content} />
+                  )}
+                  {artifact && artifact.type === 'profile' && openModule.id === 'profile' && artifact.content && (
+                    <ProfileView profile={artifact.content} />
+                  )}
+                  {artifact && artifact.type === 'ai_profile' && openModule.id === 'ai_profile' && artifact.content && (
+                    <AIProfileView aiProfile={artifact.content} />
+                  )}
+                  {artifact && artifact.type === 'gaps' && openModule.id === 'gaps' && artifact.content && (
+                    <GapsView gaps={artifact.content} />
+                  )}
+                  {artifact === null &&
+                    !isLocked(openModule) &&
+                    ['brief', 'plan', 'profile', 'ai_profile', 'gaps'].includes(openModule.id) &&
+                    !artifactLoading &&
+                    !artifactError && (
+                      <div className="border border-black/5 bg-gray-50 p-6">
+                        <div className="text-[10px] uppercase tracking-widest opacity-50 mb-4">Missing</div>
+                        <div className="text-2xl font-editorial italic">This module has no artifact yet.</div>
+                        <p className="text-sm text-gray-600 leading-relaxed mt-4 max-w-xl">
+                          Run Intake again to regenerate your suite outputs.
+                        </p>
+                        <div className="mt-6">
+                          <button
+                            onClick={() => openModuleById('intake')}
+                            className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
+                          >
+                            Regenerate via Intake
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   {openModule.id === 'assets' && !artifactLoading && !artifactError && (
                     <div className="border border-black/5 bg-gray-50 p-6">
                       <div className="text-[10px] uppercase tracking-widest opacity-50 mb-4">Assets</div>

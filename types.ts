@@ -1,5 +1,13 @@
-export type SuiteModuleId = 'intake' | 'brief' | 'profile' | 'ai_profile' | 'gaps' | 'plan' | 'assets';
-export type SuiteModuleKind = 'flow' | 'artifact' | 'collection';
+export type SuiteModuleId =
+  | 'intake'
+  | 'episodes'
+  | 'brief'
+  | 'profile'
+  | 'ai_profile'
+  | 'gaps'
+  | 'plan'
+  | 'assets';
+export type SuiteModuleKind = 'flow' | 'feed' | 'artifact' | 'collection';
 
 export interface SuiteModule {
   id: SuiteModuleId;
@@ -44,10 +52,47 @@ export interface BriefContent {
   next_72_hours: { id: string; label: string; done: boolean }[];
 }
 
+export interface ProfileContent {
+  strengths: string[];
+  patterns: string[];
+  leverage: string[];
+}
+
+export interface AIProfileContent {
+  positioning: string;
+  how_to_use_ai: string[];
+  guardrails: string[];
+}
+
+export interface GapsContent {
+  near_term: string[];
+  for_target_role: string[];
+  constraints: string[];
+}
+
 export interface PlanContent {
   next_72_hours: { id: string; label: string; done: boolean }[];
   next_2_weeks: { goal: string; cadence: string[] };
   needs_from_you: string[];
+}
+
+export interface BingeEpisode {
+  episode_id: string;
+  title: string;
+  hook_card: string;
+  lesson_swipes: string[];
+  challenge_terminal: {
+    prompt: string;
+    placeholder: string;
+  };
+  reward_asset: string;
+  cliffhanger: string;
+  art_direction?: {
+    image_prompt?: string;
+    video_prompt?: string;
+    audio_prompt?: string;
+    recommended_models?: { kind: string; model: string; note?: string }[];
+  };
 }
 
 export interface ArtifactDoc<T = unknown> {

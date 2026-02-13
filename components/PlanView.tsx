@@ -2,6 +2,7 @@ import React from 'react';
 import { PlanContent } from '../types';
 
 export function PlanView(props: { plan: PlanContent }) {
+  const next2Weeks = props.plan.next_2_weeks ?? { goal: 'Two-week sprint', cadence: [] };
   return (
     <div className="space-y-12">
       <div>
@@ -26,9 +27,9 @@ export function PlanView(props: { plan: PlanContent }) {
 
       <section className="border border-black/5 p-6">
         <div className="text-[10px] uppercase tracking-widest opacity-50 mb-2">Next 2 weeks</div>
-        <div className="text-2xl font-editorial italic">{props.plan.next_2_weeks.goal}</div>
+        <div className="text-2xl font-editorial italic">{next2Weeks.goal}</div>
         <ul className="mt-6 space-y-2 text-sm text-gray-700 leading-relaxed">
-          {props.plan.next_2_weeks.cadence.map((c, idx) => (
+          {next2Weeks.cadence.map((c, idx) => (
             <li key={idx} className="flex gap-3">
               <span className="font-mono text-gray-400">{String(idx + 1).padStart(2, '0')}</span>
               <span>{c}</span>
@@ -51,4 +52,3 @@ export function PlanView(props: { plan: PlanContent }) {
     </div>
   );
 }
-

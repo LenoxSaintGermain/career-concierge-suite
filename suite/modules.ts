@@ -9,11 +9,19 @@ export const SUITE_MODULES: SuiteModule[] = [
     title: 'Start Here',
     subtitle: 'A short concierge conversation to calibrate your suite.',
     kind: 'flow',
-    relatedIds: ['brief', 'profile', 'ai_profile', 'gaps', 'plan'],
+    relatedIds: ['episodes', 'brief', 'profile', 'ai_profile', 'gaps', 'plan'],
+  },
+  {
+    id: 'episodes',
+    index: '02',
+    title: 'Episodes',
+    subtitle: 'A bingeable feed of micro-dramas that upgrades your instincts.',
+    kind: 'feed',
+    relatedIds: ['brief', 'plan', 'assets'],
   },
   {
     id: 'brief',
-    index: '02',
+    index: '03',
     title: 'The Brief',
     subtitle: 'What I learned, what matters most, and your next 72 hours.',
     kind: 'artifact',
@@ -21,7 +29,7 @@ export const SUITE_MODULES: SuiteModule[] = [
   },
   {
     id: 'profile',
-    index: '03',
+    index: '04',
     title: 'Your Profile',
     subtitle: 'Professional DNA: strengths, patterns, and leverage points.',
     kind: 'artifact',
@@ -29,7 +37,7 @@ export const SUITE_MODULES: SuiteModule[] = [
   },
   {
     id: 'ai_profile',
-    index: '04',
+    index: '05',
     title: 'Your AI Profile',
     subtitle: 'How you should use AI, based on how you work and decide.',
     kind: 'artifact',
@@ -37,7 +45,7 @@ export const SUITE_MODULES: SuiteModule[] = [
   },
   {
     id: 'gaps',
-    index: '05',
+    index: '06',
     title: 'Your Gaps',
     subtitle: 'What’s missing, what’s noisy, and what to tighten first.',
     kind: 'artifact',
@@ -45,7 +53,7 @@ export const SUITE_MODULES: SuiteModule[] = [
   },
   {
     id: 'plan',
-    index: '06',
+    index: '07',
     title: 'Your Plan',
     subtitle: '72 hours of momentum, then a 2-week sprint.',
     kind: 'artifact',
@@ -53,11 +61,10 @@ export const SUITE_MODULES: SuiteModule[] = [
   },
   {
     id: 'assets',
-    index: '07',
+    index: '08',
     title: 'Your Assets',
     subtitle: 'Resume versions, outreach drafts, scripts, and links.',
     kind: 'collection',
     relatedIds: ['plan'],
   },
 ];
-
