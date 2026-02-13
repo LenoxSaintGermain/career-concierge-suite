@@ -1,14 +1,16 @@
 status: live
-title: Signal Atlas
-pitch: Signal Atlas turns AI buzzwords into strategic consequence scenarios so leaders can make faster, higher-stakes decisions with clarity.
+title: Career Concierge Suite
+pitch: A premium, client-only concierge suite that turns intake into a personalized brief, plan, and actionable career assets.
 category: ai
 platform: cloudrun
 featured: false
-live_url: https://signal-atlas-414737114778.us-west1.run.app
+live_url: https://career-concierge-suite-pplaphmpxq-uw.a.run.app
 demo_video:
-cover_prompt: An editorial strategy grid of twenty illuminated signal cards on a dark executive dashboard with clean typography and premium enterprise polish.
+cover_prompt: A high-status concierge dashboard in dark charcoal with teal accents, featuring a clean grid of modules and a single highlighted Brief card; minimal, editorial typography.
 tags:
   - ai
-  - strategy
-  - decision-making
-  - enterprise
+  - career
+  - concierge
+  - coaching
+  - firebase
+  - cloudrun
