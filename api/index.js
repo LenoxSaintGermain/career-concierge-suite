@@ -1,7 +1,18 @@
 import express from 'express';
 import cors from 'cors';
 import admin from 'firebase-admin';
-import { GoogleGenAI, Type } from '@google/genai';
+import { getFirestore } from 'firebase-admin/firestore';
+import { GoogleGenAI } from '@google/genai';
+import {
+  CONCIERGE_ROM_SYSTEM,
+  EPISODE_SCHEMA,
+  ROM_VERSION,
+  SUITE_ARTIFACTS_SCHEMA,
+  composeBingePrompt,
+  composeBingeSystemInstruction,
+  composeSuitePrompt,
+  findToneViolations,
+} from './prompts/conciergeRom.js';
 
 const app = express();
 
@@ -12,6 +23,8 @@ app.use(cors({ origin: true }));
 if (!admin.apps.length) {
   admin.initializeApp();
 }
+const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'career-concierge';
+const db = getFirestore(admin.app(), firestoreDatabaseId);
 
 const requireAuth = async (req, res, next) => {
   const authHeader = req.header('authorization') ?? '';
@@ -33,87 +46,159 @@ const geminiApiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || null;
 const fastTextModel = process.env.GEMINI_MODEL_FAST || 'gemini-3-flash-preview';
 const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 
-const BINGE_SYSTEM = `
-[SYSTEM: B.I.N.G.E_LEARNING_PROTOCOL]
-You are the Executive Showrunner for a premium binge-learning platform.
-Your directive is to convert educational theory into high-stakes, addictive Micro-Dramas.
+const nonEmpty = (value) => String(value ?? '').trim();
 
-RULES OF ENGAGEMENT:
-1. NO ACADEMIC LANGUAGE. Do not use words like "module, syllabus, test, or quiz."
-2. HYPER-PERSONALIZATION. Make the user the protagonist of a corporate thriller matching their exact Target Role.
-3. THE HOOK. Start every scenario with a time limit, an angry boss, or a massive threat.
-4. THE DELIVERY. Frame the educational concept NOT as a theory, but as the "weapon" required to survive the scenario.
-5. THE OUTCOME. Present a broken situation and force the user to execute the right prompt to fix it.
-6. THE CLIFFHANGER. Solve the immediate crisis, then reveal a bigger challenge. End with "Swipe Up".
+const baseMeta = (mode, degraded, extra = {}) => ({
+  prompt_version: ROM_VERSION,
+  generation_mode: mode,
+  model: mode === 'gemini' ? fastTextModel : 'deterministic-fallback',
+  generated_at: new Date().toISOString(),
+  degraded,
+  ...extra,
+});
 
-OUTPUT: JSON payload with keys:
-episode_id, title, hook_card, lesson_swipes, challenge_terminal, reward_asset, cliffhanger, art_direction
-`;
+const buildSuiteFallback = (answers = {}) => {
+  const currentTitle = nonEmpty(answers.current_title) || 'your current role';
+  const industry = nonEmpty(answers.industry) || 'your industry';
+  const target = nonEmpty(answers.target) || 'your next role';
+  const constraints = nonEmpty(answers.constraints);
+  const pressure = nonEmpty(answers.pressure_breaks);
+  const workStyle = nonEmpty(answers.work_style);
 
-const EPISODE_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    episode_id: { type: Type.STRING },
-    title: { type: Type.STRING, description: 'Punchy episode title (max 8 words)' },
-    hook_card: { type: Type.STRING, description: 'Cold open micro-drama hook (2-5 sentences)' },
-    lesson_swipes: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: '3 short swipe cards; each 1-2 sentences.'
+  return {
+    brief: {
+      learned: [
+        `You are reallocating from ${currentTitle} toward ${target}.`,
+        `Your market context is ${industry}, and clarity will outperform volume.`,
+        'Your edge increases when each action has a concrete decision target.',
+      ],
+      needle: [
+        'Convert experience into proof that survives executive scrutiny.',
+        'Protect optionality by narrowing effort to high-leverage moves.',
+        'Treat AI as a structuring instrument, not a credibility substitute.',
+      ],
+      next_72_hours: [
+        { id: 'n72-1', label: 'Build a verified evidence list: outcomes, scope, and metrics.', done: false },
+        { id: 'n72-2', label: 'Define a single target lane and remove adjacent noise.', done: false },
+        { id: 'n72-3', label: 'Draft a concise positioning statement for stakeholder-facing use.', done: false },
+      ],
     },
-    challenge_terminal: {
-      type: Type.OBJECT,
-      properties: {
-        prompt: { type: Type.STRING, description: 'The user challenge prompt' },
-        placeholder: { type: Type.STRING, description: 'Placeholder text for the input terminal' }
+    plan: {
+      next_72_hours: [
+        { id: 'p72-1', label: 'Set non-negotiable constraints: time, location, compensation floor.', done: false },
+        { id: 'p72-2', label: 'Prepare one executive brief that explains your value in business terms.', done: false },
+        { id: 'p72-3', label: `Run one market test that validates your move toward ${target}.`, done: false },
+      ],
+      next_2_weeks: {
+        goal: 'Increase career optionality through disciplined positioning.',
+        cadence: [
+          'Two focused outreach actions with explicit asks.',
+          'One public credibility artifact tied to your target lane.',
+          'One decision review: what changed the math this week.',
+        ],
       },
-      required: ['prompt', 'placeholder']
+      needs_from_you: [
+        'Current resume or equivalent fact set.',
+        'Target opportunities ranked by strategic fit.',
+      ],
     },
-    reward_asset: { type: Type.STRING, description: 'Unlocked asset / blueprint text' },
-    cliffhanger: { type: Type.STRING, description: 'Ends with a threat + Swipe Up instruction' },
-    art_direction: {
-      type: Type.OBJECT,
-      properties: {
-        image_prompt: { type: Type.STRING },
-        video_prompt: { type: Type.STRING },
-        audio_prompt: { type: Type.STRING },
-        recommended_models: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              kind: { type: Type.STRING, description: 'text|image|video|audio' },
-              model: { type: Type.STRING, description: 'e.g., gemini-3-flash, veo-3, nano-banana' },
-              note: { type: Type.STRING }
-            },
-            required: ['kind', 'model']
-          }
-        }
-      }
-    }
-  },
-  required: ['episode_id', 'title', 'hook_card', 'lesson_swipes', 'challenge_terminal', 'reward_asset', 'cliffhanger']
+    profile: {
+      strengths: [
+        'You favor clear thinking over performative busyness.',
+        'You respond to structure when stakes are explicit.',
+        'You can compound progress through repeatable systems.',
+      ],
+      patterns: [
+        pressure ? `Pressure pattern: ${pressure.toLowerCase()}.` : 'Pressure pattern: decision load rises before clarity.',
+        workStyle ? `Stabilizer: ${workStyle.toLowerCase()}.` : 'Stabilizer: short execution cycles with explicit outputs.',
+      ],
+      leverage: [
+        'Turn recurring work into reusable strategic assets.',
+        'Translate execution history into board-readable proof.',
+        'Use concise language to reduce friction in high-stakes decisions.',
+      ],
+    },
+    ai_profile: {
+      positioning: `In ${industry}, your advantage is disciplined signal extraction and controlled execution.`,
+      how_to_use_ai: [
+        'Condense raw notes into decision-grade briefs.',
+        'Pressure-test messaging before stakeholder exposure.',
+        'Standardize repeatable outputs with verification steps.',
+      ],
+      guardrails: [
+        'No invented credentials or inflated claims.',
+        'Prefer measured specificity over dramatic language.',
+        'When uncertain, state assumptions and ask one clarifying question.',
+      ],
+    },
+    gaps: {
+      near_term: [
+        'Proof points are not yet packaged for executive review.',
+        'Positioning lane needs tighter exclusion criteria.',
+        'Weekly cadence requires explicit leverage metrics.',
+      ],
+      for_target_role: [
+        `Reframe your experience in the operating language of ${target}.`,
+        'Add one visible artifact that demonstrates decision quality.',
+      ],
+      constraints: constraints ? [`Constraint register: ${constraints}.`] : ['Constraint register is incomplete.'],
+    },
+  };
 };
 
-const stubEpisode = (seed = 'default') => {
+const withArtifactMeta = (artifacts, meta) =>
+  Object.fromEntries(
+    Object.entries(artifacts).map(([key, value]) => [key, { ...value, _meta: meta }])
+  );
+
+const safeParseJson = (text) => {
+  const parsed = JSON.parse(text);
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('invalid_json_payload');
+  }
+  return parsed;
+};
+
+const loadClientDna = async (uid) => {
+  try {
+    const snap = await db.collection('clients').doc(uid).get();
+    if (!snap.exists) return {};
+    const data = snap.data() ?? {};
+    const answers = data.intake?.answers ?? {};
+
+    return {
+      current_role: nonEmpty(answers.current_title),
+      target_role: nonEmpty(answers.target),
+      industry: nonEmpty(answers.industry),
+      constraints: nonEmpty(answers.constraints),
+      work_style: nonEmpty(answers.work_style),
+      pressure_breaks: nonEmpty(answers.pressure_breaks),
+    };
+  } catch (error) {
+    console.error('dna_load_error', error);
+    return {};
+  }
+};
+
+const stubEpisode = (seed = 'default', meta = {}) => {
   const now = Date.now().toString(36).slice(-6);
   return {
     episode_id: `ep-${seed}-${now}`,
-    title: 'The 4:42 PM Friday',
+    title: '4:42 PM Escalation',
     hook_card:
-      'It’s 4:42 PM on a Friday. Your exec just dropped an urgent request: “I need a clean board-ready brief in 18 minutes.”\nYou have exactly one shot. Your old self would panic. Your new self uses AI.',
+      'It is 4:42 PM on Friday. Your executive sponsor requests a board-ready brief in 18 minutes.\nThe pressure is not technical; it is reputational. You need a controlled response path.',
     lesson_swipes: [
-      'Doing this manually takes 90 minutes. You will miss the deadline.',
-      'A naive chatbot will invent details. You will look careless.',
-      'You need an Executive Extraction prompt: inputs, constraints, output format.'
+      'Manual drafting exceeds the time budget and increases decision risk.',
+      'Unconstrained AI output can introduce unverified claims under pressure.',
+      'Use a constrained extraction prompt: facts, unknowns, and output structure.'
     ],
     challenge_terminal: {
-      prompt: 'Build the prompt that extracts facts, flags unknowns, and outputs a one-page brief.',
-      placeholder: 'Paste your prompt framework here…'
+      prompt: 'Write the prompt that extracts only verified facts and outputs a one-page executive brief.',
+      placeholder: 'Paste your constrained prompt here...'
     },
-    reward_asset: 'UNLOCKED: “Executive Extraction” prompt blueprint added to your vault.',
+    reward_asset: 'Unlocked asset: Executive Extraction blueprint.',
     cliffhanger:
-      'You delivered. The exec forwarded it to the board.\nNow they want you to present the logic behind it on Monday.\nSwipe Up to initiate Episode 2.',
+      'The brief was accepted and escalated to leadership.\nNow you must defend the logic on Monday.\nSwipe Up.',
     art_direction: {
       image_prompt:
         'A premium, dark concierge dashboard card showing an urgent executive message, teal accent line, minimal editorial typography.',
@@ -126,12 +211,11 @@ const stubEpisode = (seed = 'default') => {
         { kind: 'video', model: 'veo-3', note: 'If generating a short cinematic clip' },
         { kind: 'image', model: 'nano-banana', note: 'If generating card art / thumbnails' }
       ]
-    }
+    },
+    _meta: meta,
   };
 };
 
-// Phase 0 endpoint: server-side “stub” artifact generation.
-// Phase 1: swap this with @google/genai + JSON schema generation.
 app.post('/v1/suite/generate', requireAuth, async (req, res) => {
   const { intent, preferences, answers } = req.body ?? {};
 
@@ -139,139 +223,114 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'missing_fields' });
   }
 
-  const currentTitle = String(answers.current_title ?? '').trim() || 'your current role';
-  const industry = String(answers.industry ?? '').trim() || 'your industry';
-  const target = String(answers.target ?? '').trim() || 'your next role';
+  const uid = req.user.uid;
 
-  const brief = {
-    learned: [
-      `You’re operating from ${currentTitle} with real constraints, not hypotheticals.`,
-      `You’re targeting ${target} and want a plan that is practical inside ${industry}.`,
-      `You respond best when the next action is obvious and timeboxed.`,
-    ],
-    needle: [
-      'Reduce decision friction by standardizing how you gather context and take action.',
-      'Build outward credibility signals that match the role you want, not just the role you have.',
-      'Use AI for structure and iteration, not for pretending experience you do not have.',
-    ],
-    next_72_hours: [
-      { id: 'n72-1', label: 'Upload your current resume (or paste it) so we can lock facts.', done: false },
-      { id: 'n72-2', label: 'Pick 3 target companies or teams; we will shape a focused sprint.', done: false },
-      { id: 'n72-3', label: 'Draft a 5-sentence “what I do / what I’m aiming at” statement.', done: false },
-    ],
-  };
+  if (!ai) {
+    const meta = baseMeta('fallback', true, {
+      reason: 'missing_gemini_api_key',
+      uid,
+      intent,
+      preferences,
+    });
+    return res.json({
+      meta,
+      artifacts: withArtifactMeta(buildSuiteFallback(answers), meta),
+    });
+  }
 
-  const plan = {
-    next_72_hours: [
-      { id: 'p72-1', label: 'Confirm your constraints (location, time, salary floor).', done: false },
-      { id: 'p72-2', label: 'Create a one-page “evidence inventory” (projects, wins, metrics).', done: false },
-      { id: 'p72-3', label: `Choose 1 role story: why ${target} makes sense for you now.`, done: false },
-    ],
-    next_2_weeks: {
-      goal: 'Move from “application mode” to “positioning mode.”',
-      cadence: [
-        '2 focused outreach messages per week (not spam).',
-        '1 credibility signal per week (post, note, portfolio snippet).',
-        '1 interview-prep block per week (stories + scenarios).',
-      ],
-    },
-    needs_from_you: [
-      'Your resume (or LinkedIn export).',
-      'A short list of roles/companies that feel real to you (even if imperfect).',
-    ],
-  };
+  try {
+    const response = await ai.models.generateContent({
+      model: fastTextModel,
+      contents: composeSuitePrompt({ intent, preferences, answers }),
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: SUITE_ARTIFACTS_SCHEMA,
+        systemInstruction: CONCIERGE_ROM_SYSTEM,
+        temperature: 0.45,
+      },
+    });
 
-  const profile = {
-    strengths: ['You value clarity over noise.', 'You want momentum without chaos.', 'You’re willing to iterate if the direction is coherent.'],
-    patterns: [
-      answers.pressure_breaks ? `Under pressure, ${String(answers.pressure_breaks).toLowerCase()} is your first failure point.` : 'Under pressure, your first failure point is predictable.',
-      answers.work_style ? `You regain control through: ${String(answers.work_style).toLowerCase()}.` : 'You regain control through a clear next action.',
-    ],
-    leverage: [
-      'Turn “busy work” into reusable operating procedures.',
-      'Package your wins into short, repeatable stories.',
-      'Use AI to draft structure; you supply the truth and the judgment.',
-    ],
-  };
+    const text = response.text?.trim();
+    if (!text) throw new Error('empty_model_response');
+    const artifacts = safeParseJson(text);
+    const toneViolations = findToneViolations(artifacts);
+    if (toneViolations.length) {
+      throw new Error(`tone_violation:${toneViolations.join(',')}`);
+    }
 
-  const ai_profile = {
-    positioning: `In ${industry}, your advantage is speed-to-clarity: turning messy inputs into clean decisions.`,
-    how_to_use_ai: [
-      'Context gathering: summarize emails/notes into a crisp brief.',
-      'Structure: turn chaos into an outline, a plan, or a script.',
-      'Iteration: refine deliverables fast while preserving factual accuracy.',
-    ],
-    guardrails: ['No invented credentials or fabricated metrics.', 'Prefer short, verifiable claims over “impressive” claims.', 'When uncertain: flag, ask, confirm.'],
-  };
-
-  const gaps = {
-    near_term: [
-      'A clean inventory of evidence (projects, outcomes, metrics).',
-      'A tighter role narrative: why you, why now.',
-      'A realistic weekly cadence that does not collapse.',
-    ],
-    for_target_role: [
-      `Translate your experience into the language of ${target}.`,
-      'Add 1-2 visible proof points (portfolio, post, short case).',
-    ],
-    constraints: answers.constraints ? [`Constraints noted: ${String(answers.constraints)}.`] : ['Constraints not yet captured.'],
-  };
-
-  return res.json({
-    meta: { intent, preferences, uid: req.user.uid },
-    artifacts: {
-      brief,
-      plan,
-      profile,
-      ai_profile,
-      gaps,
-    },
-  });
+    const meta = baseMeta('gemini', false, { uid, intent, preferences });
+    return res.json({
+      meta,
+      artifacts: withArtifactMeta(artifacts, meta),
+    });
+  } catch (error) {
+    console.error('suite_generation_error', error);
+    const meta = baseMeta('fallback', true, {
+      reason: String(error?.message ?? 'suite_generation_failed'),
+      uid,
+      intent,
+      preferences,
+    });
+    return res.json({
+      meta,
+      artifacts: withArtifactMeta(buildSuiteFallback(answers), meta),
+    });
+  }
 });
 
 // B.I.N.G.E: Generate one episode (fast).
 app.post('/v1/binge/episode', requireAuth, async (req, res) => {
   const { dna, target_skill } = req.body ?? {};
-
-  // Minimal input: we can generate without full DNA; if provided, bind it.
-  const role = dna?.current_role || 'your current role';
-  const target = dna?.target_role || 'your next role';
-  const industry = dna?.industry || 'your industry';
+  const uid = req.user.uid;
+  const persistedDna = await loadClientDna(uid);
+  const hydratedDna = { ...persistedDna, ...(dna ?? {}) };
   const skill = target_skill || 'prompt architecture under pressure';
 
   if (!ai) {
-    return res.json(stubEpisode('noai'));
+    return res.json(
+      stubEpisode(
+        'noai',
+        baseMeta('fallback', true, { reason: 'missing_gemini_api_key', uid, prompt_version: ROM_VERSION })
+      )
+    );
   }
-
-  const prompt = `
-User DNA:
-- Current Role: ${role}
-- Target Role: ${target}
-- Industry: ${industry}
-
-Target Skill: ${skill}
-
-Remember: start with a time limit and an urgent boss message. 3 swipe cards max. Keep it tight.
-`;
 
   try {
     const response = await ai.models.generateContent({
       model: fastTextModel,
-      contents: prompt,
+      contents: composeBingePrompt({ dna: hydratedDna, targetSkill: skill }),
       config: {
         responseMimeType: 'application/json',
         responseSchema: EPISODE_SCHEMA,
-        systemInstruction: BINGE_SYSTEM,
+        systemInstruction: composeBingeSystemInstruction(),
         temperature: 0.7
       }
     });
 
-    const text = response.text;
-    if (!text) return res.json(stubEpisode('empty'));
-    return res.json(JSON.parse(text));
+    const text = response.text?.trim();
+    if (!text) throw new Error('empty_model_response');
+    const episode = safeParseJson(text);
+    const toneViolations = findToneViolations(episode);
+    if (toneViolations.length) {
+      throw new Error(`tone_violation:${toneViolations.join(',')}`);
+    }
+
+    return res.json({
+      ...episode,
+      _meta: baseMeta('gemini', false, { uid, target_skill: skill }),
+    });
   } catch (e) {
     console.error('binge generation error', e);
-    return res.json(stubEpisode('err'));
+    return res.json(
+      stubEpisode(
+        'err',
+        baseMeta('fallback', true, {
+          uid,
+          target_skill: skill,
+          reason: String(e?.message ?? 'episode_generation_failed'),
+        })
+      )
+    );
   }
 });
 

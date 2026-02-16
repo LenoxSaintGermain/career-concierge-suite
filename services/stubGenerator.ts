@@ -9,19 +9,19 @@ export const generateBrief = (answers: IntakeAnswers): BriefContent => {
 
   return {
     learned: [
-      `You’re operating from ${currentTitle} with real constraints, not hypotheticals.`,
-      `You’re targeting ${target} and want a plan that is practical inside ${industry}.`,
-      `You respond best when the next action is obvious and timeboxed.`,
+      `You are reallocating from ${currentTitle} toward ${target}.`,
+      `Your market context is ${industry}, and specificity will outperform volume.`,
+      'Your edge increases when each action has an explicit decision target.',
     ],
     needle: [
-      'Reduce decision friction by standardizing how you gather context and take action.',
-      'Build outward credibility signals that match the role you want, not just the role you have.',
-      'Use AI for structure and iteration, not for pretending experience you do not have.',
+      'Convert experience into proof that survives executive scrutiny.',
+      'Protect optionality by concentrating effort on high-leverage moves.',
+      'Use AI to structure work, not to manufacture credibility.',
     ],
     next_72_hours: [
-      { id: 'n72-1', label: 'Upload your current resume (or paste it) so we can lock facts.', done: false },
-      { id: 'n72-2', label: 'Pick 3 target companies or teams; we will shape a focused sprint.', done: false },
-      { id: 'n72-3', label: 'Draft a 5-sentence “what I do / what I’m aiming at” statement.', done: false },
+      { id: 'n72-1', label: 'Build a verified evidence list: outcomes, scope, and metrics.', done: false },
+      { id: 'n72-2', label: 'Define one target lane and remove adjacent noise.', done: false },
+      { id: 'n72-3', label: 'Draft a concise positioning statement for stakeholder-facing use.', done: false },
     ],
   };
 };
@@ -38,16 +38,16 @@ export const generatePlan = (answers: IntakeAnswers): PlanContent => {
   return {
     next_72_hours: next72,
     next_2_weeks: {
-      goal: 'Move from “application mode” to “positioning mode.”',
+      goal: 'Increase career optionality through disciplined positioning.',
       cadence: [
-        '2 focused outreach messages per week (not spam).',
-        '1 credibility signal per week (post, note, portfolio snippet).',
-        '1 interview-prep block per week (stories + scenarios).',
+        'Two focused outreach actions with explicit asks.',
+        'One public credibility artifact tied to your target lane.',
+        'One decision review: what changed the math this week.',
       ],
     },
     needs_from_you: [
-      'Your resume (or LinkedIn export).',
-      'A short list of roles/companies that feel real to you (even if imperfect).',
+      'Current resume or equivalent fact set.',
+      'Target opportunities ranked by strategic fit.',
     ],
   };
 };
@@ -58,18 +58,18 @@ export const generateProfileDoc = (answers: IntakeAnswers) => {
 
   return {
     strengths: [
-      'You value clarity over noise.',
-      'You want momentum without chaos.',
-      'You’re willing to iterate if the direction is coherent.',
+      'You favor clear thinking over performative busyness.',
+      'You can operate inside constraints without losing quality.',
+      'You compound progress through repeatable systems.',
     ],
     patterns: [
-      pressure ? `Under pressure, ${pressure.toLowerCase()} is your first failure point.` : 'Under pressure, your first failure point is predictable.',
-      workStyle ? `You regain control through: ${workStyle.toLowerCase()}.` : 'You regain control through a clear next action.',
+      pressure ? `Pressure pattern: ${pressure.toLowerCase()}.` : 'Pressure pattern: decision load rises before clarity.',
+      workStyle ? `Stabilizer: ${workStyle.toLowerCase()}.` : 'Stabilizer: short execution cycles with explicit outputs.',
     ],
     leverage: [
-      'Turn “busy work” into reusable operating procedures.',
-      'Package your wins into short, repeatable stories.',
-      'Use AI to draft structure; you supply the truth and the judgment.',
+      'Turn recurring work into reusable strategic assets.',
+      'Translate execution history into board-readable proof.',
+      'Use concise language to reduce friction in high-stakes decisions.',
     ],
   };
 };
@@ -77,16 +77,16 @@ export const generateProfileDoc = (answers: IntakeAnswers) => {
 export const generateAIProfileDoc = (answers: IntakeAnswers) => {
   const industry = nonEmpty(answers.industry) || 'your domain';
   return {
-    positioning: `In ${industry}, your advantage is speed-to-clarity: turning messy inputs into clean decisions.`,
+    positioning: `In ${industry}, your advantage is disciplined signal extraction and controlled execution.`,
     how_to_use_ai: [
-      'Context gathering: summarize emails/notes into a crisp brief.',
-      'Structure: turn chaos into an outline, a plan, or a script.',
-      'Iteration: refine deliverables fast while preserving factual accuracy.',
+      'Condense raw notes into decision-grade briefs.',
+      'Pressure-test messaging before stakeholder exposure.',
+      'Standardize repeatable outputs with verification steps.',
     ],
     guardrails: [
       'No invented credentials or fabricated metrics.',
-      'Prefer short, verifiable claims over “impressive” claims.',
-      'When uncertain: flag, ask, confirm.',
+      'Prefer measured specificity over dramatic language.',
+      'When uncertain, state assumptions and ask one clarifying question.',
     ],
   };
 };
@@ -96,15 +96,14 @@ export const generateGapsDoc = (answers: IntakeAnswers) => {
   const constraints = nonEmpty(answers.constraints);
   return {
     near_term: [
-      'A clean inventory of evidence (projects, outcomes, metrics).',
-      'A tighter role narrative: why you, why now.',
-      'A realistic weekly cadence that does not collapse.',
+      'Proof points are not yet packaged for executive review.',
+      'Positioning lane needs tighter exclusion criteria.',
+      'Weekly cadence requires explicit leverage metrics.',
     ],
     for_target_role: [
-      `Translate your experience into the language of ${target}.`,
-      'Add 1-2 visible proof points (portfolio, post, short case).',
+      `Translate your experience into the operating language of ${target}.`,
+      'Add one visible artifact that demonstrates decision quality.',
     ],
-    constraints: constraints ? [`Constraints noted: ${constraints}.`] : ['Constraints not yet captured.'],
+    constraints: constraints ? [`Constraint register: ${constraints}.`] : ['Constraint register is incomplete.'],
   };
 };
-
