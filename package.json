@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "firebase:rules": "bash scripts/firebase_deploy_rules.sh third-signal signal-atlas"
+    "firebase:rules": "npm run firebase:rules:concierge",
+    "firebase:rules:concierge": "bash scripts/firebase_deploy_rules.sh third-signal career-concierge",
+    "firebase:rules:atlas": "bash scripts/firebase_deploy_rules.sh third-signal signal-atlas"
   },
   "dependencies": {
     "react": "^19.2.3",

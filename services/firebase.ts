@@ -16,7 +16,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// Initialize Firestore with the named database 'signal-atlas'
-const db = getFirestore(app, "signal-atlas");
+// Keep database selection environment-driven so Atlas and Concierge can run side-by-side.
+const databaseId = ((import.meta as any).env?.VITE_FIREBASE_DATABASE_ID as string | undefined) || "career-concierge";
+const db = getFirestore(app, databaseId);
 
 export { app, auth, db };

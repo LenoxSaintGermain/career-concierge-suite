@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /gems/{document=**} {
+      // ---------------------------------------------------------
+      // SIGNAL ATLAS RULES
+      // ---------------------------------------------------------
+      // This showcase app does not require Firebase Authentication.
+      // It uses an email gate in the client, so gems must be publicly readable/writable.
+      // ---------------------------------------------------------
+      allow read, write: if true;
+    }
+  }
+}

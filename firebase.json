@@ -1,8 +1,12 @@
 {
   "firestore": [
     {
+      "database": "career-concierge",
+      "rules": "firestore.concierge.rules"
+    },
+    {
       "database": "signal-atlas",
-      "rules": "firestore.rules"
+      "rules": "firestore.signal-atlas.rules"
     }
   ],
   "emulators": {
