@@ -227,7 +227,7 @@ const App: React.FC = () => {
               No tests. No chaos. Just a calibrated plan.
             </p>
             <div className="inline-block border-t border-b border-white/20 py-4 px-10">
-              <div className="text-white text-[10px] font-bold tracking-[0.3em] uppercase">Career Concierge Suite</div>
+              <div className="text-white text-[10px] font-bold tracking-[0.3em] uppercase">SkillSync AI Concierge Suite</div>
             </div>
           </div>
 
@@ -248,13 +248,14 @@ const App: React.FC = () => {
         <div className="flex items-center gap-6">
           <h1 className="text-xs font-bold tracking-widest uppercase">
             Third Signal <span className="opacity-40 ml-2 font-normal hidden sm:inline">Career Concierge</span>
+            <span className="ml-3 text-brand-teal opacity-80 hidden md:inline">SkillSync AI</span>
           </h1>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{user.email ?? user.uid}</span>
           <button
             onClick={() => setAdminOpen(true)}
-            className="text-[10px] uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity"
+            className="text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors"
           >
             Admin
           </button>
@@ -282,6 +283,9 @@ const App: React.FC = () => {
             <p className="text-sm text-black/50 leading-relaxed mt-4 max-w-2xl">
               Start with Intake. Everything else unlocks as soon as we calibrate your profile and generate your Brief.
             </p>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal mt-4">
+              Semantic color: Teal = action and completion
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-200 border border-gray-200">
@@ -298,13 +302,13 @@ const App: React.FC = () => {
                   key={m.id}
                   className={`bg-[#f5f5f5] p-6 transition-all dur-md ease-exit cursor-pointer select-none ${
                     constellationDimmed ? 'opacity-20' : 'opacity-100'
-                  } ${mobileFocused ? 'bg-white ring-1 ring-black/5 shadow-card-hover' : ''}`}
+                  } ${mobileFocused ? 'bg-white ring-1 ring-black/5 shadow-card-hover border-brand-teal' : 'hover:bg-white/80'}`}
                   onClick={(e) => handleModuleClick(e, m)}
                   onMouseEnter={() => !isMobile && setHoveredModuleId(m.id)}
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="text-xs font-mono opacity-30">{m.index}</div>
-                    <div className="text-[9px] uppercase tracking-widest opacity-40">
+                    <div className={`text-[9px] uppercase tracking-widest ${locked ? 'opacity-40' : 'text-brand-teal'}`}>
                       {locked ? 'Locked' : 'Ready'}
                     </div>
                   </div>
@@ -353,7 +357,7 @@ const App: React.FC = () => {
                   <span className="opacity-50">MODULE</span>
                 </div>
                 <h2 className="text-4xl md:text-5xl font-editorial leading-none mb-8">{openModule.title}</h2>
-                <p className="text-sm md:text-base font-light opacity-80 leading-relaxed font-editorial italic border-l border-white/20 pl-6 py-1">
+                <p className="text-sm md:text-base font-light opacity-80 leading-relaxed font-editorial italic border-l border-brand-teal pl-6 py-1">
                   “{openModule.subtitle}”
                 </p>
               </div>
@@ -395,7 +399,7 @@ const App: React.FC = () => {
                       <div className="mt-6">
                         <button
                           onClick={() => openModuleById('intake')}
-                          className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
+                          className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
                         >
                           Start Intake
                         </button>
@@ -441,7 +445,7 @@ const App: React.FC = () => {
                         <div className="mt-6">
                           <button
                             onClick={() => openModuleById('intake')}
-                            className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
+                            className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
                           >
                             Regenerate via Intake
                           </button>

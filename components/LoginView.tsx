@@ -34,7 +34,7 @@ export function LoginView(props: { onAuthed: () => void }) {
     <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-6">
       <div className="w-full max-w-md border border-white/15 bg-[#0b0b0b] p-8 shadow-2xl">
         <div className="mb-8">
-          <div className="text-[10px] uppercase tracking-[0.3em] opacity-50">Third Signal</div>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-brand-teal">Third Signal</div>
           <h1 className="text-2xl font-editorial italic mt-2">{title}</h1>
           <p className="text-xs opacity-60 mt-3 leading-relaxed">
             This is a private concierge suite for clients. If you don’t have access, contact your concierge.
@@ -55,7 +55,7 @@ export function LoginView(props: { onAuthed: () => void }) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-transparent border-b border-white/20 focus:border-white outline-none py-2 text-sm tracking-wide"
+              className="bg-transparent border-b border-white/20 focus-border-brand-teal outline-none py-2 text-sm tracking-wide"
               placeholder="you@domain.com"
               autoComplete="email"
             />
@@ -68,7 +68,7 @@ export function LoginView(props: { onAuthed: () => void }) {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="bg-transparent border-b border-white/20 focus:border-white outline-none py-2 text-sm tracking-wide"
+              className="bg-transparent border-b border-white/20 focus-border-brand-teal outline-none py-2 text-sm tracking-wide"
               placeholder="••••••••"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
@@ -77,7 +77,7 @@ export function LoginView(props: { onAuthed: () => void }) {
           <button
             type="submit"
             disabled={busy}
-            className="bg-white text-black py-3 text-xs font-bold uppercase tracking-[0.25em] hover:bg-white/90 transition-colors disabled:opacity-60"
+            className="btn-brand py-3 text-xs font-bold uppercase tracking-[0.25em] transition-colors disabled:opacity-60"
           >
             {busy ? 'Working…' : mode === 'login' ? 'Enter' : 'Create'}
           </button>
@@ -104,4 +104,3 @@ export function LoginView(props: { onAuthed: () => void }) {
     </div>
   );
 }
-

@@ -28,6 +28,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --brand-teal: #26c8bc;
+        --brand-teal-dark: #0e9f96;
+        --brand-teal-soft: rgba(38, 200, 188, 0.12);
+      }
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f5f5f5; /* Neutral 100/50ish */
@@ -159,6 +164,39 @@
         animation: mobilePulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         background-color: white !important;
         z-index: 30 !important;
+      }
+
+      .text-brand-teal {
+        color: var(--brand-teal-dark);
+      }
+
+      .border-brand-teal {
+        border-color: var(--brand-teal-dark) !important;
+      }
+
+      .hover-border-brand-teal:hover {
+        border-color: var(--brand-teal-dark) !important;
+      }
+
+      .hover-text-brand-teal:hover {
+        color: var(--brand-teal-dark) !important;
+      }
+
+      .focus-border-brand-teal:focus {
+        border-color: var(--brand-teal-dark) !important;
+      }
+
+      .bg-brand-soft {
+        background-color: var(--brand-teal-soft);
+      }
+
+      .btn-brand {
+        background: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-dark));
+        color: #05211f;
+      }
+
+      .btn-brand:hover {
+        filter: brightness(1.04);
       }
       
     </style>

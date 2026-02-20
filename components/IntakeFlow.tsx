@@ -76,7 +76,7 @@ export function IntakeFlow(props: {
   return (
     <div className="space-y-10">
       <div>
-        <div className="text-xs font-mono uppercase tracking-widest text-gray-400 mb-3">Intake</div>
+        <div className="text-xs font-mono uppercase tracking-widest text-brand-teal mb-3">Smart Start Intake</div>
         <h2 className="text-3xl md:text-4xl font-editorial leading-tight">A short concierge conversation.</h2>
         <p className="text-sm text-gray-600 leading-relaxed mt-4 max-w-2xl">
           You’re not taking a test. We’re calibrating your suite so the outputs are useful immediately.
@@ -106,7 +106,7 @@ export function IntakeFlow(props: {
                   key={i}
                   onClick={() => setIntent(i)}
                   className={`text-left p-5 border transition-all dur-md ease-exit ${
-                    active ? 'border-black bg-gray-50' : 'border-black/10 hover:border-black/30'
+                    active ? 'border-brand-teal bg-brand-soft' : 'border-black/10 hover-border-brand-teal'
                   }`}
                 >
                   <div className="text-xs uppercase tracking-widest opacity-60 mb-2">Intent</div>
@@ -118,7 +118,7 @@ export function IntakeFlow(props: {
           <div className="pt-3">
             <button
               onClick={() => setStep('questions')}
-              className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
+              className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
             >
               Continue
             </button>
@@ -137,7 +137,7 @@ export function IntakeFlow(props: {
                   value={answers[p.id] ?? ''}
                   onChange={(e) => setAnswers((prev) => ({ ...prev, [p.id]: e.target.value }))}
                   placeholder={p.placeholder ?? ''}
-                  className="border-b border-black/10 focus:border-black outline-none py-2 text-sm"
+                  className="border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
                 />
               </div>
             ))}
@@ -151,7 +151,7 @@ export function IntakeFlow(props: {
             </button>
             <button
               onClick={() => setStep('prefs')}
-              className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
+              className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
             >
               Continue
             </button>
@@ -175,7 +175,7 @@ export function IntakeFlow(props: {
                     key={p}
                     onClick={() => setPace(p)}
                     className={`px-4 py-2 text-xs uppercase tracking-widest border transition-all dur-sm ease-exit ${
-                      pace === p ? 'bg-black text-white border-black' : 'border-black/10 hover:border-black/30'
+                      pace === p ? 'bg-brand-soft text-brand-teal border-brand-teal' : 'border-black/10 hover-border-brand-teal'
                     }`}
                   >
                     {p}
@@ -192,7 +192,7 @@ export function IntakeFlow(props: {
                     key={f}
                     onClick={() => setFocus(f)}
                     className={`px-4 py-2 text-xs uppercase tracking-widest border transition-all dur-sm ease-exit ${
-                      focus === f ? 'bg-black text-white border-black' : 'border-black/10 hover:border-black/30'
+                      focus === f ? 'bg-brand-soft text-brand-teal border-brand-teal' : 'border-black/10 hover-border-brand-teal'
                     }`}
                   >
                     {f}
@@ -212,7 +212,7 @@ export function IntakeFlow(props: {
             <button
               onClick={submit}
               disabled={busy}
-              className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors disabled:opacity-60"
+              className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors disabled:opacity-60"
             >
               {busy ? 'Preparing…' : 'Prepare My Suite'}
             </button>
@@ -223,7 +223,7 @@ export function IntakeFlow(props: {
 
       {step === 'plating' && (
         <div className="pt-6">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 animate-pulse">Plating</div>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-brand-teal animate-pulse">Plating</div>
           <div className="mt-3 text-2xl font-editorial italic">Preparing your suite…</div>
           <p className="text-sm text-gray-600 leading-relaxed mt-3 max-w-xl">
             This is the intentional pause. We are assembling your Brief, your Plan, and your supporting documents.
