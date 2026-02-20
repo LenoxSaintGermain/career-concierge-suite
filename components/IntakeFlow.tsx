@@ -76,9 +76,9 @@ export function IntakeFlow(props: {
   return (
     <div className="space-y-10">
       <div>
-        <div className="text-xs font-mono uppercase tracking-widest text-gray-400 mb-3">Intake</div>
+        <div className="text-xs font-signal-mono uppercase tracking-widest text-[#0e9f96] mb-3">Smart Start Intake</div>
         <h2 className="text-3xl md:text-4xl font-editorial leading-tight">A short concierge conversation.</h2>
-        <p className="text-sm text-gray-600 leading-relaxed mt-4 max-w-2xl">
+        <p className="text-sm text-[#44586b] leading-relaxed mt-4 max-w-2xl">
           You’re not taking a test. We’re calibrating your suite so the outputs are useful immediately.
         </p>
       </div>
@@ -91,7 +91,7 @@ export function IntakeFlow(props: {
 
       {step === 'intent' && (
         <div className="space-y-4">
-          <div className="text-[10px] uppercase tracking-widest text-gray-500">What are we optimizing for right now?</div>
+          <div className="text-[10px] uppercase tracking-widest text-[#5f7283]">What are we optimizing for right now?</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {CLIENT_INTENTS.map((i) => {
               const label =
@@ -106,7 +106,7 @@ export function IntakeFlow(props: {
                   key={i}
                   onClick={() => setIntent(i)}
                   className={`text-left p-5 border transition-all dur-md ease-exit ${
-                    active ? 'border-black bg-gray-50' : 'border-black/10 hover:border-black/30'
+                    active ? 'border-[#0e9f96] bg-[#26c8bc12] ring-os-active' : 'border-black/10 hover:border-[#0e9f96]'
                   }`}
                 >
                   <div className="text-xs uppercase tracking-widest opacity-60 mb-2">Intent</div>
@@ -118,7 +118,7 @@ export function IntakeFlow(props: {
           <div className="pt-3">
             <button
               onClick={() => setStep('questions')}
-              className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
+              className="btn-os-primary px-5 py-3 text-xs uppercase tracking-[0.25em] transition-colors"
             >
               Continue
             </button>
@@ -128,16 +128,16 @@ export function IntakeFlow(props: {
 
       {step === 'questions' && (
         <div className="space-y-6">
-          <div className="text-[10px] uppercase tracking-widest text-gray-500">A few calibration prompts</div>
+          <div className="text-[10px] uppercase tracking-widest text-[#5f7283]">A few calibration prompts</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {INTAKE_PROMPTS.map((p) => (
               <div key={p.id} className="flex flex-col gap-2">
-                <label className="text-xs text-gray-700">{p.label}</label>
+                <label className="text-xs text-[#33485c]">{p.label}</label>
                 <input
                   value={answers[p.id] ?? ''}
                   onChange={(e) => setAnswers((prev) => ({ ...prev, [p.id]: e.target.value }))}
                   placeholder={p.placeholder ?? ''}
-                  className="border-b border-black/10 focus:border-black outline-none py-2 text-sm"
+                  className="border-b border-black/10 focus:border-[#0e9f96] outline-none py-2 text-sm bg-transparent"
                 />
               </div>
             ))}
@@ -151,7 +151,7 @@ export function IntakeFlow(props: {
             </button>
             <button
               onClick={() => setStep('prefs')}
-              className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
+              className="btn-os-primary px-5 py-3 text-xs uppercase tracking-[0.25em] transition-colors"
             >
               Continue
             </button>
@@ -162,20 +162,20 @@ export function IntakeFlow(props: {
       {step === 'prefs' && (
         <div className="space-y-8">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-3">Preferences</div>
+            <div className="text-[10px] uppercase tracking-widest text-[#5f7283] mb-3">Preferences</div>
             <div className="text-xl font-editorial italic">How should this feel?</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <div className="text-[10px] uppercase tracking-widest text-gray-500">Pace</div>
+              <div className="text-[10px] uppercase tracking-widest text-[#5f7283]">Pace</div>
               <div className="flex gap-2 flex-wrap">
                 {PACE_PREFS.map((p) => (
                   <button
                     key={p}
                     onClick={() => setPace(p)}
                     className={`px-4 py-2 text-xs uppercase tracking-widest border transition-all dur-sm ease-exit ${
-                      pace === p ? 'bg-black text-white border-black' : 'border-black/10 hover:border-black/30'
+                      pace === p ? 'bg-[#26c8bc12] text-[#0e9f96] border-[#0e9f96]' : 'border-black/10 hover:border-[#0e9f96]'
                     }`}
                   >
                     {p}
@@ -185,14 +185,14 @@ export function IntakeFlow(props: {
             </div>
 
             <div className="space-y-3">
-              <div className="text-[10px] uppercase tracking-widest text-gray-500">Focus</div>
+              <div className="text-[10px] uppercase tracking-widest text-[#5f7283]">Focus</div>
               <div className="flex gap-2 flex-wrap">
                 {FOCUS_PREFS.map((f) => (
                   <button
                     key={f}
                     onClick={() => setFocus(f)}
                     className={`px-4 py-2 text-xs uppercase tracking-widest border transition-all dur-sm ease-exit ${
-                      focus === f ? 'bg-black text-white border-black' : 'border-black/10 hover:border-black/30'
+                      focus === f ? 'bg-[#26c8bc12] text-[#0e9f96] border-[#0e9f96]' : 'border-black/10 hover:border-[#0e9f96]'
                     }`}
                   >
                     {f}
@@ -212,7 +212,7 @@ export function IntakeFlow(props: {
             <button
               onClick={submit}
               disabled={busy}
-              className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors disabled:opacity-60"
+              className="btn-os-primary px-5 py-3 text-xs uppercase tracking-[0.25em] transition-colors disabled:opacity-60"
             >
               {busy ? 'Preparing…' : 'Prepare My Suite'}
             </button>
@@ -223,15 +223,18 @@ export function IntakeFlow(props: {
 
       {step === 'plating' && (
         <div className="pt-6">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 animate-pulse">Plating</div>
+          <div className="flex items-center gap-3">
+            <span className="teal-dot ai-thinking" />
+            <div className="text-[10px] uppercase tracking-[0.3em] text-[#0e9f96] animate-pulse">AI plating</div>
+          </div>
           <div className="mt-3 text-2xl font-editorial italic">Preparing your suite…</div>
-          <p className="text-sm text-gray-600 leading-relaxed mt-3 max-w-xl">
+          <p className="text-sm text-[#44586b] leading-relaxed mt-3 max-w-xl">
             This is the intentional pause. We are assembling your Brief, your Plan, and your supporting documents.
           </p>
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
             {['Your Profile', 'Your AI Profile', 'Your Gaps'].map((x) => (
-              <div key={x} className="border border-black/5 bg-gray-50 p-4">
-                <div className="text-[9px] uppercase tracking-widest opacity-50 mb-2">In progress</div>
+              <div key={x} className="border border-[#0e9f9630] bg-[#26c8bc10] p-4">
+                <div className="text-[9px] uppercase tracking-widest text-[#0e9f96] mb-2">In progress</div>
                 <div className="font-editorial italic text-lg">{x}</div>
               </div>
             ))}

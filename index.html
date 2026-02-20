@@ -26,18 +26,98 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --ss-slate-980: #070d14;
+        --ss-slate-950: #0f1824;
+        --ss-slate-900: #182432;
+        --ss-slate-850: #213142;
+        --ss-slate-700: #42576d;
+        --ss-slate-500: #6c8198;
+        --ss-slate-300: #aebcca;
+        --ss-slate-100: #e7edf3;
+        --ss-paper: #f3f6f9;
+        --ss-white: #fcfeff;
+        --ss-teal-600: #0e9f96;
+        --ss-teal-500: #26c8bc;
+        --ss-teal-400: #5ce3d7;
+        --ss-teal-200: #b8f0eb;
+        --ss-teal-glow: rgba(38, 200, 188, 0.22);
+      }
+
       body {
-        font-family: 'Inter', sans-serif;
-        background-color: #f5f5f5; /* Neutral 100/50ish */
-        color: #1a1a1a;
+        font-family: 'Space Grotesk', sans-serif;
+        background: radial-gradient(circle at 15% 15%, #213142 0%, #101c2b 30%, #070d14 78%);
+        color: var(--ss-slate-100);
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
-      .font-editorial {
-        font-family: 'Playfair Display', serif;
+
+      #root {
+        min-height: 100vh;
       }
+
+      .font-editorial {
+        font-family: 'Cormorant Garamond', serif;
+      }
+
+      .font-signal-mono {
+        font-family: 'IBM Plex Mono', monospace;
+      }
+
+      .bg-os-shell {
+        background: linear-gradient(165deg, rgba(16, 28, 43, 0.96), rgba(7, 13, 20, 0.98));
+      }
+
+      .bg-os-panel {
+        background: linear-gradient(155deg, rgba(24, 36, 50, 0.94), rgba(16, 26, 37, 0.94));
+      }
+
+      .bg-os-paper {
+        background: var(--ss-paper);
+        color: #111f2c;
+      }
+
+      .ring-os {
+        box-shadow: inset 0 0 0 1px rgba(174, 188, 202, 0.14);
+      }
+
+      .ring-os-active {
+        box-shadow: inset 0 0 0 1px var(--ss-teal-500), 0 0 0 1px var(--ss-teal-glow), 0 12px 40px -20px var(--ss-teal-glow);
+      }
+
+      .btn-os-primary {
+        background: linear-gradient(135deg, var(--ss-teal-500), #149f93);
+        color: #042623;
+      }
+
+      .btn-os-primary:hover {
+        filter: brightness(1.06);
+      }
+
+      .text-teal {
+        color: var(--ss-teal-500);
+      }
+
+      .teal-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 9999px;
+        background: var(--ss-teal-500);
+        box-shadow: 0 0 0 4px rgba(38, 200, 188, 0.18);
+      }
+
+      @keyframes aiPulse {
+        0% { box-shadow: 0 0 0 0 rgba(38, 200, 188, 0.36); }
+        65% { box-shadow: 0 0 0 10px rgba(38, 200, 188, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(38, 200, 188, 0); }
+      }
+
+      .ai-thinking {
+        animation: aiPulse 1.8s ease-out infinite;
+      }
+
       /* Hide scrollbar for clean UI */
       .no-scrollbar::-webkit-scrollbar {
         display: none;
@@ -64,7 +144,7 @@
       /* Editorial Formatting */
       .drop-cap::first-letter {
         float: left;
-        font-family: 'Playfair Display', serif;
+        font-family: 'Cormorant Garamond', serif;
         font-size: 3.5rem;
         line-height: 0.8;
         margin-right: 0.75rem;
