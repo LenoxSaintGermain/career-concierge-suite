@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 import {
   CONCIERGE_ROM_SYSTEM,
   EPISODE_SCHEMA,
@@ -86,6 +86,8 @@ const sesameAuthPrefix = process.env.SESAME_AUTH_PREFIX || 'Bearer ';
 const fastTextModel = process.env.GEMINI_MODEL_FAST || 'gemini-3-flash-preview';
 const imageModelDefault = process.env.GEMINI_MODEL_IMAGE || 'gemini-2.5-flash-image-preview';
 const videoModelDefault = process.env.GEMINI_MODEL_VIDEO || 'veo-3.1-generate-preview';
+const geminiLiveModelDefault =
+  process.env.GEMINI_MODEL_LIVE_VOICE || 'gemini-2.5-flash-native-audio-preview-12-2025';
 const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 
 const nonEmpty = (value) => String(value ?? '').trim();
@@ -139,6 +141,8 @@ const DEFAULT_APP_CONFIG = {
     provider: 'sesame',
     api_url: process.env.SESAME_API_URL || '',
     speaker: process.env.SESAME_SPEAKER || 'Maya',
+    gemini_live_model: geminiLiveModelDefault,
+    gemini_voice_name: process.env.GEMINI_VOICE_NAME || 'Aoede',
     max_audio_length_ms: 12_000,
     temperature: 0.9,
     narration_style: 'Calm concierge narration with subtle human hesitations and restrained authority.',
@@ -233,9 +237,11 @@ const normalizeConfig = (input = {}) => {
     },
     voice: {
       enabled: typeof voice.enabled === 'boolean' ? voice.enabled : DEFAULT_APP_CONFIG.voice.enabled,
-      provider: 'sesame',
+      provider: voice.provider === 'gemini_live' ? 'gemini_live' : 'sesame',
       api_url: nonEmpty(voice.api_url) || DEFAULT_APP_CONFIG.voice.api_url,
       speaker: nonEmpty(voice.speaker) || DEFAULT_APP_CONFIG.voice.speaker,
+      gemini_live_model: nonEmpty(voice.gemini_live_model) || DEFAULT_APP_CONFIG.voice.gemini_live_model,
+      gemini_voice_name: nonEmpty(voice.gemini_voice_name) || DEFAULT_APP_CONFIG.voice.gemini_voice_name,
       max_audio_length_ms: clampInteger(
         voice.max_audio_length_ms,
         DEFAULT_APP_CONFIG.voice.max_audio_length_ms,
@@ -542,6 +548,192 @@ const extractSesameAudioPayload = (payload) => {
   };
 };
 
+const parsePcmSampleRate = (mimeType) => {
+  const match = String(mimeType ?? '').match(/rate=(\d+)/i);
+  return match ? Number(match[1]) : 24000;
+};
+
+const pcm16ToWavBase64 = (pcmBase64, sampleRate = 24000) => {
+  const pcmBuffer = Buffer.from(pcmBase64, 'base64');
+  const channels = 1;
+  const bitsPerSample = 16;
+  const blockAlign = (channels * bitsPerSample) / 8;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = pcmBuffer.length;
+  const header = Buffer.alloc(44);
+
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + dataSize, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16); // PCM chunk size
+  header.writeUInt16LE(1, 20); // PCM format
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+  header.write('data', 36);
+  header.writeUInt32LE(dataSize, 40);
+
+  return Buffer.concat([header, pcmBuffer]).toString('base64');
+};
+
+const synthesizeWithSesame = async ({ runtimeConfig, text }) => {
+  const endpoint = nonEmpty(runtimeConfig.voice.api_url || process.env.SESAME_API_URL);
+  if (!endpoint) {
+    throw new Error('missing_voice_api_url');
+  }
+
+  const controller = new AbortController();
+  const timeoutMs = Number(process.env.SESAME_TIMEOUT_MS || 45000);
+  const timeout = setTimeout(() => controller.abort('sesame_timeout'), timeoutMs);
+
+  try {
+    const headers = { 'content-type': 'application/json' };
+    if (sesameApiKey) {
+      headers[sesameAuthHeader] = `${sesameAuthPrefix}${sesameApiKey}`;
+    }
+
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        text,
+        speaker: runtimeConfig.voice.speaker,
+        max_audio_length_ms: runtimeConfig.voice.max_audio_length_ms,
+        temperature: runtimeConfig.voice.temperature,
+        narration_style: runtimeConfig.voice.narration_style,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!resp.ok) {
+      const detail = sanitizeError(await resp.text().catch(() => ''), 'sesame_request_failed');
+      const error = new Error(`sesame_request_failed:${resp.status}:${detail}`);
+      throw error;
+    }
+
+    const payload = await resp.json();
+    const audio = extractSesameAudioPayload(payload);
+    if (!audio?.audioBase64) {
+      throw new Error('invalid_sesame_response');
+    }
+
+    return {
+      provider: 'sesame',
+      mime_type: audio.mimeType,
+      audio_base64: audio.audioBase64,
+      generated_at: new Date().toISOString(),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const synthesizeWithGeminiLive = async ({ runtimeConfig, text }) => {
+  if (!ai) {
+    throw new Error('missing_gemini_api_key');
+  }
+
+  const timeoutMs = Number(process.env.GEMINI_LIVE_TIMEOUT_MS || 30000);
+  const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
+  const voiceName = nonEmpty(runtimeConfig.voice.gemini_voice_name) || nonEmpty(runtimeConfig.voice.speaker) || 'Aoede';
+  const instruction =
+    nonEmpty(runtimeConfig.voice.narration_style) || DEFAULT_APP_CONFIG.voice.narration_style;
+
+  return await new Promise(async (resolve, reject) => {
+    let session = null;
+    let settled = false;
+    let mimeType = 'audio/pcm;rate=24000';
+    const chunks = [];
+    let timer = null;
+
+    const finish = (resolver) => (value) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      try {
+        session?.close();
+      } catch {}
+      resolver(value);
+    };
+    const done = finish(resolve);
+    const fail = finish(reject);
+    timer = setTimeout(() => fail(new Error('gemini_live_timeout')), timeoutMs);
+
+    try {
+      session = await ai.live.connect({
+        model,
+        config: {
+          responseModalities: [Modality.AUDIO],
+          temperature: runtimeConfig.voice.temperature,
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName,
+              },
+            },
+          },
+          systemInstruction: instruction,
+        },
+        callbacks: {
+          onmessage: (message) => {
+            const parts = message?.serverContent?.modelTurn?.parts || [];
+            for (const part of parts) {
+              if (part?.inlineData?.data) {
+                chunks.push(String(part.inlineData.data).replace(/\s+/g, ''));
+              }
+              if (part?.inlineData?.mimeType) {
+                mimeType = String(part.inlineData.mimeType);
+              }
+            }
+
+            if (message?.serverContent?.turnComplete) {
+              if (!chunks.length) {
+                fail(new Error('gemini_live_empty_audio'));
+                return;
+              }
+              const mergedBase64 = chunks.join('');
+              const output =
+                mimeType.toLowerCase().startsWith('audio/pcm')
+                  ? {
+                      mime_type: 'audio/wav',
+                      audio_base64: pcm16ToWavBase64(mergedBase64, parsePcmSampleRate(mimeType)),
+                    }
+                  : {
+                      mime_type: mimeType,
+                      audio_base64: mergedBase64,
+                    };
+
+              done({
+                provider: 'gemini_live',
+                ...output,
+                generated_at: new Date().toISOString(),
+              });
+            }
+          },
+          onerror: (event) => {
+            fail(new Error(`gemini_live_error:${sanitizeError(event, 'gemini_live_error')}`));
+          },
+          onclose: (event) => {
+            if (settled) return;
+            if (chunks.length) return;
+            fail(new Error(`gemini_live_closed:${sanitizeError(event?.reason, 'closed')}`));
+          },
+        },
+      });
+
+      session.sendClientContent({
+        turns: [{ role: 'user', parts: [{ text }] }],
+        turnComplete: true,
+      });
+    } catch (error) {
+      fail(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+};
+
 const stubEpisode = (runtimeConfig, seed = 'default', meta = {}) => {
   const now = Date.now().toString(36).slice(-6);
   const raw = {
@@ -693,65 +885,28 @@ app.post('/v1/voice/synthesize', requireAuth, async (req, res) => {
     return res.status(503).json({ error: 'voice_disabled' });
   }
 
-  const endpoint = nonEmpty(runtimeConfig.voice.api_url || process.env.SESAME_API_URL);
-  if (!endpoint) return res.status(503).json({ error: 'missing_voice_api_url' });
-
-  const controller = new AbortController();
-  const timeoutMs = Number(process.env.SESAME_TIMEOUT_MS || 45000);
-  const timeout = setTimeout(() => controller.abort('sesame_timeout'), timeoutMs);
-
   try {
-    const headers = {
-      'content-type': 'application/json',
-    };
-    if (sesameApiKey) {
-      headers[sesameAuthHeader] = `${sesameAuthPrefix}${sesameApiKey}`;
-    }
-
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        text,
-        speaker: runtimeConfig.voice.speaker,
-        max_audio_length_ms: runtimeConfig.voice.max_audio_length_ms,
-        temperature: runtimeConfig.voice.temperature,
-        narration_style: runtimeConfig.voice.narration_style,
-      }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    if (!resp.ok) {
-      const detail = sanitizeError(await resp.text().catch(() => ''), 'sesame_request_failed');
-      return res.status(502).json({
-        error: 'sesame_request_failed',
-        status: resp.status,
-        detail,
-      });
-    }
-
-    const payload = await resp.json();
-    const audio = extractSesameAudioPayload(payload);
-    if (!audio?.audioBase64) {
-      return res.status(502).json({
-        error: 'invalid_sesame_response',
-        detail: 'Missing audio payload in Sesame response.',
-      });
-    }
-
-    return res.json({
-      provider: 'sesame',
-      mime_type: audio.mimeType,
-      audio_base64: audio.audioBase64,
-      generated_at: new Date().toISOString(),
-    });
+    const provider = runtimeConfig.voice.provider === 'gemini_live' ? 'gemini_live' : 'sesame';
+    const payload =
+      provider === 'gemini_live'
+        ? await synthesizeWithGeminiLive({ runtimeConfig, text })
+        : await synthesizeWithSesame({ runtimeConfig, text });
+    return res.json(payload);
   } catch (error) {
-    clearTimeout(timeout);
-    return res.status(502).json({
-      error: 'sesame_unavailable',
-      detail: sanitizeError(error, 'sesame_unavailable'),
-    });
+    const reason = sanitizeError(error, 'voice_unavailable');
+    if (reason.includes('missing_voice_api_url')) {
+      return res.status(503).json({ error: 'missing_voice_api_url', detail: reason });
+    }
+    if (reason.includes('missing_gemini_api_key')) {
+      return res.status(503).json({ error: 'missing_gemini_api_key', detail: reason });
+    }
+    if (reason.includes('sesame_request_failed')) {
+      return res.status(502).json({ error: 'sesame_request_failed', detail: reason });
+    }
+    if (reason.includes('gemini_live')) {
+      return res.status(502).json({ error: 'gemini_live_unavailable', detail: reason });
+    }
+    return res.status(502).json({ error: 'voice_unavailable', detail: reason });
   }
 });
 

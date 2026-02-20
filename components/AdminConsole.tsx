@@ -484,7 +484,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
               </section>
 
               <section className="space-y-4">
-                <div className="text-[10px] uppercase tracking-widest opacity-50">Voice Engine (Sesame)</div>
+                <div className="text-[10px] uppercase tracking-widest opacity-50">Voice Engine</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <label className="flex items-center gap-3 text-sm">
                     <input
@@ -501,18 +501,37 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                         )
                       }
                     />
-                    Sesame voice synthesis enabled
+                    Voice synthesis enabled
                   </label>
                   <div className="space-y-2">
                     <label className="text-xs text-gray-700">Provider</label>
-                    <input
+                    <select
                       value={config.voice.provider}
-                      readOnly
-                      className="w-full border-b border-black/10 outline-none py-2 text-sm bg-gray-50 text-gray-500"
-                    />
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: {
+                                  ...prev.voice,
+                                  provider: e.target.value === 'gemini_live' ? 'gemini_live' : 'sesame',
+                                },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+                    >
+                      <option value="sesame">sesame</option>
+                      <option value="gemini_live">gemini_live</option>
+                    </select>
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-xs text-gray-700">Sesame API URL (Cerebrium endpoint)</label>
+                    <label className="text-xs text-gray-700">
+                      {config.voice.provider === 'sesame'
+                        ? 'Sesame API URL (Cerebrium endpoint)'
+                        : 'Gemini Live model route (kept for parity, not required)'}
+                    </label>
                     <input
                       value={config.voice.api_url}
                       onChange={(e) =>
@@ -525,7 +544,11 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                             : prev
                         )
                       }
-                      placeholder="https://api.cortex.cerebrium.ai/v4/PROJECT/APP/generate_audio"
+                      placeholder={
+                        config.voice.provider === 'sesame'
+                          ? 'https://api.cortex.cerebrium.ai/v4/PROJECT/APP/generate_audio'
+                          : 'optional override'
+                      }
                       className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
                     />
                   </div>
@@ -544,6 +567,41 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                         )
                       }
                       placeholder="Maya"
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Gemini Live Model</label>
+                    <input
+                      value={config.voice.gemini_live_model}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, gemini_live_model: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Gemini Voice Name</label>
+                    <input
+                      value={config.voice.gemini_voice_name}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, gemini_voice_name: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      placeholder="Aoede"
                       className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
                     />
                   </div>

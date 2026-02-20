@@ -57,9 +57,11 @@ const normalizeAdminConfig = (input: any): AppConfig => {
     },
     voice: {
       enabled: Boolean(source?.voice?.enabled ?? false),
-      provider: 'sesame',
+      provider: source?.voice?.provider === 'gemini_live' ? 'gemini_live' : 'sesame',
       api_url: String(source?.voice?.api_url ?? ''),
       speaker: String(source?.voice?.speaker ?? 'Maya'),
+      gemini_live_model: String(source?.voice?.gemini_live_model ?? 'gemini-2.5-flash-native-audio-preview-12-2025'),
+      gemini_voice_name: String(source?.voice?.gemini_voice_name ?? 'Aoede'),
       max_audio_length_ms: Number(source?.voice?.max_audio_length_ms ?? 12000),
       temperature: Number(source?.voice?.temperature ?? 0.9),
       narration_style: String(source?.voice?.narration_style ?? 'Calm concierge narration with subtle human hesitations.'),

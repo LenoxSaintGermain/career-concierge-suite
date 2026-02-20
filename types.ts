@@ -186,9 +186,11 @@ export interface AppConfig {
   };
   voice: {
     enabled: boolean;
-    provider: 'sesame';
+    provider: 'sesame' | 'gemini_live';
     api_url: string;
     speaker: string;
+    gemini_live_model: string;
+    gemini_voice_name: string;
     max_audio_length_ms: number;
     temperature: number;
     narration_style: string;
@@ -204,7 +206,7 @@ export interface PublicConfig {
 }
 
 export interface VoiceSynthesisResponse {
-  provider: 'sesame';
+  provider: 'sesame' | 'gemini_live';
   mime_type: string;
   audio_base64: string;
   generated_at: string;
