@@ -73,10 +73,10 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-8">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-os-paper ring-os shadow-2xl">
-        <div className="sticky top-0 bg-os-paper border-b border-black/10 px-6 py-4 flex items-center justify-between z-10">
+      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white ring-1 ring-black/10 shadow-2xl">
+        <div className="sticky top-0 bg-white border-b border-black/10 px-6 py-4 flex items-center justify-between z-10">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-[#0e9f96]">Admin</div>
+            <div className="text-[10px] uppercase tracking-[0.25em] opacity-50">Admin</div>
             <h2 className="text-2xl font-editorial italic">Configuration Console</h2>
           </div>
           <button
@@ -121,7 +121,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                             : prev
                         )
                       }
-                      className="w-full border-b border-black/10 focus:border-[#0e9f96] outline-none py-2 text-sm bg-transparent"
+                      className="w-full border-b border-black/10 focus:border-black outline-none py-2 text-sm"
                     />
                   </div>
                   <div className="space-y-2">
@@ -138,7 +138,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                             : prev
                         )
                       }
-                      className="w-full border-b border-black/10 focus:border-[#0e9f96] outline-none py-2 text-sm bg-transparent"
+                      className="w-full border-b border-black/10 focus:border-black outline-none py-2 text-sm"
                     />
                   </div>
                   <div className="space-y-2">
@@ -150,7 +150,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       max={1}
                       value={config.generation.suite_temperature}
                       onChange={(e) => setNumber('suite_temperature', Number(e.target.value))}
-                      className="w-full border-b border-black/10 focus:border-[#0e9f96] outline-none py-2 text-sm bg-transparent"
+                      className="w-full border-b border-black/10 focus:border-black outline-none py-2 text-sm"
                     />
                   </div>
                   <div className="space-y-2">
@@ -162,7 +162,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       max={1}
                       value={config.generation.binge_temperature}
                       onChange={(e) => setNumber('binge_temperature', Number(e.target.value))}
-                      className="w-full border-b border-black/10 focus:border-[#0e9f96] outline-none py-2 text-sm bg-transparent"
+                      className="w-full border-b border-black/10 focus:border-black outline-none py-2 text-sm"
                     />
                   </div>
                 </div>
@@ -185,7 +185,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                             : prev
                         )
                       }
-                      className="w-full min-h-24 border border-black/10 focus:border-[#0e9f96] outline-none p-3 text-sm"
+                      className="w-full min-h-24 border border-black/10 focus:border-black outline-none p-3 text-sm"
                     />
                   </div>
                   <div className="space-y-2">
@@ -202,7 +202,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                             : prev
                         )
                       }
-                      className="w-full min-h-24 border border-black/10 focus:border-[#0e9f96] outline-none p-3 text-sm"
+                      className="w-full min-h-24 border border-black/10 focus:border-black outline-none p-3 text-sm"
                     />
                   </div>
                 </div>
@@ -268,7 +268,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-os-paper border-t border-black/10 px-6 py-4 flex items-center justify-between">
+        <div className="sticky bottom-0 bg-white border-t border-black/10 px-6 py-4 flex items-center justify-between">
           <button
             onClick={load}
             disabled={loading || saving}
@@ -279,7 +279,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           <button
             onClick={save}
             disabled={!isReady || saving}
-            className="btn-os-primary px-5 py-3 text-xs uppercase tracking-[0.25em] transition-colors disabled:opacity-50"
+            className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors disabled:opacity-50"
           >
             {saving ? 'Saving…' : 'Save Config'}
           </button>

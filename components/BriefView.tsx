@@ -49,7 +49,7 @@ export function BriefView(props: {
           </div>
           <button
             onClick={props.onOpenPlan}
-            className="btn-os-primary px-5 py-3 text-xs uppercase tracking-[0.25em] transition-colors"
+            className="px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
           >
             Open Your Plan
           </button>
@@ -67,3 +67,4 @@ export function BriefView(props: {
     </div>
   );
 }
+
