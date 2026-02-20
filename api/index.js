@@ -78,6 +78,8 @@ app.put('/v1/admin/config', requireAuth, requireAdmin, async (req, res) => {
 
 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || null;
 const fastTextModel = process.env.GEMINI_MODEL_FAST || 'gemini-3-flash-preview';
+const imageModelDefault = process.env.GEMINI_MODEL_IMAGE || 'gemini-2.5-flash-image-preview';
+const videoModelDefault = process.env.GEMINI_MODEL_VIDEO || 'veo-3.1-generate-preview';
 const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 
 const nonEmpty = (value) => String(value ?? '').trim();
@@ -105,6 +107,21 @@ const DEFAULT_APP_CONFIG = {
     show_prologue: true,
     episodes_enabled: true,
   },
+  media: {
+    enabled: true,
+    image_model: imageModelDefault,
+    video_model: videoModelDefault,
+    image_style:
+      'Editorial still, restrained palette, cinematic composition, soft directional light, human texture, premium career narrative.',
+    video_style:
+      'Cinematic micro-drama, deliberate camera movement, subtle teal accent, emotionally contained performances, premium corporate realism.',
+    narrative_lens: 'Pressure to clarity under executive stakes.',
+    image_aspect_ratio: '16:9',
+    video_aspect_ratio: '16:9',
+    video_duration_seconds: 8,
+    video_generate_audio: false,
+    auto_generate_on_episode: false,
+  },
   safety: {
     tone_guard_enabled: true,
   },
@@ -118,11 +135,21 @@ const clamp01 = (value, fallback) => {
   return number;
 };
 
+const clampInteger = (value, fallback, min, max) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  const rounded = Math.round(number);
+  if (rounded < min) return min;
+  if (rounded > max) return max;
+  return rounded;
+};
+
 const normalizeConfig = (input = {}) => {
   const source = input && typeof input === 'object' ? input : {};
   const generation = source.generation && typeof source.generation === 'object' ? source.generation : {};
   const prompts = source.prompts && typeof source.prompts === 'object' ? source.prompts : {};
   const ui = source.ui && typeof source.ui === 'object' ? source.ui : {};
+  const media = source.media && typeof source.media === 'object' ? source.media : {};
   const safety = source.safety && typeof source.safety === 'object' ? source.safety : {};
 
   return {
@@ -141,6 +168,32 @@ const normalizeConfig = (input = {}) => {
         typeof ui.show_prologue === 'boolean' ? ui.show_prologue : DEFAULT_APP_CONFIG.ui.show_prologue,
       episodes_enabled:
         typeof ui.episodes_enabled === 'boolean' ? ui.episodes_enabled : DEFAULT_APP_CONFIG.ui.episodes_enabled,
+    },
+    media: {
+      enabled: typeof media.enabled === 'boolean' ? media.enabled : DEFAULT_APP_CONFIG.media.enabled,
+      image_model: nonEmpty(media.image_model) || DEFAULT_APP_CONFIG.media.image_model,
+      video_model: nonEmpty(media.video_model) || DEFAULT_APP_CONFIG.media.video_model,
+      image_style: String(media.image_style ?? DEFAULT_APP_CONFIG.media.image_style).trim(),
+      video_style: String(media.video_style ?? DEFAULT_APP_CONFIG.media.video_style).trim(),
+      narrative_lens: String(media.narrative_lens ?? DEFAULT_APP_CONFIG.media.narrative_lens).trim(),
+      image_aspect_ratio:
+        nonEmpty(media.image_aspect_ratio) || DEFAULT_APP_CONFIG.media.image_aspect_ratio,
+      video_aspect_ratio:
+        nonEmpty(media.video_aspect_ratio) || DEFAULT_APP_CONFIG.media.video_aspect_ratio,
+      video_duration_seconds: clampInteger(
+        media.video_duration_seconds,
+        DEFAULT_APP_CONFIG.media.video_duration_seconds,
+        4,
+        12
+      ),
+      video_generate_audio:
+        typeof media.video_generate_audio === 'boolean'
+          ? media.video_generate_audio
+          : DEFAULT_APP_CONFIG.media.video_generate_audio,
+      auto_generate_on_episode:
+        typeof media.auto_generate_on_episode === 'boolean'
+          ? media.auto_generate_on_episode
+          : DEFAULT_APP_CONFIG.media.auto_generate_on_episode,
     },
     safety: {
       tone_guard_enabled:
@@ -307,9 +360,92 @@ const loadClientDna = async (uid) => {
   }
 };
 
-const stubEpisode = (seed = 'default', meta = {}) => {
-  const now = Date.now().toString(36).slice(-6);
+const defaultArtPrompts = {
+  image:
+    'A premium editorial still: high-stakes desk scene, minimal interface glow, restrained teal accent, poised subject, quiet urgency.',
+  video:
+    'An 8-second cinematic cold-open: executive notification, countdown tension, strategic pause, controlled camera push, elegant teal accents.',
+  audio:
+    'Subtle atmospheric underscore: low pulse, soft ticking motif, restrained tension, premium finish.',
+};
+
+const withEpisodeMediaHints = (episode, runtimeConfig) => {
+  const baseEpisode = episode && typeof episode === 'object' ? episode : {};
+  const artDirection =
+    baseEpisode.art_direction && typeof baseEpisode.art_direction === 'object'
+      ? baseEpisode.art_direction
+      : {};
+  const recommended = Array.isArray(artDirection.recommended_models)
+    ? artDirection.recommended_models.filter((entry) => entry && entry.kind && entry.model)
+    : [];
+  const hasKind = (kind) => recommended.some((entry) => entry.kind === kind);
+
+  if (!hasKind('text')) {
+    recommended.unshift({
+      kind: 'text',
+      model: runtimeConfig.generation.binge_model || fastTextModel,
+      note: 'Episode story beats and challenge logic.',
+    });
+  }
+  if (!hasKind('image')) {
+    recommended.push({
+      kind: 'image',
+      model: runtimeConfig.media.image_model,
+      note: 'Nano Banana class stills for hooks, swipes, and reward cards.',
+    });
+  }
+  if (!hasKind('video')) {
+    recommended.push({
+      kind: 'video',
+      model: runtimeConfig.media.video_model,
+      note: 'Veo 3.1 cinematic clips for tension and cliffhanger continuity.',
+    });
+  }
+
   return {
+    ...baseEpisode,
+    art_direction: {
+      ...artDirection,
+      image_prompt: nonEmpty(artDirection.image_prompt) || defaultArtPrompts.image,
+      video_prompt: nonEmpty(artDirection.video_prompt) || defaultArtPrompts.video,
+      audio_prompt: nonEmpty(artDirection.audio_prompt) || defaultArtPrompts.audio,
+      recommended_models: recommended,
+    },
+  };
+};
+
+const buildMediaDirection = ({ episode, dna, targetSkill, runtimeConfig }) => {
+  const role = nonEmpty(dna?.current_role) || 'client operator';
+  const targetRole = nonEmpty(dna?.target_role) || 'next-level operator';
+  const industry = nonEmpty(dna?.industry) || 'high-pressure business context';
+  const constraints = nonEmpty(dna?.constraints);
+
+  const imageSeed =
+    nonEmpty(episode?.art_direction?.image_prompt) ||
+    `A decisive professional in ${industry} navigating a critical moment while moving from ${role} to ${targetRole}.`;
+  const videoSeed =
+    nonEmpty(episode?.art_direction?.video_prompt) ||
+    `A tense but elegant micro-drama where ${role} uses AI to act like a ${targetRole} under deadline pressure.`;
+
+  const lens = nonEmpty(runtimeConfig.media.narrative_lens) || DEFAULT_APP_CONFIG.media.narrative_lens;
+  const skill = nonEmpty(targetSkill) || 'prompt architecture under pressure';
+  const constraintLine = constraints ? `Constraint: ${constraints}.` : 'Constraint: keep the action concise.';
+
+  return {
+    narrative: `${lens} Skill focus: ${skill}.`,
+    image_prompt: `${imageSeed}\nStyle direction: ${runtimeConfig.media.image_style}\nNarrative lens: ${lens}\n${constraintLine}`,
+    video_prompt: `${videoSeed}\nStyle direction: ${runtimeConfig.media.video_style}\nNarrative lens: ${lens}\n${constraintLine}`,
+  };
+};
+
+const sanitizeError = (error, fallback) => {
+  const text = String(error?.message ?? fallback ?? 'generation_failed').trim();
+  return text.slice(0, 200);
+};
+
+const stubEpisode = (runtimeConfig, seed = 'default', meta = {}) => {
+  const now = Date.now().toString(36).slice(-6);
+  const raw = {
     episode_id: `ep-${seed}-${now}`,
     title: '4:42 PM Escalation',
     hook_card:
@@ -335,12 +471,118 @@ const stubEpisode = (seed = 'default', meta = {}) => {
         'A subtle tense underscore with soft clock ticks, minimal, premium.',
       recommended_models: [
         { kind: 'text', model: fastTextModel, note: 'Fast episode generation' },
-        { kind: 'video', model: 'veo-3', note: 'If generating a short cinematic clip' },
-        { kind: 'image', model: 'nano-banana', note: 'If generating card art / thumbnails' }
-      ]
+        { kind: 'video', model: runtimeConfig?.media?.video_model || videoModelDefault, note: 'If generating a short cinematic clip' },
+        { kind: 'image', model: runtimeConfig?.media?.image_model || imageModelDefault, note: 'If generating card art / thumbnails' }
+      ],
     },
     _meta: meta,
   };
+  return withEpisodeMediaHints(raw, runtimeConfig || normalizeConfig(DEFAULT_APP_CONFIG));
+};
+
+const buildMediaFallbackPack = ({ episodeId, runtimeConfig, direction, reason }) => ({
+  episode_id: episodeId,
+  narrative: direction.narrative,
+  generated_at: new Date().toISOString(),
+  degraded: true,
+  assets: [
+    {
+      kind: 'image',
+      model: runtimeConfig.media.image_model,
+      prompt: direction.image_prompt,
+      status: 'unavailable',
+      note: `Image generation unavailable: ${reason}`,
+    },
+    {
+      kind: 'video',
+      model: runtimeConfig.media.video_model,
+      prompt: direction.video_prompt,
+      status: 'unavailable',
+      note: `Video generation unavailable: ${reason}`,
+    },
+  ],
+});
+
+const generateImageAsset = async ({ runtimeConfig, direction }) => {
+  const model = runtimeConfig.media.image_model;
+  try {
+    const response = await ai.models.generateImages({
+      model,
+      prompt: direction.image_prompt,
+      config: {
+        numberOfImages: 1,
+        aspectRatio: runtimeConfig.media.image_aspect_ratio,
+        outputMimeType: 'image/jpeg',
+        outputCompressionQuality: 80,
+        enhancePrompt: true,
+      },
+    });
+
+    const imageBytes = nonEmpty(response?.generatedImages?.[0]?.image?.imageBytes);
+    if (!imageBytes) {
+      throw new Error('image_bytes_missing');
+    }
+
+    return {
+      kind: 'image',
+      model,
+      prompt: direction.image_prompt,
+      status: 'generated',
+      note: 'Generated from Gemini image API (Nano Banana class model route).',
+      image_data_url: `data:image/jpeg;base64,${imageBytes}`,
+    };
+  } catch (error) {
+    return {
+      kind: 'image',
+      model,
+      prompt: direction.image_prompt,
+      status: 'unavailable',
+      note: `Image generation unavailable: ${sanitizeError(error, 'image_generation_failed')}`,
+    };
+  }
+};
+
+const generateVideoAsset = async ({ runtimeConfig, direction }) => {
+  const model = runtimeConfig.media.video_model;
+  try {
+    const operation = await ai.models.generateVideos({
+      model,
+      source: {
+        prompt: direction.video_prompt,
+      },
+      config: {
+        numberOfVideos: 1,
+        aspectRatio: runtimeConfig.media.video_aspect_ratio,
+        durationSeconds: runtimeConfig.media.video_duration_seconds,
+        generateAudio: runtimeConfig.media.video_generate_audio,
+        enhancePrompt: true,
+      },
+    });
+
+    const videoUri = nonEmpty(operation?.response?.generatedVideos?.[0]?.video?.uri);
+    const done = Boolean(operation?.done);
+
+    return {
+      kind: 'video',
+      model,
+      prompt: direction.video_prompt,
+      status: done && videoUri ? 'generated' : 'queued',
+      note: done
+        ? 'Video clip generated.'
+        : 'Video render queued. Use refresh to poll operation status.',
+      video_operation_name: nonEmpty(operation?.name) || undefined,
+      video_done: done,
+      video_uri: videoUri || undefined,
+    };
+  } catch (error) {
+    return {
+      kind: 'video',
+      model,
+      prompt: direction.video_prompt,
+      status: 'unavailable',
+      note: `Video generation unavailable: ${sanitizeError(error, 'video_generation_failed')}`,
+    };
+  }
 };
 
 app.post('/v1/suite/generate', requireAuth, async (req, res) => {
@@ -431,6 +673,7 @@ app.post('/v1/binge/episode', requireAuth, async (req, res) => {
   if (!ai) {
     return res.json(
       stubEpisode(
+        runtimeConfig,
         'noai',
         baseMeta('fallback', true, {
           reason: 'missing_gemini_api_key',
@@ -458,7 +701,7 @@ app.post('/v1/binge/episode', requireAuth, async (req, res) => {
 
     const text = response.text?.trim();
     if (!text) throw new Error('empty_model_response');
-    const episode = safeParseJson(text);
+    const episode = withEpisodeMediaHints(safeParseJson(text), runtimeConfig);
     if (toneGuardEnabled) {
       const toneViolations = findToneViolations(episode);
       if (toneViolations.length) {
@@ -474,6 +717,7 @@ app.post('/v1/binge/episode', requireAuth, async (req, res) => {
     console.error('binge generation error', e);
     return res.json(
       stubEpisode(
+        runtimeConfig,
         'err',
         baseMeta('fallback', true, {
           uid,
@@ -482,6 +726,96 @@ app.post('/v1/binge/episode', requireAuth, async (req, res) => {
         })
       )
     );
+  }
+});
+
+// Generate one semantic media pack (image + video operation) for the current episode narrative.
+app.post('/v1/binge/media-pack', requireAuth, async (req, res) => {
+  const { episode, dna, target_skill } = req.body ?? {};
+  const runtimeConfig = await loadAppConfig();
+  const episodeId = nonEmpty(episode?.episode_id) || `ep-${Date.now().toString(36)}`;
+  const direction = buildMediaDirection({
+    episode,
+    dna,
+    targetSkill: target_skill,
+    runtimeConfig,
+  });
+
+  if (!runtimeConfig.media.enabled) {
+    return res.json(
+      buildMediaFallbackPack({
+        episodeId,
+        runtimeConfig,
+        direction,
+        reason: 'media_module_disabled',
+      })
+    );
+  }
+
+  if (!ai) {
+    return res.json(
+      buildMediaFallbackPack({
+        episodeId,
+        runtimeConfig,
+        direction,
+        reason: 'missing_gemini_api_key',
+      })
+    );
+  }
+
+  try {
+    const [imageAsset, videoAsset] = await Promise.all([
+      generateImageAsset({ runtimeConfig, direction }),
+      generateVideoAsset({ runtimeConfig, direction }),
+    ]);
+
+    const degraded = imageAsset.status !== 'generated' || videoAsset.status === 'unavailable';
+    return res.json({
+      episode_id: episodeId,
+      narrative: direction.narrative,
+      generated_at: new Date().toISOString(),
+      degraded,
+      assets: [imageAsset, videoAsset],
+    });
+  } catch (error) {
+    console.error('media_pack_error', error);
+    return res.json(
+      buildMediaFallbackPack({
+        episodeId,
+        runtimeConfig,
+        direction,
+        reason: sanitizeError(error, 'media_pack_failed'),
+      })
+    );
+  }
+});
+
+app.post('/v1/binge/media-pack/video-status', requireAuth, async (req, res) => {
+  const operationName = nonEmpty(req.body?.operation_name);
+  if (!operationName) {
+    return res.status(400).json({ error: 'operation_name_required' });
+  }
+  if (!ai) {
+    return res.status(503).json({ error: 'missing_gemini_api_key' });
+  }
+
+  try {
+    const operation = await ai.operations.getVideosOperation({
+      operation: { name: operationName },
+    });
+    const videoUri = nonEmpty(operation?.response?.generatedVideos?.[0]?.video?.uri);
+
+    return res.json({
+      operation_name: operation?.name || operationName,
+      done: Boolean(operation?.done),
+      video_uri: videoUri || null,
+      error: operation?.error ?? null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'video_status_failed',
+      detail: sanitizeError(error, 'video_status_failed'),
+    });
   }
 });
 

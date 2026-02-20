@@ -175,7 +175,10 @@ export const EPISODE_SCHEMA = {
             type: Type.OBJECT,
             properties: {
               kind: { type: Type.STRING, description: 'text|image|video|audio' },
-              model: { type: Type.STRING, description: 'e.g., gemini-3-flash, veo-3, nano-banana' },
+              model: {
+                type: Type.STRING,
+                description: 'e.g., gemini-3-flash-preview, gemini-2.5-flash-image-preview, veo-3.1-generate-preview',
+              },
               note: { type: Type.STRING },
             },
             required: ['kind', 'model'],
@@ -249,6 +252,7 @@ Requirements:
 - 3 lesson swipes only.
 - Keep language sharp and controlled.
 - Keep tone premium and restrained, even in high-stakes scenarios.
+- Provide art_direction prompts that can drive one still image and one cinematic short.
 `;
 
 const TONE_GUARD = [

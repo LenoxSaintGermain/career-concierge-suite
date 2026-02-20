@@ -19,6 +19,42 @@ const authHeaders = async () => {
   };
 };
 
+const normalizeAdminConfig = (input: any): AppConfig => {
+  const source = input && typeof input === 'object' ? input : {};
+  return {
+    generation: {
+      suite_model: String(source?.generation?.suite_model ?? 'gemini-3-flash-preview'),
+      binge_model: String(source?.generation?.binge_model ?? 'gemini-3-flash-preview'),
+      suite_temperature: Number(source?.generation?.suite_temperature ?? 0.45),
+      binge_temperature: Number(source?.generation?.binge_temperature ?? 0.7),
+    },
+    prompts: {
+      suite_appendix: String(source?.prompts?.suite_appendix ?? ''),
+      binge_appendix: String(source?.prompts?.binge_appendix ?? ''),
+    },
+    ui: {
+      show_prologue: Boolean(source?.ui?.show_prologue ?? true),
+      episodes_enabled: Boolean(source?.ui?.episodes_enabled ?? true),
+    },
+    media: {
+      enabled: Boolean(source?.media?.enabled ?? true),
+      image_model: String(source?.media?.image_model ?? 'gemini-2.5-flash-image-preview'),
+      video_model: String(source?.media?.video_model ?? 'veo-3.1-generate-preview'),
+      image_style: String(source?.media?.image_style ?? ''),
+      video_style: String(source?.media?.video_style ?? ''),
+      narrative_lens: String(source?.media?.narrative_lens ?? ''),
+      image_aspect_ratio: String(source?.media?.image_aspect_ratio ?? '16:9'),
+      video_aspect_ratio: String(source?.media?.video_aspect_ratio ?? '16:9'),
+      video_duration_seconds: Number(source?.media?.video_duration_seconds ?? 8),
+      video_generate_audio: Boolean(source?.media?.video_generate_audio ?? false),
+      auto_generate_on_episode: Boolean(source?.media?.auto_generate_on_episode ?? false),
+    },
+    safety: {
+      tone_guard_enabled: Boolean(source?.safety?.tone_guard_enabled ?? true),
+    },
+  };
+};
+
 export const fetchPublicConfig = async (): Promise<PublicConfig> => {
   const origin = resolveBaseUrl();
   const resp = await fetch(`${origin}/v1/public/config`);
@@ -43,7 +79,7 @@ export const fetchAdminConfig = async (): Promise<AppConfig> => {
   }
 
   const data = await resp.json();
-  return data.config as AppConfig;
+  return normalizeAdminConfig(data.config);
 };
 
 export const saveAdminConfig = async (config: AppConfig): Promise<AppConfig> => {
@@ -60,5 +96,5 @@ export const saveAdminConfig = async (config: AppConfig): Promise<AppConfig> => 
   }
 
   const data = await resp.json();
-  return data.config as AppConfig;
+  return normalizeAdminConfig(data.config);
 };

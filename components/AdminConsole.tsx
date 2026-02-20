@@ -209,6 +209,156 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
               </section>
 
               <section className="space-y-4">
+                <div className="text-[10px] uppercase tracking-widest opacity-50">Agentic Media Routing</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Image Model (Nano Banana route)</label>
+                    <input
+                      value={config.media.image_model}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, image_model: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Video Model (Veo route)</label>
+                    <input
+                      value={config.media.video_model}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, video_model: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Image Aspect Ratio</label>
+                    <input
+                      value={config.media.image_aspect_ratio}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, image_aspect_ratio: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Video Aspect Ratio</label>
+                    <input
+                      value={config.media.video_aspect_ratio}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, video_aspect_ratio: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Video Duration (seconds)</label>
+                    <input
+                      type="number"
+                      min={4}
+                      max={12}
+                      value={config.media.video_duration_seconds}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: {
+                                  ...prev.media,
+                                  video_duration_seconds: Number(e.target.value),
+                                },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Narrative Lens</label>
+                    <input
+                      value={config.media.narrative_lens}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, narrative_lens: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Image Style Direction</label>
+                    <textarea
+                      value={config.media.image_style}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, image_style: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full min-h-20 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Video Style Direction</label>
+                    <textarea
+                      value={config.media.video_style}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, video_style: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full min-h-20 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-4">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Feature Toggles</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="flex items-center gap-3 text-sm">
@@ -261,6 +411,57 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       }
                     />
                     Tone guard enabled
+                  </label>
+                  <label className="flex items-center gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={config.media.enabled}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, enabled: e.target.checked },
+                              }
+                            : prev
+                        )
+                      }
+                    />
+                    Agentic media enabled
+                  </label>
+                  <label className="flex items-center gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={config.media.video_generate_audio}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, video_generate_audio: e.target.checked },
+                              }
+                            : prev
+                        )
+                      }
+                    />
+                    Generate video audio
+                  </label>
+                  <label className="flex items-center gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={config.media.auto_generate_on_episode}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                media: { ...prev.media, auto_generate_on_episode: e.target.checked },
+                              }
+                            : prev
+                        )
+                      }
+                    />
+                    Auto-generate media on episode load
                   </label>
                 </div>
               </section>

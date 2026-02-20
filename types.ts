@@ -95,6 +95,26 @@ export interface BingeEpisode {
   };
 }
 
+export interface GeneratedMediaAsset {
+  kind: 'image' | 'video';
+  model: string;
+  prompt: string;
+  status: 'generated' | 'queued' | 'unavailable';
+  note?: string;
+  image_data_url?: string;
+  video_operation_name?: string;
+  video_done?: boolean;
+  video_uri?: string;
+}
+
+export interface GeneratedMediaPack {
+  episode_id: string;
+  narrative: string;
+  generated_at: string;
+  degraded: boolean;
+  assets: GeneratedMediaAsset[];
+}
+
 export interface AppConfig {
   generation: {
     suite_model: string;
@@ -109,6 +129,19 @@ export interface AppConfig {
   ui: {
     show_prologue: boolean;
     episodes_enabled: boolean;
+  };
+  media: {
+    enabled: boolean;
+    image_model: string;
+    video_model: string;
+    image_style: string;
+    video_style: string;
+    narrative_lens: string;
+    image_aspect_ratio: string;
+    video_aspect_ratio: string;
+    video_duration_seconds: number;
+    video_generate_audio: boolean;
+    auto_generate_on_episode: boolean;
   };
   safety: {
     tone_guard_enabled: boolean;
