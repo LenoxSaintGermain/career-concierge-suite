@@ -36,6 +36,12 @@ const normalizeAdminConfig = (input: any): AppConfig => {
       show_prologue: Boolean(source?.ui?.show_prologue ?? true),
       episodes_enabled: Boolean(source?.ui?.episodes_enabled ?? true),
     },
+    operations: {
+      cjs_enabled: Boolean(source?.operations?.cjs_enabled ?? true),
+      onboarding_email_enabled: Boolean(source?.operations?.onboarding_email_enabled ?? false),
+      curriculum_code: String(source?.operations?.curriculum_code ?? 'SSAI-AI-100-D12026'),
+      intro_course_offer: String(source?.operations?.intro_course_offer ?? '$149 Intro to AI Course'),
+    },
     media: {
       enabled: Boolean(source?.media?.enabled ?? true),
       image_model: String(source?.media?.image_model ?? 'gemini-2.5-flash-image-preview'),
@@ -63,7 +69,16 @@ export const fetchPublicConfig = async (): Promise<PublicConfig> => {
     throw new Error(`Public config error (${resp.status}): ${txt || resp.statusText}`);
   }
   const data = await resp.json();
-  return data.config as PublicConfig;
+  const source = data?.config ?? {};
+  return {
+    ui: {
+      show_prologue: Boolean(source?.ui?.show_prologue ?? true),
+      episodes_enabled: Boolean(source?.ui?.episodes_enabled ?? true),
+    },
+    operations: {
+      cjs_enabled: Boolean(source?.operations?.cjs_enabled ?? true),
+    },
+  };
 };
 
 export const fetchAdminConfig = async (): Promise<AppConfig> => {

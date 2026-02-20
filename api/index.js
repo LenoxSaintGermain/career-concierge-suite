@@ -54,6 +54,9 @@ app.get('/v1/public/config', async (_req, res) => {
   return res.json({
     config: {
       ui: config.ui,
+      operations: {
+        cjs_enabled: config.operations.cjs_enabled,
+      },
     },
   });
 });
@@ -107,6 +110,12 @@ const DEFAULT_APP_CONFIG = {
     show_prologue: true,
     episodes_enabled: true,
   },
+  operations: {
+    cjs_enabled: true,
+    onboarding_email_enabled: false,
+    curriculum_code: 'SSAI-AI-100-D12026',
+    intro_course_offer: '$149 Intro to AI Course',
+  },
   media: {
     enabled: true,
     image_model: imageModelDefault,
@@ -149,6 +158,7 @@ const normalizeConfig = (input = {}) => {
   const generation = source.generation && typeof source.generation === 'object' ? source.generation : {};
   const prompts = source.prompts && typeof source.prompts === 'object' ? source.prompts : {};
   const ui = source.ui && typeof source.ui === 'object' ? source.ui : {};
+  const operations = source.operations && typeof source.operations === 'object' ? source.operations : {};
   const media = source.media && typeof source.media === 'object' ? source.media : {};
   const safety = source.safety && typeof source.safety === 'object' ? source.safety : {};
 
@@ -168,6 +178,19 @@ const normalizeConfig = (input = {}) => {
         typeof ui.show_prologue === 'boolean' ? ui.show_prologue : DEFAULT_APP_CONFIG.ui.show_prologue,
       episodes_enabled:
         typeof ui.episodes_enabled === 'boolean' ? ui.episodes_enabled : DEFAULT_APP_CONFIG.ui.episodes_enabled,
+    },
+    operations: {
+      cjs_enabled:
+        typeof operations.cjs_enabled === 'boolean'
+          ? operations.cjs_enabled
+          : DEFAULT_APP_CONFIG.operations.cjs_enabled,
+      onboarding_email_enabled:
+        typeof operations.onboarding_email_enabled === 'boolean'
+          ? operations.onboarding_email_enabled
+          : DEFAULT_APP_CONFIG.operations.onboarding_email_enabled,
+      curriculum_code: nonEmpty(operations.curriculum_code) || DEFAULT_APP_CONFIG.operations.curriculum_code,
+      intro_course_offer:
+        nonEmpty(operations.intro_course_offer) || DEFAULT_APP_CONFIG.operations.intro_course_offer,
     },
     media: {
       enabled: typeof media.enabled === 'boolean' ? media.enabled : DEFAULT_APP_CONFIG.media.enabled,
@@ -238,9 +261,9 @@ const baseMeta = (mode, degraded, extra = {}) => ({
 });
 
 const buildSuiteFallback = (answers = {}) => {
-  const currentTitle = nonEmpty(answers.current_title) || 'your current role';
+  const currentTitle = nonEmpty(answers.current_title || answers.current_or_target_job_title) || 'your current role';
   const industry = nonEmpty(answers.industry) || 'your industry';
-  const target = nonEmpty(answers.target) || 'your next role';
+  const target = nonEmpty(answers.target || answers.current_or_target_job_title) || 'your next role';
   const constraints = nonEmpty(answers.constraints);
   const pressure = nonEmpty(answers.pressure_breaks);
   const workStyle = nonEmpty(answers.work_style);
@@ -347,8 +370,8 @@ const loadClientDna = async (uid) => {
     const answers = data.intake?.answers ?? {};
 
     return {
-      current_role: nonEmpty(answers.current_title),
-      target_role: nonEmpty(answers.target),
+      current_role: nonEmpty(answers.current_title || answers.current_or_target_job_title),
+      target_role: nonEmpty(answers.target || answers.current_or_target_job_title),
       industry: nonEmpty(answers.industry),
       constraints: nonEmpty(answers.constraints),
       work_style: nonEmpty(answers.work_style),

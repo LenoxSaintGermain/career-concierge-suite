@@ -1,14 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { CLIENT_INTENTS, FOCUS_PREFS, INTAKE_PROMPTS, PACE_PREFS } from '../constants';
+import { CLIENT_INTENTS, FOCUS_PREFS, PACE_PREFS, SMART_START_FIELDS, SmartStartField } from '../constants';
 import { ClientIntent, ClientPreferences, FocusPreference, IntakeAnswers, PacePreference } from '../types';
 import { saveIntake } from '../services/clientService';
 import { upsertArtifact } from '../services/artifactService';
 import {
   generateAIProfileDoc,
   generateBrief,
+  generateCjsExecutionDoc,
   generateGapsDoc,
   generatePlan,
   generateProfileDoc,
+  generateReadinessDoc,
+  generateSuiteDistilledDoc,
 } from '../services/stubGenerator';
 import { generateSuiteArtifacts } from '../services/suiteApi';
 
@@ -27,6 +30,125 @@ export function IntakeFlow(props: {
   const [error, setError] = useState<string | null>(null);
 
   const prefs: ClientPreferences = useMemo(() => ({ pace, focus }), [pace, focus]);
+  const fieldsBySection = useMemo(() => {
+    const grouped: Record<string, SmartStartField[]> = {};
+    for (const field of SMART_START_FIELDS) {
+      if (!grouped[field.section]) grouped[field.section] = [];
+      grouped[field.section].push(field);
+    }
+    return Object.entries(grouped);
+  }, []);
+
+  const readText = (id: string) => (typeof answers[id] === 'string' ? (answers[id] as string) : '');
+  const readList = (id: string) => (Array.isArray(answers[id]) ? (answers[id] as string[]) : []);
+  const readBool = (id: string) => answers[id] === true;
+  const setText = (id: string, value: string) => setAnswers((prev) => ({ ...prev, [id]: value }));
+  const setBool = (id: string, value: boolean) => setAnswers((prev) => ({ ...prev, [id]: value }));
+  const setSingle = (id: string, value: string) => setAnswers((prev) => ({ ...prev, [id]: value }));
+  const toggleMulti = (id: string, value: string) =>
+    setAnswers((prev) => {
+      const existing = Array.isArray(prev[id]) ? (prev[id] as string[]) : [];
+      const next = existing.includes(value)
+        ? existing.filter((entry) => entry !== value)
+        : [...existing, value];
+      return { ...prev, [id]: next };
+    });
+
+  const renderSmartStartField = (field: SmartStartField) => {
+    if (field.type === 'text') {
+      return (
+        <input
+          value={readText(field.id)}
+          onChange={(e) => setText(field.id, e.target.value)}
+          placeholder={field.placeholder ?? ''}
+          className="border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+        />
+      );
+    }
+
+    if (field.type === 'textarea') {
+      return (
+        <textarea
+          value={readText(field.id)}
+          onChange={(e) => setText(field.id, e.target.value)}
+          placeholder={field.placeholder ?? ''}
+          className="min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm leading-relaxed"
+        />
+      );
+    }
+
+    if (field.type === 'select') {
+      return (
+        <select
+          value={readText(field.id)}
+          onChange={(e) => setSingle(field.id, e.target.value)}
+          className="border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+        >
+          <option value="">Select…</option>
+          {(field.options ?? []).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    if (field.type === 'checkbox') {
+      return (
+        <label className="flex items-center gap-3 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={readBool(field.id)}
+            onChange={(e) => setBool(field.id, e.target.checked)}
+          />
+          <span>Yes</span>
+        </label>
+      );
+    }
+
+    if (field.type === 'radio') {
+      return (
+        <div className="flex flex-wrap gap-2">
+          {(field.options ?? []).map((option) => {
+            const active = readText(field.id) === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setSingle(field.id, option)}
+                className={`px-3 py-2 text-[11px] uppercase tracking-[0.16em] border transition-colors ${
+                  active ? 'border-brand-teal bg-brand-soft text-brand-teal' : 'border-black/10 hover-border-brand-teal'
+                }`}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {(field.options ?? []).map((option) => {
+          const active = readList(field.id).includes(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => toggleMulti(field.id, option)}
+              className={`px-3 py-2 text-[11px] uppercase tracking-[0.16em] border transition-colors ${
+                active ? 'border-brand-teal bg-brand-soft text-brand-teal' : 'border-black/10 hover-border-brand-teal'
+              }`}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
   const submit = async () => {
     setBusy(true);
@@ -57,10 +179,13 @@ export function IntakeFlow(props: {
 
       await Promise.all([
         upsertArtifact(props.uid, 'brief', 'The Brief', brief),
+        upsertArtifact(props.uid, 'suite_distilled', 'Your Suite, Distilled', generateSuiteDistilledDoc(brief, answers)),
         upsertArtifact(props.uid, 'plan', 'Your Plan', plan),
         upsertArtifact(props.uid, 'profile', 'Your Profile', profile),
         upsertArtifact(props.uid, 'ai_profile', 'Your AI Profile', aiProfile),
         upsertArtifact(props.uid, 'gaps', 'Your Gaps', gaps),
+        upsertArtifact(props.uid, 'readiness', 'AI Readiness Assessment', generateReadinessDoc(answers)),
+        upsertArtifact(props.uid, 'cjs_execution', 'ConciergeJobSearch Execution', generateCjsExecutionDoc(answers)),
       ]);
 
       setStep('done');
@@ -128,18 +253,23 @@ export function IntakeFlow(props: {
 
       {step === 'questions' && (
         <div className="space-y-6">
-          <div className="text-[10px] uppercase tracking-widest text-gray-500">A few calibration prompts</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {INTAKE_PROMPTS.map((p) => (
-              <div key={p.id} className="flex flex-col gap-2">
-                <label className="text-xs text-gray-700">{p.label}</label>
-                <input
-                  value={answers[p.id] ?? ''}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                  placeholder={p.placeholder ?? ''}
-                  className="border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
-                />
-              </div>
+          <div className="text-[10px] uppercase tracking-widest text-gray-500">Smart Start intake blueprint</div>
+          <div className="space-y-8">
+            {fieldsBySection.map(([section, fields]) => (
+              <section key={section} className="border border-black/10 p-5 space-y-4 bg-gray-50">
+                <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">{section}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {fields.map((field) => (
+                    <div
+                      key={field.id}
+                      className={`flex flex-col gap-2 ${field.type === 'textarea' || field.type === 'multiselect' ? 'md:col-span-2' : ''}`}
+                    >
+                      <label className="text-xs text-gray-700">{field.label}</label>
+                      {renderSmartStartField(field)}
+                    </div>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
           <div className="flex items-center gap-3 pt-2">

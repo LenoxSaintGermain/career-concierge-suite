@@ -1,11 +1,25 @@
-import { BriefContent, IntakeAnswers, PlanContent } from '../types';
+import {
+  BriefContent,
+  CjsExecutionContent,
+  IntakeAnswers,
+  PlanContent,
+  ReadinessContent,
+  SuiteDistilledContent,
+} from '../types';
 
-const nonEmpty = (s: string | undefined | null) => (s ?? '').trim();
+const nonEmpty = (s: unknown) => String(s ?? '').trim();
+const asList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean) : [];
+const resolveCurrentTitle = (answers: IntakeAnswers) =>
+  nonEmpty(answers.current_title || answers.current_or_target_job_title) || 'your current role';
+const resolveTargetRole = (answers: IntakeAnswers) =>
+  nonEmpty(answers.target || answers.current_or_target_job_title) || 'your next role';
+const resolveIndustry = (answers: IntakeAnswers) => nonEmpty(answers.industry) || 'your industry';
 
 export const generateBrief = (answers: IntakeAnswers): BriefContent => {
-  const currentTitle = nonEmpty(answers.current_title) || 'your current role';
-  const industry = nonEmpty(answers.industry) || 'your industry';
-  const target = nonEmpty(answers.target) || 'your next role';
+  const currentTitle = resolveCurrentTitle(answers);
+  const industry = resolveIndustry(answers);
+  const target = resolveTargetRole(answers);
 
   return {
     learned: [
@@ -27,7 +41,7 @@ export const generateBrief = (answers: IntakeAnswers): BriefContent => {
 };
 
 export const generatePlan = (answers: IntakeAnswers): PlanContent => {
-  const target = nonEmpty(answers.target) || 'your next role';
+  const target = resolveTargetRole(answers);
 
   const next72 = [
     { id: 'p72-1', label: 'Confirm your constraints (location, time, salary floor).', done: false },
@@ -75,7 +89,7 @@ export const generateProfileDoc = (answers: IntakeAnswers) => {
 };
 
 export const generateAIProfileDoc = (answers: IntakeAnswers) => {
-  const industry = nonEmpty(answers.industry) || 'your domain';
+  const industry = resolveIndustry(answers);
   return {
     positioning: `In ${industry}, your advantage is disciplined signal extraction and controlled execution.`,
     how_to_use_ai: [
@@ -92,7 +106,7 @@ export const generateAIProfileDoc = (answers: IntakeAnswers) => {
 };
 
 export const generateGapsDoc = (answers: IntakeAnswers) => {
-  const target = nonEmpty(answers.target) || 'your target role';
+  const target = resolveTargetRole(answers);
   const constraints = nonEmpty(answers.constraints);
   return {
     near_term: [
@@ -105,5 +119,78 @@ export const generateGapsDoc = (answers: IntakeAnswers) => {
       'Add one visible artifact that demonstrates decision quality.',
     ],
     constraints: constraints ? [`Constraint register: ${constraints}.`] : ['Constraint register is incomplete.'],
+  };
+};
+
+export const generateSuiteDistilledDoc = (
+  brief: BriefContent,
+  answers: IntakeAnswers
+): SuiteDistilledContent => {
+  const target = resolveTargetRole(answers);
+  return {
+    what_i_learned: brief.learned,
+    what_needs_to_happen: [
+      `Package your profile for ${target} in language the hiring panel already trusts.`,
+      'Convert noisy activity into a tight leverage sequence.',
+      'Run one high-signal outreach cycle per week with explicit asks.',
+    ],
+    next_to_do: brief.next_72_hours,
+  };
+};
+
+export const generateReadinessDoc = (answers: IntakeAnswers): ReadinessContent => {
+  const usage = nonEmpty(answers.ai_usage_frequency).toLowerCase();
+  const advanced = asList(answers.advanced_interests);
+  const foundational = asList(answers.foundational_interests);
+  const target = resolveTargetRole(answers);
+  const industry = resolveIndustry(answers);
+
+  let tier: ReadinessContent['tier_recommendation'] = 'Foundation';
+  if (usage === 'daily' || advanced.length >= 3) tier = 'Premier';
+  else if (usage === 'regularly' || advanced.length >= 1 || foundational.length >= 3) tier = 'Select';
+
+  return {
+    tier_recommendation: tier,
+    executive_overview: [
+      `Readiness is calibrated for ${target} in ${industry}.`,
+      `Current usage signal indicates ${usage || 'early-stage'} AI operational maturity.`,
+      `Recommended tier: ${tier}.`,
+    ],
+    from_awareness_to_action: [
+      'Shift from ad-hoc prompting to repeatable operating patterns.',
+      'Map each AI output to a business decision or measurable outcome.',
+      'Instrument one workflow for weekly review and iteration.',
+    ],
+    targeted_ai_development_priorities: [
+      'Strengthen role-specific prompt architecture for decision support.',
+      'Increase stakeholder-ready communication quality and traceability.',
+      'Build reusable assets that compound across job search and execution.',
+    ],
+    technical_development_areas: [
+      'Prompt system design with guardrails and context windows.',
+      'Workflow automation fundamentals and integration hygiene.',
+      'Multimodal communication assembly for executive narratives.',
+    ],
+  };
+};
+
+export const generateCjsExecutionDoc = (answers: IntakeAnswers): CjsExecutionContent => {
+  const target = resolveTargetRole(answers);
+  const constraints = nonEmpty(answers.constraints);
+  const blocked = constraints ? 'blocked' : 'planned';
+
+  return {
+    intent_summary: `ConciergeJobSearch execution launched toward ${target}.`,
+    stages: [
+      { step: 1, title: 'Smart Start Intake', status: 'ready', description: 'Foundation event captured and mapped into Professional DNA.' },
+      { step: 2, title: 'AI Insights Report', status: 'ready', description: 'Readiness and market context synthesized into execution guidance.' },
+      { step: 3, title: 'Resume Optimization', status: 'planned', description: 'Resume reframed against target role language and keyword strategy.' },
+      { step: 4, title: 'Search Strategy', status: 'planned', description: 'Target account list and outreach vectors prioritized by signal score.' },
+      { step: 5, title: 'Search & Apply', status: blocked, description: constraints ? `Waiting on constraints: ${constraints}` : 'Application execution queue prepared.' },
+      { step: 6, title: 'Employer Insight Reports', status: 'planned', description: 'Company intelligence briefs for interviews and negotiation leverage.' },
+      { step: 7, title: 'Interview Preparation', status: 'planned', description: 'Narrative frameworks and response structures tailored to role.' },
+      { step: 8, title: 'Salary Negotiation', status: 'planned', description: 'Compensation framing and script set calibrated to market data.' },
+      { step: 9, title: 'Dispute to Counter', status: 'planned', description: 'Post-offer counter strategy with data-backed decision logic.' },
+    ],
   };
 };

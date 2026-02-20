@@ -13,6 +13,9 @@ import { JsonDoc } from './components/JsonDoc';
 import { ProfileView } from './components/ProfileView';
 import { AIProfileView } from './components/AIProfileView';
 import { GapsView } from './components/GapsView';
+import { SuiteDistilledView } from './components/SuiteDistilledView';
+import { ReadinessView } from './components/ReadinessView';
+import { CjsExecutionView } from './components/CjsExecutionView';
 import { BingeFeedView } from './components/BingeFeedView';
 import { AdminConsole } from './components/AdminConsole';
 import { fetchPublicConfig } from './services/adminApi';
@@ -24,6 +27,9 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   ui: {
     show_prologue: true,
     episodes_enabled: true,
+  },
+  operations: {
+    cjs_enabled: true,
   },
 };
 
@@ -100,8 +106,13 @@ const App: React.FC = () => {
   }, [client?.intake?.completed_at]);
 
   const visibleModules = useMemo(
-    () => SUITE_MODULES.filter((m) => publicConfig.ui.episodes_enabled || m.id !== 'episodes'),
-    [publicConfig.ui.episodes_enabled]
+    () =>
+      SUITE_MODULES.filter((m) => {
+        if (!publicConfig.ui.episodes_enabled && m.id === 'episodes') return false;
+        if (!publicConfig.operations.cjs_enabled && m.id === 'cjs_execution') return false;
+        return true;
+      }),
+    [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled]
   );
 
   const openModule = useMemo(
@@ -132,10 +143,13 @@ const App: React.FC = () => {
 
       const isArtifact =
         openModule.id === 'brief' ||
+        openModule.id === 'suite_distilled' ||
         openModule.id === 'plan' ||
         openModule.id === 'profile' ||
         openModule.id === 'ai_profile' ||
-        openModule.id === 'gaps';
+        openModule.id === 'gaps' ||
+        openModule.id === 'readiness' ||
+        openModule.id === 'cjs_execution';
       if (!isArtifact) return;
 
       setArtifactLoading(true);
@@ -419,6 +433,10 @@ const App: React.FC = () => {
                   {artifact && artifact.type === 'brief' && openModule.id === 'brief' && artifact.content && (
                     <BriefView brief={artifact.content} onOpenPlan={() => openModuleById('plan')} />
                   )}
+                  {artifact &&
+                    artifact.type === 'suite_distilled' &&
+                    openModule.id === 'suite_distilled' &&
+                    artifact.content && <SuiteDistilledView doc={artifact.content} />}
                   {artifact && artifact.type === 'plan' && openModule.id === 'plan' && artifact.content && (
                     <PlanView plan={artifact.content} />
                   )}
@@ -431,9 +449,25 @@ const App: React.FC = () => {
                   {artifact && artifact.type === 'gaps' && openModule.id === 'gaps' && artifact.content && (
                     <GapsView gaps={artifact.content} />
                   )}
+                  {artifact && artifact.type === 'readiness' && openModule.id === 'readiness' && artifact.content && (
+                    <ReadinessView doc={artifact.content} />
+                  )}
+                  {artifact &&
+                    artifact.type === 'cjs_execution' &&
+                    openModule.id === 'cjs_execution' &&
+                    artifact.content && <CjsExecutionView doc={artifact.content} />}
                   {artifact === null &&
                     !isLocked(openModule) &&
-                    ['brief', 'plan', 'profile', 'ai_profile', 'gaps'].includes(openModule.id) &&
+                    [
+                      'brief',
+                      'suite_distilled',
+                      'plan',
+                      'profile',
+                      'ai_profile',
+                      'gaps',
+                      'readiness',
+                      'cjs_execution',
+                    ].includes(openModule.id) &&
                     !artifactLoading &&
                     !artifactError && (
                       <div className="border border-black/5 bg-gray-50 p-6">

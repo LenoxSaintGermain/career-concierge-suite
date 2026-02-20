@@ -398,6 +398,23 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                   <label className="flex items-center gap-3 text-sm">
                     <input
                       type="checkbox"
+                      checked={config.operations.cjs_enabled}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                operations: { ...prev.operations, cjs_enabled: e.target.checked },
+                              }
+                            : prev
+                        )
+                      }
+                    />
+                    ConciergeJobSearch execution enabled
+                  </label>
+                  <label className="flex items-center gap-3 text-sm">
+                    <input
+                      type="checkbox"
                       checked={config.safety.tone_guard_enabled}
                       onChange={(e) =>
                         setConfig((prev) =>
@@ -463,6 +480,66 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                     />
                     Auto-generate media on episode load
                   </label>
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div className="text-[10px] uppercase tracking-widest opacity-50">Access & Entitlements</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <label className="flex items-center gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={config.operations.onboarding_email_enabled}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                operations: {
+                                  ...prev.operations,
+                                  onboarding_email_enabled: e.target.checked,
+                                },
+                              }
+                            : prev
+                        )
+                      }
+                    />
+                    Onboarding email workflow enabled
+                  </label>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Intro Course Offer Label</label>
+                    <input
+                      value={config.operations.intro_course_offer}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                operations: { ...prev.operations, intro_course_offer: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Curriculum Code</label>
+                    <input
+                      value={config.operations.curriculum_code}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                operations: { ...prev.operations, curriculum_code: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
                 </div>
               </section>
             </>

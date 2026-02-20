@@ -2,9 +2,12 @@ export type SuiteModuleId =
   | 'intake'
   | 'episodes'
   | 'brief'
+  | 'suite_distilled'
   | 'profile'
   | 'ai_profile'
   | 'gaps'
+  | 'readiness'
+  | 'cjs_execution'
   | 'plan'
   | 'assets';
 export type SuiteModuleKind = 'flow' | 'feed' | 'artifact' | 'collection';
@@ -22,7 +25,7 @@ export type ClientIntent = 'current_role' | 'target_role' | 'not_sure';
 export type PacePreference = 'straight' | 'standard' | 'story';
 export type FocusPreference = 'job_search' | 'skills' | 'leadership';
 
-export type IntakeAnswers = Record<string, string>;
+export type IntakeAnswers = Record<string, string | string[] | boolean>;
 
 export interface ClientPreferences {
   pace: PacePreference;
@@ -44,7 +47,15 @@ export interface ClientDoc {
   };
 }
 
-export type ArtifactType = 'brief' | 'profile' | 'ai_profile' | 'gaps' | 'plan';
+export type ArtifactType =
+  | 'brief'
+  | 'suite_distilled'
+  | 'profile'
+  | 'ai_profile'
+  | 'gaps'
+  | 'readiness'
+  | 'cjs_execution'
+  | 'plan';
 
 export interface BriefContent {
   learned: string[]; // 3 bullets
@@ -58,6 +69,12 @@ export interface ProfileContent {
   leverage: string[];
 }
 
+export interface SuiteDistilledContent {
+  what_i_learned: string[];
+  what_needs_to_happen: string[];
+  next_to_do: { id: string; label: string; done: boolean }[];
+}
+
 export interface AIProfileContent {
   positioning: string;
   how_to_use_ai: string[];
@@ -68,6 +85,24 @@ export interface GapsContent {
   near_term: string[];
   for_target_role: string[];
   constraints: string[];
+}
+
+export interface ReadinessContent {
+  executive_overview: string[];
+  from_awareness_to_action: string[];
+  targeted_ai_development_priorities: string[];
+  technical_development_areas: string[];
+  tier_recommendation: 'Foundation' | 'Select' | 'Premier';
+}
+
+export interface CjsExecutionContent {
+  intent_summary: string;
+  stages: {
+    step: number;
+    title: string;
+    status: 'ready' | 'planned' | 'blocked';
+    description: string;
+  }[];
 }
 
 export interface PlanContent {
@@ -130,6 +165,12 @@ export interface AppConfig {
     show_prologue: boolean;
     episodes_enabled: boolean;
   };
+  operations: {
+    cjs_enabled: boolean;
+    onboarding_email_enabled: boolean;
+    curriculum_code: string;
+    intro_course_offer: string;
+  };
   media: {
     enabled: boolean;
     image_model: string;
@@ -150,6 +191,7 @@ export interface AppConfig {
 
 export interface PublicConfig {
   ui: AppConfig['ui'];
+  operations: Pick<AppConfig['operations'], 'cjs_enabled'>;
 }
 
 export interface ArtifactDoc<T = unknown> {
