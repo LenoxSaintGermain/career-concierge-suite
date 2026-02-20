@@ -80,6 +80,9 @@ app.put('/v1/admin/config', requireAuth, requireAdmin, async (req, res) => {
 });
 
 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || null;
+const sesameApiKey = process.env.SESAME_API_KEY || null;
+const sesameAuthHeader = process.env.SESAME_AUTH_HEADER || 'Authorization';
+const sesameAuthPrefix = process.env.SESAME_AUTH_PREFIX || 'Bearer ';
 const fastTextModel = process.env.GEMINI_MODEL_FAST || 'gemini-3-flash-preview';
 const imageModelDefault = process.env.GEMINI_MODEL_IMAGE || 'gemini-2.5-flash-image-preview';
 const videoModelDefault = process.env.GEMINI_MODEL_VIDEO || 'veo-3.1-generate-preview';
@@ -131,6 +134,15 @@ const DEFAULT_APP_CONFIG = {
     video_generate_audio: false,
     auto_generate_on_episode: false,
   },
+  voice: {
+    enabled: false,
+    provider: 'sesame',
+    api_url: process.env.SESAME_API_URL || '',
+    speaker: process.env.SESAME_SPEAKER || 'Maya',
+    max_audio_length_ms: 12_000,
+    temperature: 0.9,
+    narration_style: 'Calm concierge narration with subtle human hesitations and restrained authority.',
+  },
   safety: {
     tone_guard_enabled: true,
   },
@@ -160,6 +172,7 @@ const normalizeConfig = (input = {}) => {
   const ui = source.ui && typeof source.ui === 'object' ? source.ui : {};
   const operations = source.operations && typeof source.operations === 'object' ? source.operations : {};
   const media = source.media && typeof source.media === 'object' ? source.media : {};
+  const voice = source.voice && typeof source.voice === 'object' ? source.voice : {};
   const safety = source.safety && typeof source.safety === 'object' ? source.safety : {};
 
   return {
@@ -217,6 +230,26 @@ const normalizeConfig = (input = {}) => {
         typeof media.auto_generate_on_episode === 'boolean'
           ? media.auto_generate_on_episode
           : DEFAULT_APP_CONFIG.media.auto_generate_on_episode,
+    },
+    voice: {
+      enabled: typeof voice.enabled === 'boolean' ? voice.enabled : DEFAULT_APP_CONFIG.voice.enabled,
+      provider: 'sesame',
+      api_url: nonEmpty(voice.api_url) || DEFAULT_APP_CONFIG.voice.api_url,
+      speaker: nonEmpty(voice.speaker) || DEFAULT_APP_CONFIG.voice.speaker,
+      max_audio_length_ms: clampInteger(
+        voice.max_audio_length_ms,
+        DEFAULT_APP_CONFIG.voice.max_audio_length_ms,
+        3000,
+        30000
+      ),
+      temperature: (() => {
+        const number = Number(voice.temperature);
+        if (!Number.isFinite(number)) return DEFAULT_APP_CONFIG.voice.temperature;
+        if (number < 0.1) return 0.1;
+        if (number > 1.5) return 1.5;
+        return number;
+      })(),
+      narration_style: String(voice.narration_style ?? DEFAULT_APP_CONFIG.voice.narration_style).trim(),
     },
     safety: {
       tone_guard_enabled:
@@ -466,6 +499,49 @@ const sanitizeError = (error, fallback) => {
   return text.slice(0, 200);
 };
 
+const getNestedString = (obj, path) =>
+  path.reduce((value, key) => (value && typeof value === 'object' ? value[key] : undefined), obj);
+
+const extractSesameAudioPayload = (payload) => {
+  const candidates = [
+    getNestedString(payload, ['result', 'audio_data']),
+    getNestedString(payload, ['result', 'audio']),
+    getNestedString(payload, ['audio_data']),
+    getNestedString(payload, ['audio']),
+    getNestedString(payload, ['data', 'audio_data']),
+    getNestedString(payload, ['output', 'audio_data']),
+  ];
+  const raw = candidates.find((value) => typeof value === 'string' && value.trim());
+  if (!raw) return null;
+
+  const cleaned = raw.trim();
+  if (cleaned.startsWith('data:audio/')) {
+    const [, mimePart = 'audio/wav', base64Part = ''] =
+      cleaned.match(/^data:([^;]+);base64,(.+)$/i) || [];
+    if (!base64Part) return null;
+    return {
+      mimeType: mimePart,
+      audioBase64: base64Part.replace(/\s+/g, ''),
+    };
+  }
+
+  const formatCandidates = [
+    getNestedString(payload, ['result', 'format']),
+    getNestedString(payload, ['format']),
+    getNestedString(payload, ['result', 'mime_type']),
+    getNestedString(payload, ['mime_type']),
+  ];
+  const format = String(formatCandidates.find((value) => typeof value === 'string' && value.trim()) || 'wav')
+    .toLowerCase()
+    .replace('audio/', '');
+  const mimeType = format === 'mp3' ? 'audio/mpeg' : `audio/${format}`;
+
+  return {
+    mimeType,
+    audioBase64: cleaned.replace(/\s+/g, ''),
+  };
+};
+
 const stubEpisode = (runtimeConfig, seed = 'default', meta = {}) => {
   const now = Date.now().toString(36).slice(-6);
   const raw = {
@@ -607,6 +683,77 @@ const generateVideoAsset = async ({ runtimeConfig, direction }) => {
     };
   }
 };
+
+app.post('/v1/voice/synthesize', requireAuth, async (req, res) => {
+  const runtimeConfig = await loadAppConfig();
+  const text = nonEmpty(req.body?.text);
+  if (!text) return res.status(400).json({ error: 'text_required' });
+  if (text.length > 1200) return res.status(400).json({ error: 'text_too_long' });
+  if (!runtimeConfig.voice.enabled) {
+    return res.status(503).json({ error: 'voice_disabled' });
+  }
+
+  const endpoint = nonEmpty(runtimeConfig.voice.api_url || process.env.SESAME_API_URL);
+  if (!endpoint) return res.status(503).json({ error: 'missing_voice_api_url' });
+
+  const controller = new AbortController();
+  const timeoutMs = Number(process.env.SESAME_TIMEOUT_MS || 45000);
+  const timeout = setTimeout(() => controller.abort('sesame_timeout'), timeoutMs);
+
+  try {
+    const headers = {
+      'content-type': 'application/json',
+    };
+    if (sesameApiKey) {
+      headers[sesameAuthHeader] = `${sesameAuthPrefix}${sesameApiKey}`;
+    }
+
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        text,
+        speaker: runtimeConfig.voice.speaker,
+        max_audio_length_ms: runtimeConfig.voice.max_audio_length_ms,
+        temperature: runtimeConfig.voice.temperature,
+        narration_style: runtimeConfig.voice.narration_style,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) {
+      const detail = sanitizeError(await resp.text().catch(() => ''), 'sesame_request_failed');
+      return res.status(502).json({
+        error: 'sesame_request_failed',
+        status: resp.status,
+        detail,
+      });
+    }
+
+    const payload = await resp.json();
+    const audio = extractSesameAudioPayload(payload);
+    if (!audio?.audioBase64) {
+      return res.status(502).json({
+        error: 'invalid_sesame_response',
+        detail: 'Missing audio payload in Sesame response.',
+      });
+    }
+
+    return res.json({
+      provider: 'sesame',
+      mime_type: audio.mimeType,
+      audio_base64: audio.audioBase64,
+      generated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    clearTimeout(timeout);
+    return res.status(502).json({
+      error: 'sesame_unavailable',
+      detail: sanitizeError(error, 'sesame_unavailable'),
+    });
+  }
+});
 
 app.post('/v1/suite/generate', requireAuth, async (req, res) => {
   const { intent, preferences, answers } = req.body ?? {};

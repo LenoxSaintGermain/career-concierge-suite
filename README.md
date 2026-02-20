@@ -18,3 +18,22 @@ View your app in AI Studio: https://ai.studio/apps/drive/1VcFeL_HCD12ewu1TzOhOVe
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Voice Engine (Sesame via API)
+
+The onboarding flow now supports concierge voice playback through `POST /v1/voice/synthesize` on the Cloud Run API.
+
+Set these on the API service:
+
+- `SESAME_API_URL` (for example a Cerebrium `.../generate_audio` endpoint)
+- `SESAME_API_KEY` (if your endpoint requires bearer auth)
+- Optional:
+  - `SESAME_AUTH_HEADER` (default: `Authorization`)
+  - `SESAME_AUTH_PREFIX` (default: `Bearer `)
+  - `SESAME_TIMEOUT_MS` (default: `45000`)
+
+Then in the app Admin Console, configure:
+
+- `Voice Engine (Sesame) -> enabled`
+- `Voice Engine (Sesame) -> API URL`
+- Speaker / max length / temperature / narration style

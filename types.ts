@@ -184,6 +184,15 @@ export interface AppConfig {
     video_generate_audio: boolean;
     auto_generate_on_episode: boolean;
   };
+  voice: {
+    enabled: boolean;
+    provider: 'sesame';
+    api_url: string;
+    speaker: string;
+    max_audio_length_ms: number;
+    temperature: number;
+    narration_style: string;
+  };
   safety: {
     tone_guard_enabled: boolean;
   };
@@ -192,6 +201,13 @@ export interface AppConfig {
 export interface PublicConfig {
   ui: AppConfig['ui'];
   operations: Pick<AppConfig['operations'], 'cjs_enabled'>;
+}
+
+export interface VoiceSynthesisResponse {
+  provider: 'sesame';
+  mime_type: string;
+  audio_base64: string;
+  generated_at: string;
 }
 
 export interface ArtifactDoc<T = unknown> {

@@ -484,6 +484,131 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
               </section>
 
               <section className="space-y-4">
+                <div className="text-[10px] uppercase tracking-widest opacity-50">Voice Engine (Sesame)</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <label className="flex items-center gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={config.voice.enabled}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, enabled: e.target.checked },
+                              }
+                            : prev
+                        )
+                      }
+                    />
+                    Sesame voice synthesis enabled
+                  </label>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Provider</label>
+                    <input
+                      value={config.voice.provider}
+                      readOnly
+                      className="w-full border-b border-black/10 outline-none py-2 text-sm bg-gray-50 text-gray-500"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-xs text-gray-700">Sesame API URL (Cerebrium endpoint)</label>
+                    <input
+                      value={config.voice.api_url}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, api_url: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      placeholder="https://api.cortex.cerebrium.ai/v4/PROJECT/APP/generate_audio"
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Speaker</label>
+                    <input
+                      value={config.voice.speaker}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, speaker: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      placeholder="Maya"
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Max Audio Length (ms)</label>
+                    <input
+                      type="number"
+                      min={3000}
+                      max={30000}
+                      value={config.voice.max_audio_length_ms}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, max_audio_length_ms: Number(e.target.value) },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Voice Temperature</label>
+                    <input
+                      type="number"
+                      min={0.1}
+                      max={1.5}
+                      step="0.05"
+                      value={config.voice.temperature}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, temperature: Number(e.target.value) },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-xs text-gray-700">Narration Style Hint</label>
+                    <textarea
+                      value={config.voice.narration_style}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, narration_style: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full min-h-20 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-4">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Access & Entitlements</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <label className="flex items-center gap-3 text-sm">

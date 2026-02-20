@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CLIENT_INTENTS, FOCUS_PREFS, PACE_PREFS, SMART_START_FIELDS, SmartStartField } from '../constants';
 import { ClientIntent, ClientPreferences, FocusPreference, IntakeAnswers, PacePreference } from '../types';
 import { saveIntake } from '../services/clientService';
@@ -14,8 +14,10 @@ import {
   generateSuiteDistilledDoc,
 } from '../services/stubGenerator';
 import { generateSuiteArtifacts } from '../services/suiteApi';
+import { synthesizeConciergeVoice } from '../services/voiceApi';
 
-type Step = 'intent' | 'questions' | 'prefs' | 'plating' | 'done';
+type Step = 'intent' | 'concierge' | 'questions' | 'prefs' | 'plating' | 'done';
+const SUITE_FEEL_OPTIONS = ['STRATEGIC', 'GROUNDED', 'STORY', 'JOB-SEARCH', 'SKILLS', 'LEADERSHIP'];
 
 export function IntakeFlow(props: {
   uid: string;
@@ -28,6 +30,18 @@ export function IntakeFlow(props: {
   const [focus, setFocus] = useState<FocusPreference>('job_search');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current = null;
+      }
+    };
+  }, []);
 
   const prefs: ClientPreferences = useMemo(() => ({ pace, focus }), [pace, focus]);
   const fieldsBySection = useMemo(() => {
@@ -150,6 +164,48 @@ export function IntakeFlow(props: {
     );
   };
 
+  const buildVoiceScript = () => {
+    const currentTitle = readText('current_title') || readText('current_or_target_job_title') || 'your current role';
+    const industry = readText('industry') || 'your target industry';
+    const target = readText('target') || readText('current_or_target_job_title') || 'your next role';
+    const suiteFeel = readText('suite_feel') || 'STRATEGIC';
+
+    if (step === 'intent') {
+      return `Welcome. This is not a test. We are calibrating your suite for immediate action. Select your intent, and we will build your Brief, Your Suite Distilled, and your 72-hour plan.`;
+    }
+    if (step === 'concierge') {
+      return `Current calibration: role ${currentTitle}, industry ${industry}, target direction ${target}. Suite feel is ${suiteFeel}. We are assembling your professional DNA, not collecting generic form data.`;
+    }
+    if (step === 'questions') {
+      return `Complete Smart Start Intake with concise specifics. The intake is the single data capture event that powers readiness routing and ConciergeJobSearch execution.`;
+    }
+    if (step === 'prefs') {
+      return `Final calibration before generation. Confirm pace and focus so your outputs arrive with the right rhythm and decision framing.`;
+    }
+    return `Preparing your suite.`;
+  };
+
+  const playConciergeVoice = async () => {
+    setVoiceBusy(true);
+    setVoiceError(null);
+    try {
+      const response = await synthesizeConciergeVoice(buildVoiceScript());
+      const mime = response.mime_type || 'audio/wav';
+      const dataUrl = `data:${mime};base64,${response.audio_base64}`;
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current = null;
+      }
+      const audio = new Audio(dataUrl);
+      activeAudioRef.current = audio;
+      await audio.play();
+    } catch (e: any) {
+      setVoiceError(e?.message ?? 'Voice playback failed.');
+    } finally {
+      setVoiceBusy(false);
+    }
+  };
+
   const submit = async () => {
     setBusy(true);
     setError(null);
@@ -213,6 +269,24 @@ export function IntakeFlow(props: {
           {error}
         </div>
       )}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={playConciergeVoice}
+          disabled={voiceBusy || step === 'plating'}
+          className="px-4 py-2 border border-brand-teal text-brand-teal text-[10px] uppercase tracking-[0.22em] hover:bg-brand-soft transition-colors disabled:opacity-50"
+        >
+          {voiceBusy ? 'Rendering voice…' : 'Play concierge voice'}
+        </button>
+        <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">
+          Sesame voice engine
+        </div>
+      </div>
+      {voiceError && (
+        <div className="border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-700">
+          {voiceError}
+        </div>
+      )}
 
       {step === 'intent' && (
         <div className="space-y-4">
@@ -241,6 +315,71 @@ export function IntakeFlow(props: {
             })}
           </div>
           <div className="pt-3">
+            <button
+              onClick={() => setStep('concierge')}
+              className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 'concierge' && (
+        <div className="space-y-8">
+          <section className="border border-black/10 p-5 bg-gray-50 space-y-4">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Conversation Flow</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-xs text-gray-700">
+                  What industries are you currently working in? What are you doing right now? Where do you need the most help?
+                </label>
+                <textarea
+                  value={readText('conversation_current_reality')}
+                  onChange={(e) => setText('conversation_current_reality', e.target.value)}
+                  placeholder="Constraints, timelines, competing priorities."
+                  className="min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm leading-relaxed"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-xs text-gray-700">How should this feel?</label>
+                <div className="flex flex-wrap gap-2">
+                  {SUITE_FEEL_OPTIONS.map((option) => {
+                    const active = readText('suite_feel') === option;
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setSingle('suite_feel', option)}
+                        className={`px-3 py-2 text-[11px] uppercase tracking-[0.16em] border transition-colors ${
+                          active
+                            ? 'border-brand-teal bg-brand-soft text-brand-teal'
+                            : 'border-black/10 hover-border-brand-teal'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="md:col-span-2 border border-black/5 bg-white p-4">
+                <div className="text-[10px] uppercase tracking-widest opacity-50 mb-2">Suite Preview</div>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  Preparing your suite with three pillars: <strong>Your Profile</strong>,{' '}
+                  <strong>Your AI Profile</strong>, and <strong>Your Gaps</strong>. This confirms the agent is
+                  building, not just collecting.
+                </p>
+              </div>
+            </div>
+          </section>
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={() => setStep('concierge')}
+              className="text-xs uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity"
+            >
+              Back
+            </button>
             <button
               onClick={() => setStep('questions')}
               className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"

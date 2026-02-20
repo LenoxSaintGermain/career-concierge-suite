@@ -55,6 +55,15 @@ const normalizeAdminConfig = (input: any): AppConfig => {
       video_generate_audio: Boolean(source?.media?.video_generate_audio ?? false),
       auto_generate_on_episode: Boolean(source?.media?.auto_generate_on_episode ?? false),
     },
+    voice: {
+      enabled: Boolean(source?.voice?.enabled ?? false),
+      provider: 'sesame',
+      api_url: String(source?.voice?.api_url ?? ''),
+      speaker: String(source?.voice?.speaker ?? 'Maya'),
+      max_audio_length_ms: Number(source?.voice?.max_audio_length_ms ?? 12000),
+      temperature: Number(source?.voice?.temperature ?? 0.9),
+      narration_style: String(source?.voice?.narration_style ?? 'Calm concierge narration with subtle human hesitations.'),
+    },
     safety: {
       tone_guard_enabled: Boolean(source?.safety?.tone_guard_enabled ?? true),
     },
