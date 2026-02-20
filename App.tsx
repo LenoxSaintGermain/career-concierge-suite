@@ -14,8 +14,18 @@ import { ProfileView } from './components/ProfileView';
 import { AIProfileView } from './components/AIProfileView';
 import { GapsView } from './components/GapsView';
 import { BingeFeedView } from './components/BingeFeedView';
+import { AdminConsole } from './components/AdminConsole';
+import { fetchPublicConfig } from './services/adminApi';
+import { PublicConfig } from './types';
 
 type IntroPhase = 'prologue' | 'complete';
+
+const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
+  ui: {
+    show_prologue: true,
+    episodes_enabled: true,
+  },
+};
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -27,6 +37,17 @@ const App: React.FC = () => {
 
   const [openModuleId, setOpenModuleId] = useState<SuiteModuleId | null>(null);
   const [hoveredModuleId, setHoveredModuleId] = useState<SuiteModuleId | null>(null);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_PUBLIC_CONFIG);
+
+  const refreshPublicConfig = async () => {
+    try {
+      const config = await fetchPublicConfig();
+      setPublicConfig(config);
+    } catch {
+      setPublicConfig(DEFAULT_PUBLIC_CONFIG);
+    }
+  };
 
   // Artifact cache for the currently-open module.
   const [artifactLoading, setArtifactLoading] = useState(false);
@@ -53,6 +74,10 @@ const App: React.FC = () => {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    refreshPublicConfig();
+  }, []);
+
   // Load/Create client record and decide whether to play intro.
   useEffect(() => {
     const run = async () => {
@@ -74,9 +99,14 @@ const App: React.FC = () => {
     return Boolean(client?.intake?.completed_at);
   }, [client?.intake?.completed_at]);
 
+  const visibleModules = useMemo(
+    () => SUITE_MODULES.filter((m) => publicConfig.ui.episodes_enabled || m.id !== 'episodes'),
+    [publicConfig.ui.episodes_enabled]
+  );
+
   const openModule = useMemo(
-    () => (openModuleId ? SUITE_MODULES.find((m) => m.id === openModuleId) ?? null : null),
-    [openModuleId]
+    () => (openModuleId ? visibleModules.find((m) => m.id === openModuleId) ?? null : null),
+    [openModuleId, visibleModules]
   );
 
   const isLocked = (m: SuiteModule) => {
@@ -176,10 +206,10 @@ const App: React.FC = () => {
   }
 
   // Prologue overlay (plays once per user; stored in Firestore).
-  const showPrologue = introPhase === 'prologue' && clientLoaded;
+  const showPrologue = publicConfig.ui.show_prologue && introPhase === 'prologue' && clientLoaded;
 
   // Relationship highlighting
-  const hovered = hoveredModuleId ? SUITE_MODULES.find((m) => m.id === hoveredModuleId) ?? null : null;
+  const hovered = hoveredModuleId ? visibleModules.find((m) => m.id === hoveredModuleId) ?? null : null;
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#f5f5f5] text-[#1a1a1a]">
@@ -223,6 +253,12 @@ const App: React.FC = () => {
         <div className="flex items-center gap-4">
           <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{user.email ?? user.uid}</span>
           <button
+            onClick={() => setAdminOpen(true)}
+            className="text-[10px] uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity"
+          >
+            Admin
+          </button>
+          <button
             onClick={() => logout()}
             className="text-[10px] uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity"
           >
@@ -249,7 +285,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-200 border border-gray-200">
-            {SUITE_MODULES.map((m, idx) => {
+            {visibleModules.map((m, idx) => {
               const isHovered = hoveredModuleId === m.id;
               const isRelated = hovered?.relatedIds?.includes(m.id) ?? false;
               const constellationDimmed = hovered && !isHovered && !isRelated;
@@ -313,7 +349,7 @@ const App: React.FC = () => {
             <div className="w-full md:w-1/3 bg-[#111] text-white p-8 md:p-12 flex flex-col justify-between shrink-0">
               <div>
                 <div className="text-xs font-mono opacity-50 mb-8 flex justify-between">
-                  <span>{openModule.index} / 08</span>
+                  <span>{openModule.index} / {String(visibleModules.length).padStart(2, '0')}</span>
                   <span className="opacity-50">MODULE</span>
                 </div>
                 <h2 className="text-4xl md:text-5xl font-editorial leading-none mb-8">{openModule.title}</h2>
@@ -427,6 +463,8 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      <AdminConsole open={adminOpen} onClose={() => setAdminOpen(false)} onSaved={refreshPublicConfig} />
     </div>
   );
 };

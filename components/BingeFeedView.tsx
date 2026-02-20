@@ -9,16 +9,21 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   const [loading, setLoading] = useState(false);
   const [scene, setScene] = useState<Scene>('hook');
   const [terminalInput, setTerminalInput] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const swipes = useMemo(() => episode?.lesson_swipes ?? [], [episode?.lesson_swipes]);
 
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const e = await generateBingeEpisode();
       setEpisode(e);
       setScene('hook');
       setTerminalInput('');
+    } catch (e: any) {
+      setEpisode(null);
+      setLoadError(e?.message ?? 'Unable to load episode.');
     } finally {
       setLoading(false);
     }
@@ -58,6 +63,9 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     return (
       <div className="border border-black/5 bg-gray-50 p-6">
         <div className="text-2xl font-editorial italic">Unable to load episode.</div>
+        {loadError && (
+          <p className="mt-4 text-sm text-red-700 leading-relaxed">{loadError}</p>
+        )}
         <button
           onClick={load}
           className="mt-6 px-5 py-3 bg-black text-white text-xs uppercase tracking-[0.25em] hover:bg-black/90 transition-colors"
@@ -144,4 +152,3 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     </div>
   );
 }
-

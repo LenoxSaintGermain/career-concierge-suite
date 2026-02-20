@@ -32,26 +32,153 @@ const requireAuth = async (req, res, next) => {
   if (!m) return res.status(401).json({ error: 'missing_bearer_token' });
   try {
     const decoded = await admin.auth().verifyIdToken(m[1]);
-    req.user = { uid: decoded.uid, email: decoded.email ?? null };
+    req.user = { uid: decoded.uid, email: decoded.email ?? null, claims: decoded };
     next();
   } catch (e) {
     return res.status(401).json({ error: 'invalid_token' });
   }
 };
 
+const requireAdmin = (req, res, next) => {
+  if (!isAdminUser(req.user)) {
+    return res.status(403).json({ error: 'admin_required' });
+  }
+  next();
+};
+
 // NOTE: GFE can intercept /healthz; keep external health on /health.
 app.get('/health', (_req, res) => res.status(200).send('OK'));
+
+app.get('/v1/public/config', async (_req, res) => {
+  const config = await loadAppConfig();
+  return res.json({
+    config: {
+      ui: config.ui,
+    },
+  });
+});
+
+app.get('/v1/admin/config', requireAuth, requireAdmin, async (_req, res) => {
+  const config = await loadAppConfig();
+  return res.json({ config });
+});
+
+app.put('/v1/admin/config', requireAuth, requireAdmin, async (req, res) => {
+  const next = normalizeConfig(req.body?.config ?? {});
+  await configRef().set(
+    {
+      config: next,
+      updated_by: req.user.email ?? req.user.uid,
+      updated_at: new Date().toISOString(),
+    },
+    { merge: true }
+  );
+  return res.json({ ok: true, config: next });
+});
 
 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || null;
 const fastTextModel = process.env.GEMINI_MODEL_FAST || 'gemini-3-flash-preview';
 const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 
 const nonEmpty = (value) => String(value ?? '').trim();
+const adminEmailSet = new Set(
+  (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+);
+
+const CONFIG_COLLECTION = 'system';
+const CONFIG_DOC = 'career-concierge-config';
+const DEFAULT_APP_CONFIG = {
+  generation: {
+    suite_model: fastTextModel,
+    binge_model: fastTextModel,
+    suite_temperature: 0.45,
+    binge_temperature: 0.7,
+  },
+  prompts: {
+    suite_appendix: '',
+    binge_appendix: '',
+  },
+  ui: {
+    show_prologue: true,
+    episodes_enabled: true,
+  },
+  safety: {
+    tone_guard_enabled: true,
+  },
+};
+
+const clamp01 = (value, fallback) => {
+  const number = Number(value);
+  if (Number.isNaN(number)) return fallback;
+  if (number < 0) return 0;
+  if (number > 1) return 1;
+  return number;
+};
+
+const normalizeConfig = (input = {}) => {
+  const source = input && typeof input === 'object' ? input : {};
+  const generation = source.generation && typeof source.generation === 'object' ? source.generation : {};
+  const prompts = source.prompts && typeof source.prompts === 'object' ? source.prompts : {};
+  const ui = source.ui && typeof source.ui === 'object' ? source.ui : {};
+  const safety = source.safety && typeof source.safety === 'object' ? source.safety : {};
+
+  return {
+    generation: {
+      suite_model: nonEmpty(generation.suite_model) || DEFAULT_APP_CONFIG.generation.suite_model,
+      binge_model: nonEmpty(generation.binge_model) || DEFAULT_APP_CONFIG.generation.binge_model,
+      suite_temperature: clamp01(generation.suite_temperature, DEFAULT_APP_CONFIG.generation.suite_temperature),
+      binge_temperature: clamp01(generation.binge_temperature, DEFAULT_APP_CONFIG.generation.binge_temperature),
+    },
+    prompts: {
+      suite_appendix: String(prompts.suite_appendix ?? '').trim(),
+      binge_appendix: String(prompts.binge_appendix ?? '').trim(),
+    },
+    ui: {
+      show_prologue:
+        typeof ui.show_prologue === 'boolean' ? ui.show_prologue : DEFAULT_APP_CONFIG.ui.show_prologue,
+      episodes_enabled:
+        typeof ui.episodes_enabled === 'boolean' ? ui.episodes_enabled : DEFAULT_APP_CONFIG.ui.episodes_enabled,
+    },
+    safety: {
+      tone_guard_enabled:
+        typeof safety.tone_guard_enabled === 'boolean'
+          ? safety.tone_guard_enabled
+          : DEFAULT_APP_CONFIG.safety.tone_guard_enabled,
+    },
+  };
+};
+
+const configRef = () => db.collection(CONFIG_COLLECTION).doc(CONFIG_DOC);
+
+const loadAppConfig = async () => {
+  try {
+    const snap = await configRef().get();
+    if (!snap.exists) return normalizeConfig(DEFAULT_APP_CONFIG);
+    const data = snap.data() ?? {};
+    const raw = data.config && typeof data.config === 'object' ? data.config : data;
+    return normalizeConfig(raw);
+  } catch (error) {
+    console.error('config_load_error', error);
+    return normalizeConfig(DEFAULT_APP_CONFIG);
+  }
+};
+
+const isAdminUser = (user) => {
+  const claims = user?.claims ?? {};
+  if (claims.admin === true || claims.staff === true) return true;
+  if (adminEmailSet.size === 0) return true;
+  const email = String(user?.email ?? '').trim().toLowerCase();
+  if (!email) return false;
+  return adminEmailSet.has(email);
+};
 
 const baseMeta = (mode, degraded, extra = {}) => ({
   prompt_version: ROM_VERSION,
   generation_mode: mode,
-  model: mode === 'gemini' ? fastTextModel : 'deterministic-fallback',
+  model: extra.model || (mode === 'gemini' ? fastTextModel : 'deterministic-fallback'),
   generated_at: new Date().toISOString(),
   degraded,
   ...extra,
@@ -224,6 +351,11 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
   }
 
   const uid = req.user.uid;
+  const runtimeConfig = await loadAppConfig();
+  const suiteModel = runtimeConfig.generation.suite_model || fastTextModel;
+  const suiteTemperature = runtimeConfig.generation.suite_temperature;
+  const suiteAppendix = runtimeConfig.prompts.suite_appendix;
+  const toneGuardEnabled = runtimeConfig.safety.tone_guard_enabled;
 
   if (!ai) {
     const meta = baseMeta('fallback', true, {
@@ -231,6 +363,7 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       uid,
       intent,
       preferences,
+      model: 'deterministic-fallback',
     });
     return res.json({
       meta,
@@ -240,25 +373,29 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
 
   try {
     const response = await ai.models.generateContent({
-      model: fastTextModel,
-      contents: composeSuitePrompt({ intent, preferences, answers }),
+      model: suiteModel,
+      contents: `${composeSuitePrompt({ intent, preferences, answers })}${
+        suiteAppendix ? `\n\nAdditional system appendix:\n${suiteAppendix}` : ''
+      }`,
       config: {
         responseMimeType: 'application/json',
         responseSchema: SUITE_ARTIFACTS_SCHEMA,
         systemInstruction: CONCIERGE_ROM_SYSTEM,
-        temperature: 0.45,
+        temperature: suiteTemperature,
       },
     });
 
     const text = response.text?.trim();
     if (!text) throw new Error('empty_model_response');
     const artifacts = safeParseJson(text);
-    const toneViolations = findToneViolations(artifacts);
-    if (toneViolations.length) {
-      throw new Error(`tone_violation:${toneViolations.join(',')}`);
+    if (toneGuardEnabled) {
+      const toneViolations = findToneViolations(artifacts);
+      if (toneViolations.length) {
+        throw new Error(`tone_violation:${toneViolations.join(',')}`);
+      }
     }
 
-    const meta = baseMeta('gemini', false, { uid, intent, preferences });
+    const meta = baseMeta('gemini', false, { uid, intent, preferences, model: suiteModel });
     return res.json({
       meta,
       artifacts: withArtifactMeta(artifacts, meta),
@@ -282,6 +419,11 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
 app.post('/v1/binge/episode', requireAuth, async (req, res) => {
   const { dna, target_skill } = req.body ?? {};
   const uid = req.user.uid;
+  const runtimeConfig = await loadAppConfig();
+  const bingeModel = runtimeConfig.generation.binge_model || fastTextModel;
+  const bingeTemperature = runtimeConfig.generation.binge_temperature;
+  const bingeAppendix = runtimeConfig.prompts.binge_appendix;
+  const toneGuardEnabled = runtimeConfig.safety.tone_guard_enabled;
   const persistedDna = await loadClientDna(uid);
   const hydratedDna = { ...persistedDna, ...(dna ?? {}) };
   const skill = target_skill || 'prompt architecture under pressure';
@@ -290,34 +432,43 @@ app.post('/v1/binge/episode', requireAuth, async (req, res) => {
     return res.json(
       stubEpisode(
         'noai',
-        baseMeta('fallback', true, { reason: 'missing_gemini_api_key', uid, prompt_version: ROM_VERSION })
+        baseMeta('fallback', true, {
+          reason: 'missing_gemini_api_key',
+          uid,
+          prompt_version: ROM_VERSION,
+          model: 'deterministic-fallback',
+        })
       )
     );
   }
 
   try {
     const response = await ai.models.generateContent({
-      model: fastTextModel,
-      contents: composeBingePrompt({ dna: hydratedDna, targetSkill: skill }),
+      model: bingeModel,
+      contents: `${composeBingePrompt({ dna: hydratedDna, targetSkill: skill })}${
+        bingeAppendix ? `\n\nAdditional system appendix:\n${bingeAppendix}` : ''
+      }`,
       config: {
         responseMimeType: 'application/json',
         responseSchema: EPISODE_SCHEMA,
         systemInstruction: composeBingeSystemInstruction(),
-        temperature: 0.7
+        temperature: bingeTemperature
       }
     });
 
     const text = response.text?.trim();
     if (!text) throw new Error('empty_model_response');
     const episode = safeParseJson(text);
-    const toneViolations = findToneViolations(episode);
-    if (toneViolations.length) {
-      throw new Error(`tone_violation:${toneViolations.join(',')}`);
+    if (toneGuardEnabled) {
+      const toneViolations = findToneViolations(episode);
+      if (toneViolations.length) {
+        throw new Error(`tone_violation:${toneViolations.join(',')}`);
+      }
     }
 
     return res.json({
       ...episode,
-      _meta: baseMeta('gemini', false, { uid, target_skill: skill }),
+      _meta: baseMeta('gemini', false, { uid, target_skill: skill, model: bingeModel }),
     });
   } catch (e) {
     console.error('binge generation error', e);

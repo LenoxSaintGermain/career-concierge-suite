@@ -95,6 +95,30 @@ export interface BingeEpisode {
   };
 }
 
+export interface AppConfig {
+  generation: {
+    suite_model: string;
+    binge_model: string;
+    suite_temperature: number;
+    binge_temperature: number;
+  };
+  prompts: {
+    suite_appendix: string;
+    binge_appendix: string;
+  };
+  ui: {
+    show_prologue: boolean;
+    episodes_enabled: boolean;
+  };
+  safety: {
+    tone_guard_enabled: boolean;
+  };
+}
+
+export interface PublicConfig {
+  ui: AppConfig['ui'];
+}
+
 export interface ArtifactDoc<T = unknown> {
   id: string; // Firestore document id
   type: ArtifactType;
