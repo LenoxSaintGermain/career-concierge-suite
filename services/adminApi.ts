@@ -68,6 +68,10 @@ const normalizeAdminConfig = (input: any): AppConfig => {
       max_audio_length_ms: Number(source?.voice?.max_audio_length_ms ?? 12000),
       temperature: Number(source?.voice?.temperature ?? 0.9),
       narration_style: String(source?.voice?.narration_style ?? 'Calm concierge narration with subtle human hesitations.'),
+      live_vad_silence_ms: Number(source?.voice?.live_vad_silence_ms ?? 380),
+      live_vad_prefix_padding_ms: Number(source?.voice?.live_vad_prefix_padding_ms ?? 120),
+      live_vad_start_sensitivity: source?.voice?.live_vad_start_sensitivity === 'low' ? 'low' : 'high',
+      live_vad_end_sensitivity: source?.voice?.live_vad_end_sensitivity === 'low' ? 'low' : 'high',
     },
     safety: {
       tone_guard_enabled: Boolean(source?.safety?.tone_guard_enabled ?? true),

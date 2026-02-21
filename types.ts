@@ -197,6 +197,10 @@ export interface AppConfig {
     max_audio_length_ms: number;
     temperature: number;
     narration_style: string;
+    live_vad_silence_ms: number;
+    live_vad_prefix_padding_ms: number;
+    live_vad_start_sensitivity: 'high' | 'low';
+    live_vad_end_sensitivity: 'high' | 'low';
   };
   safety: {
     tone_guard_enabled: boolean;

@@ -700,6 +700,94 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">VAD Silence Window (ms)</label>
+                    <input
+                      type="number"
+                      min={180}
+                      max={2000}
+                      value={config.voice.live_vad_silence_ms}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, live_vad_silence_ms: Number(e.target.value) },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">VAD Prefix Padding (ms)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={600}
+                      value={config.voice.live_vad_prefix_padding_ms}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: { ...prev.voice, live_vad_prefix_padding_ms: Number(e.target.value) },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Start-of-Speech Sensitivity</label>
+                    <select
+                      value={config.voice.live_vad_start_sensitivity}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: {
+                                  ...prev.voice,
+                                  live_vad_start_sensitivity:
+                                    e.target.value === 'low' ? 'low' : 'high',
+                                },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+                    >
+                      <option value="high">high</option>
+                      <option value="low">low</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">End-of-Speech Sensitivity</label>
+                    <select
+                      value={config.voice.live_vad_end_sensitivity}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                voice: {
+                                  ...prev.voice,
+                                  live_vad_end_sensitivity:
+                                    e.target.value === 'low' ? 'low' : 'high',
+                                },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+                    >
+                      <option value="high">high</option>
+                      <option value="low">low</option>
+                    </select>
+                  </div>
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-xs text-gray-700">Narration Style Hint</label>
                     <textarea

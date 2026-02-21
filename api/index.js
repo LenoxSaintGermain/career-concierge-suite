@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
-import { GoogleGenAI, Modality } from '@google/genai';
+import { EndSensitivity, GoogleGenAI, Modality, StartSensitivity } from '@google/genai';
 import {
   CONCIERGE_ROM_SYSTEM,
   EPISODE_SCHEMA,
@@ -88,6 +88,10 @@ const imageModelDefault = process.env.GEMINI_MODEL_IMAGE || 'gemini-2.5-flash-im
 const videoModelDefault = process.env.GEMINI_MODEL_VIDEO || 'veo-3.1-generate-preview';
 const geminiLiveModelDefault =
   process.env.GEMINI_MODEL_LIVE_VOICE || 'gemini-2.5-flash-native-audio-preview-12-2025';
+const geminiLiveVadSilenceMsDefault = Number(process.env.GEMINI_LIVE_VAD_SILENCE_MS || 380);
+const geminiLiveVadPrefixMsDefault = Number(process.env.GEMINI_LIVE_VAD_PREFIX_MS || 120);
+const geminiLiveVadStartDefault = String(process.env.GEMINI_LIVE_VAD_START || 'high').toLowerCase();
+const geminiLiveVadEndDefault = String(process.env.GEMINI_LIVE_VAD_END || 'high').toLowerCase();
 const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 const liveTokenAi = geminiApiKey
   ? new GoogleGenAI({ apiKey: geminiApiKey, httpOptions: { apiVersion: 'v1alpha' } })
@@ -152,6 +156,10 @@ const DEFAULT_APP_CONFIG = {
     max_audio_length_ms: 12_000,
     temperature: 0.9,
     narration_style: 'Calm concierge narration with subtle human hesitations and restrained authority.',
+    live_vad_silence_ms: Number.isFinite(geminiLiveVadSilenceMsDefault) ? geminiLiveVadSilenceMsDefault : 380,
+    live_vad_prefix_padding_ms: Number.isFinite(geminiLiveVadPrefixMsDefault) ? geminiLiveVadPrefixMsDefault : 120,
+    live_vad_start_sensitivity: geminiLiveVadStartDefault === 'low' ? 'low' : 'high',
+    live_vad_end_sensitivity: geminiLiveVadEndDefault === 'low' ? 'low' : 'high',
   },
   safety: {
     tone_guard_enabled: true,
@@ -173,6 +181,12 @@ const clampInteger = (value, fallback, min, max) => {
   if (rounded < min) return min;
   if (rounded > max) return max;
   return rounded;
+};
+
+const normalizeSensitivity = (value, fallback) => {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'high' || normalized === 'low') return normalized;
+  return fallback;
 };
 
 const normalizeConfig = (input = {}) => {
@@ -265,6 +279,26 @@ const normalizeConfig = (input = {}) => {
         return number;
       })(),
       narration_style: String(voice.narration_style ?? DEFAULT_APP_CONFIG.voice.narration_style).trim(),
+      live_vad_silence_ms: clampInteger(
+        voice.live_vad_silence_ms,
+        DEFAULT_APP_CONFIG.voice.live_vad_silence_ms,
+        180,
+        2000
+      ),
+      live_vad_prefix_padding_ms: clampInteger(
+        voice.live_vad_prefix_padding_ms,
+        DEFAULT_APP_CONFIG.voice.live_vad_prefix_padding_ms,
+        0,
+        600
+      ),
+      live_vad_start_sensitivity: normalizeSensitivity(
+        voice.live_vad_start_sensitivity,
+        DEFAULT_APP_CONFIG.voice.live_vad_start_sensitivity
+      ),
+      live_vad_end_sensitivity: normalizeSensitivity(
+        voice.live_vad_end_sensitivity,
+        DEFAULT_APP_CONFIG.voice.live_vad_end_sensitivity
+      ),
     },
     safety: {
       tone_guard_enabled:
@@ -920,6 +954,14 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
 
   const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
   const voiceName = nonEmpty(runtimeConfig.voice.gemini_voice_name) || nonEmpty(runtimeConfig.voice.speaker) || 'Aoede';
+  const startSensitivity =
+    runtimeConfig.voice.live_vad_start_sensitivity === 'low'
+      ? StartSensitivity.START_SENSITIVITY_LOW
+      : StartSensitivity.START_SENSITIVITY_HIGH;
+  const endSensitivity =
+    runtimeConfig.voice.live_vad_end_sensitivity === 'low'
+      ? EndSensitivity.END_SENSITIVITY_LOW
+      : EndSensitivity.END_SENSITIVITY_HIGH;
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 45 * 60 * 1000);
   const newSessionExpireAt = new Date(issuedAt.getTime() + 4 * 60 * 1000);
@@ -941,6 +983,14 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
             responseModalities: [Modality.AUDIO],
             systemInstruction: liveSystemInstruction(runtimeConfig),
             temperature: runtimeConfig.voice.temperature,
+            realtimeInputConfig: {
+              automaticActivityDetection: {
+                startOfSpeechSensitivity: startSensitivity,
+                endOfSpeechSensitivity: endSensitivity,
+                prefixPaddingMs: runtimeConfig.voice.live_vad_prefix_padding_ms,
+                silenceDurationMs: runtimeConfig.voice.live_vad_silence_ms,
+              },
+            },
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
