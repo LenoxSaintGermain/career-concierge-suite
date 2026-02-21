@@ -951,13 +951,6 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
             mediaResolution: 'MEDIA_RESOLUTION_LOW',
           },
         },
-        lockAdditionalFields: [
-          'responseModalities',
-          'systemInstruction',
-          'temperature',
-          'speechConfig',
-          'mediaResolution',
-        ],
       },
     });
 
