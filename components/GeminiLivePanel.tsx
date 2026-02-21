@@ -95,6 +95,8 @@ export function GeminiLivePanel() {
   const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const audioProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const audioGainRef = useRef<GainNode | null>(null);
+  const playbackContextRef = useRef<AudioContext | null>(null);
+  const playbackCursorRef = useRef<number>(0);
   const cameraLoopRef = useRef<number | null>(null);
   const audioChunksRef = useRef<string[]>([]);
   const audioMimeRef = useRef<string>('audio/pcm;rate=24000');
@@ -175,6 +177,41 @@ export function GeminiLivePanel() {
     setState('idle');
     stopMic();
     stopCamera();
+    if (playbackContextRef.current) {
+      void playbackContextRef.current.close().catch(() => undefined);
+      playbackContextRef.current = null;
+    }
+    playbackCursorRef.current = 0;
+  };
+
+  const queuePcmChunk = (pcmBase64: string, mimeType: string) => {
+    const sampleRate = parsePcmRate(mimeType);
+    if (!playbackContextRef.current) {
+      playbackContextRef.current = new AudioContext({ sampleRate });
+      playbackCursorRef.current = playbackContextRef.current.currentTime;
+    }
+    const context = playbackContextRef.current;
+    const pcmBytes = base64ToBytes(pcmBase64);
+    if (pcmBytes.byteLength < 2) return;
+
+    const sampleCount = Math.floor(pcmBytes.byteLength / 2);
+    if (!sampleCount) return;
+
+    const buffer = context.createBuffer(1, sampleCount, sampleRate);
+    const channel = buffer.getChannelData(0);
+    const view = new DataView(pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength);
+    for (let i = 0; i < sampleCount; i += 1) {
+      channel[i] = view.getInt16(i * 2, true) / 32768;
+    }
+
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+
+    const now = context.currentTime;
+    const startAt = Math.max(playbackCursorRef.current, now + 0.015);
+    source.start(startAt);
+    playbackCursorRef.current = startAt + buffer.duration;
   };
 
   const playTurnAudio = async () => {
@@ -228,6 +265,15 @@ export function GeminiLivePanel() {
         httpOptions: { apiVersion: 'v1alpha' },
       });
 
+      if (playbackContextRef.current) {
+        await playbackContextRef.current.close().catch(() => undefined);
+      }
+      playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
+      if (playbackContextRef.current.state === 'suspended') {
+        await playbackContextRef.current.resume();
+      }
+      playbackCursorRef.current = playbackContextRef.current.currentTime;
+
       const session = await ai.live.connect({
         model: token.model,
         callbacks: {
@@ -235,21 +281,29 @@ export function GeminiLivePanel() {
             const parts = message?.serverContent?.modelTurn?.parts || [];
             for (const part of parts) {
               if (part?.inlineData?.data) {
+                const mimeType = String(part?.inlineData?.mimeType || audioMimeRef.current || 'audio/pcm;rate=24000');
+                audioMimeRef.current = mimeType;
                 if (!firstByteAtRef.current && promptSentAtRef.current) {
                   firstByteAtRef.current = performance.now();
                   setLatencyMs(Math.max(0, Math.round(firstByteAtRef.current - promptSentAtRef.current)));
                 }
-                audioChunksRef.current.push(String(part.inlineData.data).replace(/\s+/g, ''));
-              }
-              if (part?.inlineData?.mimeType) {
-                audioMimeRef.current = String(part.inlineData.mimeType);
+                const chunk = String(part.inlineData.data).replace(/\s+/g, '');
+                if (mimeType.toLowerCase().startsWith('audio/pcm')) {
+                  queuePcmChunk(chunk, mimeType);
+                } else {
+                  audioChunksRef.current.push(chunk);
+                }
               }
               if (part?.text) {
                 setTranscript((prev) => `${prev}${prev ? '\n' : ''}${String(part.text).trim()}`);
               }
             }
             if (message?.serverContent?.turnComplete) {
-              await playTurnAudio();
+              if (!audioMimeRef.current.toLowerCase().startsWith('audio/pcm')) {
+                await playTurnAudio();
+              } else {
+                audioChunksRef.current = [];
+              }
             }
           },
           onerror: (event: any) => {
@@ -344,7 +398,7 @@ export function GeminiLivePanel() {
     if (!AudioContextCtor) throw new Error('AudioContext unavailable on this browser');
     const context = new AudioContextCtor({ sampleRate: 16000 });
     const source = context.createMediaStreamSource(stream);
-    const processor = context.createScriptProcessor(2048, 1, 1);
+    const processor = context.createScriptProcessor(1024, 1, 1);
     const gain = context.createGain();
     gain.gain.value = 0;
 
