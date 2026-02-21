@@ -938,7 +938,7 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
         liveConnectConstraints: {
           model,
           config: {
-            responseModalities: [Modality.AUDIO, Modality.TEXT],
+            responseModalities: [Modality.AUDIO],
             systemInstruction: liveSystemInstruction(runtimeConfig),
             temperature: runtimeConfig.voice.temperature,
             speechConfig: {
@@ -948,7 +948,6 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
                 },
               },
             },
-            mediaResolution: 'MEDIA_RESOLUTION_LOW',
           },
         },
       },

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { GoogleGenAI, Modality } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { createGeminiLiveToken } from '../services/liveApi';
 import { GeminiLiveTokenResponse } from '../types';
 
@@ -106,7 +106,11 @@ export function GeminiLivePanel() {
       micStreamRef.current = null;
     }
     if (sessionRef.current) {
-      sessionRef.current.sendRealtimeInput?.({ audioStreamEnd: true });
+      try {
+        sessionRef.current.sendRealtimeInput?.({ audioStreamEnd: true });
+      } catch {
+        // Socket may already be closing; safe to ignore.
+      }
     }
     setMicEnabled(false);
   };
@@ -176,9 +180,6 @@ export function GeminiLivePanel() {
 
       const session = await ai.live.connect({
         model: token.model,
-        config: {
-          responseModalities: [Modality.AUDIO, Modality.TEXT],
-        },
         callbacks: {
           onmessage: async (message: any) => {
             const parts = message?.serverContent?.modelTurn?.parts || [];
