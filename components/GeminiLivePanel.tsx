@@ -87,6 +87,7 @@ export function GeminiLivePanel() {
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [micEnabled, setMicEnabled] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<GeminiLiveTokenResponse | null>(null);
+  const [showProTools, setShowProTools] = useState(false);
 
   const sessionRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -111,6 +112,9 @@ export function GeminiLivePanel() {
   const cameraReady = state === 'connected' && cameraEnabled;
   const micReady = state === 'connected' && micEnabled;
   const engagementReady = state === 'connected' && (micEnabled || prompt.trim().length > 0);
+  const statusLabel =
+    state === 'connected' ? 'Connected' : state === 'connecting' ? 'Connecting' : state === 'error' ? 'Issue' : 'Standby';
+  const stageIndex = state !== 'connected' ? 1 : engagementReady ? 4 : cameraReady ? 3 : micReady ? 2 : 1;
 
   const clearCameraLoop = () => {
     if (cameraLoopRef.current) {
@@ -522,129 +526,177 @@ export function GeminiLivePanel() {
   }, []);
 
   return (
-    <section className="border border-[#d7ece9] bg-[#f4fbfa] p-5 md:p-6 space-y-5 shadow-[0_1px_0_0_rgba(0,0,0,0.02)]">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Concierge Live Studio</div>
-          <div className="text-xl font-editorial italic mt-1">Step into a live conversation with your suite.</div>
-          <p className="text-xs text-black/55 mt-2 max-w-xl leading-relaxed">
-            This is your OS interaction rail: real-time voice, optional visual context, and immediate strategic
-            guidance with ROM-aligned tone.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div
-            className={`h-2 w-2 rounded-full ${
-              state === 'connected' ? 'bg-brand-teal animate-pulse' : state === 'error' ? 'bg-red-500' : 'bg-black/20'
-            }`}
-          />
-          <div className="text-[10px] uppercase tracking-[0.2em] text-black/55">
-            {state === 'connected' ? 'Live' : state === 'connecting' ? 'Connecting' : state === 'error' ? 'Error' : 'Idle'}
-          </div>
-        </div>
+    <section className="relative overflow-hidden border border-[#163840] bg-[#07161a] p-5 md:p-7 text-[#dce7e8] shadow-[0_14px_40px_rgba(1,12,18,0.32)]">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-16 -right-16 h-72 w-72 rounded-full bg-[#2dc5c21f] blur-3xl" />
+        <div className="absolute left-10 bottom-0 h-36 w-36 rounded-full bg-[#2dc5c214] blur-2xl" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <div className={`border p-2 text-[10px] uppercase tracking-[0.16em] ${state === 'connected' ? 'border-brand-teal text-brand-teal bg-white' : 'border-black/10 text-black/50 bg-white/80'}`}>
-          1. Initiate Session
-        </div>
-        <div className={`border p-2 text-[10px] uppercase tracking-[0.16em] ${micReady ? 'border-brand-teal text-brand-teal bg-white' : 'border-black/10 text-black/50 bg-white/80'}`}>
-          2. Open Voice
-        </div>
-        <div className={`border p-2 text-[10px] uppercase tracking-[0.16em] ${cameraReady ? 'border-brand-teal text-brand-teal bg-white' : 'border-black/10 text-black/50 bg-white/80'}`}>
-          3. Add Camera (Optional)
-        </div>
-        <div className={`border p-2 text-[10px] uppercase tracking-[0.16em] ${engagementReady ? 'border-brand-teal text-brand-teal bg-white' : 'border-black/10 text-black/50 bg-white/80'}`}>
-          4. Ask For Guidance
-        </div>
-      </div>
+      <div className="relative space-y-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.25em] text-brand-teal">Concierge Presence</div>
+            <h3 className="text-[28px] md:text-[34px] font-editorial italic leading-tight mt-2">
+              Tune your AI concierge in one living conversation.
+            </h3>
+            <p className="text-sm text-[#c7d5d7] leading-relaxed mt-3 max-w-2xl">
+              This is your calibration moment. Speak naturally, share context, and the suite adapts in real time to
+              your priorities.
+            </p>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-5">
-        <div className="space-y-3">
-          <div className="border border-black/10 bg-white p-3">
-            <video ref={videoRef} autoPlay muted playsInline className="w-full aspect-video object-cover bg-black/80" />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {state !== 'connected' ? (
-              <button
-                type="button"
-                onClick={startSession}
-                disabled={state === 'connecting'}
-                className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
-              >
-                {state === 'connecting' ? 'Opening Studio…' : 'Initiate Conversation'}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={closeSession}
-                className="px-4 py-2 border border-black/20 text-[10px] uppercase tracking-[0.22em] hover-border-brand-teal"
-              >
-                End Live Session
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={cameraEnabled ? stopCamera : startCamera}
-              disabled={state !== 'connected'}
-              className="px-4 py-2 border border-black/20 text-[10px] uppercase tracking-[0.22em] disabled:opacity-40 hover-border-brand-teal"
-            >
-              {cameraEnabled ? 'Pause Visual Context' : 'Invite Visual Context'}
-            </button>
-            <button
-              type="button"
-              onClick={micEnabled ? stopMic : startMic}
-              disabled={state !== 'connected'}
-              className="px-4 py-2 border border-black/20 text-[10px] uppercase tracking-[0.22em] disabled:opacity-40 hover-border-brand-teal"
-            >
-              {micEnabled ? 'Close Voice Channel' : 'Open Voice Channel'}
-            </button>
-          </div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">
-            You can stay text-only, voice-first, or add camera context. The system adapts.
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div className="border border-black/10 bg-white p-3 space-y-2">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">Realtime Metrics</div>
-            <div className="text-xs text-black/70">Model: {tokenInfo?.model ?? 'not connected'}</div>
-            <div className="text-xs text-black/70">Voice: {tokenInfo?.voice_name ?? 'n/a'}</div>
-            <div className="text-xs text-black/70">Latency to first audio: {latencyMs ? `${latencyMs} ms` : 'n/a'}</div>
-            <div className="text-xs text-black/70">Token expires: {tokenInfo?.expires_at ?? 'n/a'}</div>
-          </div>
-          <div className="border border-black/10 bg-white p-3 space-y-2">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">Guided Prompt</div>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Ask for positioning, rehearsal, or your next high-leverage move..."
-              className="w-full min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm leading-relaxed"
+          <div className="flex items-center gap-3 border border-[#22424a] bg-[#0d2329] px-3 py-2">
+            <div
+              className={`h-2.5 w-2.5 rounded-full ${
+                state === 'connected' ? 'bg-brand-teal animate-pulse' : state === 'error' ? 'bg-red-500' : 'bg-white/30'
+              }`}
             />
-            <button
-              type="button"
-              onClick={sendPrompt}
-              disabled={state !== 'connected' || sending || !prompt.trim()}
-              className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
-            >
-              {sending ? 'Sending…' : 'Ask Concierge'}
-            </button>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#b5c5c8]">{statusLabel}</div>
           </div>
         </div>
-      </div>
 
-      <div className="border border-black/10 bg-white p-3">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-black/50 mb-2">Live Transcript</div>
-        <pre className="whitespace-pre-wrap font-mono text-xs text-black/75 leading-relaxed min-h-16 max-h-48 overflow-auto">
-          {transcript || 'Waiting for model output...'}
-        </pre>
-      </div>
-
-      {error && (
-        <div className="border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-700 leading-relaxed">
-          {error}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {[
+            '1. Start Session',
+            '2. Open Voice',
+            '3. Add Camera',
+            '4. Converse',
+          ].map((label, idx) => {
+            const active = idx + 1 <= stageIndex;
+            return (
+              <div
+                key={label}
+                className={`border px-3 py-2 text-[10px] uppercase tracking-[0.16em] transition-all duration-500 ${
+                  active ? 'border-brand-teal bg-[#14363b] text-brand-teal' : 'border-[#274148] bg-[#0d2025] text-[#7f9396]'
+                }`}
+              >
+                {label}
+              </div>
+            );
+          })}
         </div>
-      )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-5 items-start">
+          <div className="space-y-4">
+            <div className="border border-[#254149] bg-black/55 p-3">
+              <video ref={videoRef} autoPlay muted playsInline className="w-full aspect-video object-cover bg-black/85" />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {state !== 'connected' ? (
+                <button
+                  type="button"
+                  onClick={startSession}
+                  disabled={state === 'connecting'}
+                  className="px-5 py-3 btn-brand text-[10px] uppercase tracking-[0.24em] disabled:opacity-40"
+                >
+                  {state === 'connecting' ? 'Waking concierge…' : 'Begin Tuning Session'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={closeSession}
+                  className="px-5 py-3 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.24em] text-[#d0ddde] transition-colors hover:border-brand-teal"
+                >
+                  End Session
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={micEnabled ? stopMic : startMic}
+                disabled={state !== 'connected'}
+                className="px-5 py-3 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.24em] text-[#d0ddde] transition-colors disabled:opacity-45 hover:border-brand-teal"
+              >
+                {micEnabled ? 'Pause Voice Link' : 'Open Voice Link'}
+              </button>
+
+              <button
+                type="button"
+                onClick={cameraEnabled ? stopCamera : startCamera}
+                disabled={state !== 'connected'}
+                className="px-5 py-3 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.24em] text-[#d0ddde] transition-colors disabled:opacity-45 hover:border-brand-teal"
+              >
+                {cameraEnabled ? 'Hide Camera Context' : 'Enable Camera Context'}
+              </button>
+            </div>
+
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#7f9599]">
+              Speak as you would to a trusted strategist. The concierge learns your rhythm as you talk.
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="border border-[#274148] bg-[#0d2025] p-4">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Session Mood</div>
+              <div className="mt-2 text-sm leading-relaxed text-[#d0ddde]">
+                {state === 'connected'
+                  ? 'Live and adaptive. Keep speaking to shape how your suite responds.'
+                  : 'Standby. Start the session when you are ready to calibrate.'}
+              </div>
+            </div>
+            <div className="border border-[#274148] bg-[#0d2025] p-4">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Conversation Memory</div>
+              <div className="mt-2 text-sm leading-relaxed text-[#d0ddde]">
+                Transcript is intentionally hidden during calibration to keep focus on the conversation.
+              </div>
+            </div>
+            {error && (
+              <div className="border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200 leading-relaxed">
+                {error}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-[#1c343a] pt-4">
+          <button
+            type="button"
+            onClick={() => setShowProTools((prev) => !prev)}
+            className="text-[10px] uppercase tracking-[0.24em] text-[#9bb1b4] hover:text-brand-teal transition-colors"
+          >
+            {showProTools ? 'Hide Studio Pro Tools' : 'Show Studio Pro Tools'}
+          </button>
+
+          {showProTools && (
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4 border border-[#254149] bg-[#0b1e23] p-4 animate-[fadeIn_300ms_ease-out]">
+              <div className="space-y-2">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Realtime Metrics</div>
+                <div className="text-xs text-[#bfcfd1]">Model: {tokenInfo?.model ?? 'not connected'}</div>
+                <div className="text-xs text-[#bfcfd1]">Voice: {tokenInfo?.voice_name ?? 'n/a'}</div>
+                <div className="text-xs text-[#bfcfd1]">Latency: {latencyMs ? `${latencyMs} ms` : 'n/a'}</div>
+                <div className="text-xs text-[#bfcfd1]">Token expiry: {tokenInfo?.expires_at ?? 'n/a'}</div>
+              </div>
+
+              <div className="space-y-2 lg:col-span-2">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Guided Prompt Relay</div>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Ask for positioning, rehearsal, or your next high-leverage move..."
+                  className="w-full min-h-20 border border-[#385257] bg-[#10272c] text-[#d7e3e4] focus:border-brand-teal outline-none p-3 text-sm leading-relaxed"
+                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={sendPrompt}
+                    disabled={state !== 'connected' || sending || !prompt.trim()}
+                    className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
+                  >
+                    {sending ? 'Sending…' : 'Send Guided Turn'}
+                  </button>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-[#7f9599]">
+                    Transcript available below for review only
+                  </div>
+                </div>
+                <pre className="whitespace-pre-wrap font-mono text-xs text-[#b6c8ca] leading-relaxed min-h-14 max-h-40 overflow-auto border border-[#254149] bg-[#07171b] p-3">
+                  {transcript || 'Waiting for model output...'}
+                </pre>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
