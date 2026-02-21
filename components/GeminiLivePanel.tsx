@@ -4,6 +4,8 @@ import { createGeminiLiveToken } from '../services/liveApi';
 import { GeminiLiveTokenResponse } from '../types';
 
 type LiveState = 'idle' | 'connecting' | 'connected' | 'error';
+const PCM_SMOOTHING_BUFFER_MS = 70;
+const PCM_PLAYBACK_LOOKAHEAD_SEC = 0.07;
 
 const base64ToBytes = (base64: string) => {
   const binary = atob(base64);
@@ -97,6 +99,9 @@ export function GeminiLivePanel() {
   const audioGainRef = useRef<GainNode | null>(null);
   const playbackContextRef = useRef<AudioContext | null>(null);
   const playbackCursorRef = useRef<number>(0);
+  const playbackSampleRateRef = useRef<number>(24000);
+  const pendingPcmChunksRef = useRef<Uint8Array[]>([]);
+  const pendingPcmBytesRef = useRef<number>(0);
   const cameraLoopRef = useRef<number | null>(null);
   const audioChunksRef = useRef<string[]>([]);
   const audioMimeRef = useRef<string>('audio/pcm;rate=24000');
@@ -182,24 +187,38 @@ export function GeminiLivePanel() {
       playbackContextRef.current = null;
     }
     playbackCursorRef.current = 0;
+    playbackSampleRateRef.current = 24000;
+    pendingPcmChunksRef.current = [];
+    pendingPcmBytesRef.current = 0;
   };
 
-  const queuePcmChunk = (pcmBase64: string, mimeType: string) => {
-    const sampleRate = parsePcmRate(mimeType);
+  const flushPendingPcm = (force = false) => {
+    const sampleRate = playbackSampleRateRef.current || 24000;
+    const minBytes = Math.max(2, Math.floor((sampleRate * PCM_SMOOTHING_BUFFER_MS * 2) / 1000));
+    if (!force && pendingPcmBytesRef.current < minBytes) return;
+    if (pendingPcmBytesRef.current < 2) return;
     if (!playbackContextRef.current) {
       playbackContextRef.current = new AudioContext({ sampleRate });
       playbackCursorRef.current = playbackContextRef.current.currentTime;
     }
-    const context = playbackContextRef.current;
-    const pcmBytes = base64ToBytes(pcmBase64);
-    if (pcmBytes.byteLength < 2) return;
 
-    const sampleCount = Math.floor(pcmBytes.byteLength / 2);
+    const merged = new Uint8Array(pendingPcmBytesRef.current);
+    let offset = 0;
+    for (const chunk of pendingPcmChunksRef.current) {
+      merged.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    pendingPcmChunksRef.current = [];
+    pendingPcmBytesRef.current = 0;
+
+    const usableByteLength = Math.floor(merged.byteLength / 2) * 2;
+    const sampleCount = usableByteLength / 2;
     if (!sampleCount) return;
 
+    const context = playbackContextRef.current;
     const buffer = context.createBuffer(1, sampleCount, sampleRate);
     const channel = buffer.getChannelData(0);
-    const view = new DataView(pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength);
+    const view = new DataView(merged.buffer, merged.byteOffset, usableByteLength);
     for (let i = 0; i < sampleCount; i += 1) {
       channel[i] = view.getInt16(i * 2, true) / 32768;
     }
@@ -209,9 +228,19 @@ export function GeminiLivePanel() {
     source.connect(context.destination);
 
     const now = context.currentTime;
-    const startAt = Math.max(playbackCursorRef.current, now + 0.015);
+    const startAt = Math.max(playbackCursorRef.current, now + PCM_PLAYBACK_LOOKAHEAD_SEC);
     source.start(startAt);
     playbackCursorRef.current = startAt + buffer.duration;
+  };
+
+  const queuePcmChunk = (pcmBase64: string, mimeType: string) => {
+    const sampleRate = parsePcmRate(mimeType);
+    playbackSampleRateRef.current = sampleRate;
+    const pcmBytes = base64ToBytes(pcmBase64);
+    if (pcmBytes.byteLength < 2) return;
+    pendingPcmChunksRef.current.push(pcmBytes);
+    pendingPcmBytesRef.current += pcmBytes.byteLength;
+    flushPendingPcm(false);
   };
 
   const playTurnAudio = async () => {
@@ -273,6 +302,9 @@ export function GeminiLivePanel() {
         await playbackContextRef.current.resume();
       }
       playbackCursorRef.current = playbackContextRef.current.currentTime;
+      playbackSampleRateRef.current = 24000;
+      pendingPcmChunksRef.current = [];
+      pendingPcmBytesRef.current = 0;
 
       const session = await ai.live.connect({
         model: token.model,
@@ -302,6 +334,7 @@ export function GeminiLivePanel() {
               if (!audioMimeRef.current.toLowerCase().startsWith('audio/pcm')) {
                 await playTurnAudio();
               } else {
+                flushPendingPcm(true);
                 audioChunksRef.current = [];
               }
             }
