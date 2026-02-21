@@ -89,6 +89,9 @@ const videoModelDefault = process.env.GEMINI_MODEL_VIDEO || 'veo-3.1-generate-pr
 const geminiLiveModelDefault =
   process.env.GEMINI_MODEL_LIVE_VOICE || 'gemini-2.5-flash-native-audio-preview-12-2025';
 const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
+const liveTokenAi = geminiApiKey
+  ? new GoogleGenAI({ apiKey: geminiApiKey, httpOptions: { apiVersion: 'v1alpha' } })
+  : null;
 
 const nonEmpty = (value) => String(value ?? '').trim();
 const adminEmailSet = new Set(
@@ -110,6 +113,9 @@ const DEFAULT_APP_CONFIG = {
   prompts: {
     suite_appendix: '',
     binge_appendix: '',
+    rom_appendix: '',
+    live_appendix: '',
+    art_director_appendix: '',
   },
   ui: {
     show_prologue: true,
@@ -189,6 +195,9 @@ const normalizeConfig = (input = {}) => {
     prompts: {
       suite_appendix: String(prompts.suite_appendix ?? '').trim(),
       binge_appendix: String(prompts.binge_appendix ?? '').trim(),
+      rom_appendix: String(prompts.rom_appendix ?? '').trim(),
+      live_appendix: String(prompts.live_appendix ?? '').trim(),
+      art_director_appendix: String(prompts.art_director_appendix ?? '').trim(),
     },
     ui: {
       show_prologue:
@@ -265,6 +274,26 @@ const normalizeConfig = (input = {}) => {
     },
   };
 };
+
+const joinInstructionParts = (...parts) =>
+  parts
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean)
+    .join('\n\n');
+
+const suiteSystemInstruction = (runtimeConfig) =>
+  joinInstructionParts(CONCIERGE_ROM_SYSTEM, runtimeConfig?.prompts?.rom_appendix);
+
+const bingeSystemInstruction = (runtimeConfig) =>
+  joinInstructionParts(composeBingeSystemInstruction(), runtimeConfig?.prompts?.rom_appendix);
+
+const liveSystemInstruction = (runtimeConfig) =>
+  joinInstructionParts(
+    CONCIERGE_ROM_SYSTEM,
+    runtimeConfig?.prompts?.rom_appendix,
+    runtimeConfig?.voice?.narration_style || DEFAULT_APP_CONFIG.voice.narration_style,
+    runtimeConfig?.prompts?.live_appendix
+  );
 
 const configRef = () => db.collection(CONFIG_COLLECTION).doc(CONFIG_DOC);
 
@@ -492,11 +521,16 @@ const buildMediaDirection = ({ episode, dna, targetSkill, runtimeConfig }) => {
   const lens = nonEmpty(runtimeConfig.media.narrative_lens) || DEFAULT_APP_CONFIG.media.narrative_lens;
   const skill = nonEmpty(targetSkill) || 'prompt architecture under pressure';
   const constraintLine = constraints ? `Constraint: ${constraints}.` : 'Constraint: keep the action concise.';
+  const artDirectorOverlay = nonEmpty(runtimeConfig.prompts.art_director_appendix);
 
   return {
     narrative: `${lens} Skill focus: ${skill}.`,
-    image_prompt: `${imageSeed}\nStyle direction: ${runtimeConfig.media.image_style}\nNarrative lens: ${lens}\n${constraintLine}`,
-    video_prompt: `${videoSeed}\nStyle direction: ${runtimeConfig.media.video_style}\nNarrative lens: ${lens}\n${constraintLine}`,
+    image_prompt: `${imageSeed}\nStyle direction: ${runtimeConfig.media.image_style}\nNarrative lens: ${lens}\n${constraintLine}${
+      artDirectorOverlay ? `\nArt director overlay: ${artDirectorOverlay}` : ''
+    }`,
+    video_prompt: `${videoSeed}\nStyle direction: ${runtimeConfig.media.video_style}\nNarrative lens: ${lens}\n${constraintLine}${
+      artDirectorOverlay ? `\nArt director overlay: ${artDirectorOverlay}` : ''
+    }`,
   };
 };
 
@@ -639,8 +673,7 @@ const synthesizeWithGeminiLive = async ({ runtimeConfig, text }) => {
   const timeoutMs = Number(process.env.GEMINI_LIVE_TIMEOUT_MS || 30000);
   const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
   const voiceName = nonEmpty(runtimeConfig.voice.gemini_voice_name) || nonEmpty(runtimeConfig.voice.speaker) || 'Aoede';
-  const instruction =
-    nonEmpty(runtimeConfig.voice.narration_style) || DEFAULT_APP_CONFIG.voice.narration_style;
+  const instruction = liveSystemInstruction(runtimeConfig);
 
   return await new Promise(async (resolve, reject) => {
     let session = null;
@@ -876,6 +909,72 @@ const generateVideoAsset = async ({ runtimeConfig, direction }) => {
   }
 };
 
+app.post('/v1/live/token', requireAuth, async (_req, res) => {
+  const runtimeConfig = await loadAppConfig();
+  if (!runtimeConfig.voice.enabled) {
+    return res.status(503).json({ error: 'voice_disabled' });
+  }
+  if (!liveTokenAi) {
+    return res.status(503).json({ error: 'missing_gemini_api_key' });
+  }
+
+  const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
+  const voiceName = nonEmpty(runtimeConfig.voice.gemini_voice_name) || nonEmpty(runtimeConfig.voice.speaker) || 'Aoede';
+  const issuedAt = new Date();
+  const expiresAt = new Date(issuedAt.getTime() + 45 * 60 * 1000);
+  const newSessionExpireAt = new Date(issuedAt.getTime() + 4 * 60 * 1000);
+
+  try {
+    const token = await liveTokenAi.tokens.create({
+      config: {
+        uses: 3,
+        expireTime: expiresAt.toISOString(),
+        newSessionExpireTime: newSessionExpireAt.toISOString(),
+        liveConnectConstraints: {
+          model,
+          config: {
+            responseModalities: [Modality.AUDIO, Modality.TEXT],
+            systemInstruction: liveSystemInstruction(runtimeConfig),
+            temperature: runtimeConfig.voice.temperature,
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName,
+                },
+              },
+            },
+            mediaResolution: 'MEDIA_RESOLUTION_LOW',
+          },
+        },
+        lockAdditionalFields: [
+          'responseModalities',
+          'systemInstruction',
+          'temperature',
+          'speechConfig',
+          'mediaResolution',
+        ],
+      },
+    });
+
+    if (!token?.name) {
+      throw new Error('ephemeral_token_missing_name');
+    }
+
+    return res.json({
+      token_name: token.name,
+      model,
+      voice_name: voiceName,
+      issued_at: issuedAt.toISOString(),
+      expires_at: expiresAt.toISOString(),
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: 'live_token_failed',
+      detail: sanitizeError(error, 'live_token_failed'),
+    });
+  }
+});
+
 app.post('/v1/voice/synthesize', requireAuth, async (req, res) => {
   const runtimeConfig = await loadAppConfig();
   const text = nonEmpty(req.body?.text);
@@ -947,7 +1046,7 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       config: {
         responseMimeType: 'application/json',
         responseSchema: SUITE_ARTIFACTS_SCHEMA,
-        systemInstruction: CONCIERGE_ROM_SYSTEM,
+        systemInstruction: suiteSystemInstruction(runtimeConfig),
         temperature: suiteTemperature,
       },
     });
@@ -1019,7 +1118,7 @@ app.post('/v1/binge/episode', requireAuth, async (req, res) => {
       config: {
         responseMimeType: 'application/json',
         responseSchema: EPISODE_SCHEMA,
-        systemInstruction: composeBingeSystemInstruction(),
+        systemInstruction: bingeSystemInstruction(runtimeConfig),
         temperature: bingeTemperature
       }
     });

@@ -73,11 +73,14 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-8">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white ring-1 ring-black/10 shadow-2xl">
-        <div className="sticky top-0 bg-white border-b border-black/10 px-6 py-4 flex items-center justify-between z-10">
+      <div className="relative w-full max-w-5xl max-h-[92vh] overflow-hidden bg-[#f6f8f8] ring-1 ring-black/10 shadow-2xl">
+        <div className="sticky top-0 bg-[#f6f8f8] border-b border-black/10 px-6 py-4 flex items-center justify-between z-10">
           <div>
             <div className="text-[10px] uppercase tracking-[0.25em] text-brand-teal">Admin</div>
             <h2 className="text-2xl font-editorial italic">Configuration Console</h2>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-black/40 mt-1">
+              Agent behavior, live interaction, and media direction controls
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -87,7 +90,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </button>
         </div>
 
-        <div className="p-6 md:p-8 space-y-8">
+        <div className="p-6 md:p-8 space-y-8 max-h-[72vh] overflow-y-auto">
           {loading && (
             <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Loading…</div>
           )}
@@ -104,7 +107,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
 
           {isReady && config && (
             <>
-              <section className="space-y-4">
+              <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Generation</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -168,7 +171,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Prompt Overrides</div>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -205,10 +208,61 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       className="w-full min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Core ROM Overlay (applies to all agents)</label>
+                    <textarea
+                      value={config.prompts.rom_appendix}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                prompts: { ...prev.prompts, rom_appendix: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Live Voice/Video Overlay</label>
+                    <textarea
+                      value={config.prompts.live_appendix}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                prompts: { ...prev.prompts, live_appendix: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-700">Art Director Overlay</label>
+                    <textarea
+                      value={config.prompts.art_director_appendix}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                prompts: { ...prev.prompts, art_director_appendix: e.target.value },
+                              }
+                            : prev
+                        )
+                      }
+                      className="w-full min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
+                    />
+                  </div>
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Agentic Media Routing</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -358,7 +412,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Feature Toggles</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="flex items-center gap-3 text-sm">
@@ -483,7 +537,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Voice Engine</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <label className="flex items-center gap-3 text-sm">
@@ -666,7 +720,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Access & Entitlements</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <label className="flex items-center gap-3 text-sm">

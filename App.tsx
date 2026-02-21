@@ -226,7 +226,7 @@ const App: React.FC = () => {
   const hovered = hoveredModuleId ? visibleModules.find((m) => m.id === hoveredModuleId) ?? null : null;
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f5f5f5] text-[#1a1a1a]">
+    <div className="min-h-screen overflow-hidden bg-[#f4f5f4] text-[#1a1a1a]">
       {showPrologue && (
         <div className="fixed inset-0 z-[60] bg-[#050505] text-white flex items-center justify-center p-6">
           <div className="max-w-3xl text-center space-y-10">
@@ -258,7 +258,7 @@ const App: React.FC = () => {
       )}
 
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-10 px-6 py-6 flex justify-between items-center">
+      <header className="fixed top-0 left-0 w-full z-10 px-6 py-6 flex justify-between items-center backdrop-blur-[2px]">
         <div className="flex items-center gap-6">
           <h1 className="text-xs font-bold tracking-widest uppercase">
             Third Signal <span className="opacity-40 ml-2 font-normal hidden sm:inline">Career Concierge</span>
@@ -269,7 +269,7 @@ const App: React.FC = () => {
           <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{user.email ?? user.uid}</span>
           <button
             onClick={() => setAdminOpen(true)}
-            className="text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors"
+            className="text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors bg-white/60"
           >
             Admin
           </button>
@@ -290,7 +290,9 @@ const App: React.FC = () => {
         onClick={() => isMobile && setHoveredModuleId(null)}
         onMouseLeave={() => !isMobile && setHoveredModuleId(null)}
       >
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto relative">
+          <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[radial-gradient(circle_at_center,rgba(14,159,150,0.14),transparent_62%)]" />
+          <div className="pointer-events-none absolute top-20 -left-24 h-48 w-48 rounded-full bg-[radial-gradient(circle_at_center,rgba(14,159,150,0.08),transparent_68%)]" />
           <div className="mb-10">
             <div className="text-[10px] uppercase tracking-[0.3em] opacity-40">Suite Home</div>
             <div className="text-3xl md:text-4xl font-editorial italic mt-3">Your modules.</div>
@@ -300,9 +302,13 @@ const App: React.FC = () => {
             <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal mt-4">
               Semantic color: Teal = action and completion
             </div>
+            <div className="mt-5 inline-flex items-center gap-4 border border-black/10 bg-white/80 px-4 py-2 text-[10px] uppercase tracking-[0.2em]">
+              <span className="text-brand-teal">Boot Sequence</span>
+              <span className="text-black/45">Smart Start Intake unlocks the suite graph</span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-200 border border-gray-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-[#dfe4e3] border border-[#dfe4e3] shadow-[0_24px_48px_-34px_rgba(0,0,0,0.22)]">
             {visibleModules.map((m, idx) => {
               const isHovered = hoveredModuleId === m.id;
               const isRelated = hovered?.relatedIds?.includes(m.id) ?? false;
@@ -314,9 +320,11 @@ const App: React.FC = () => {
               return (
                 <div
                   key={m.id}
-                  className={`bg-[#f5f5f5] p-6 transition-all dur-md ease-exit cursor-pointer select-none ${
+                  className={`bg-[#f7f8f8] p-6 transition-all dur-md ease-exit cursor-pointer select-none ${
                     constellationDimmed ? 'opacity-20' : 'opacity-100'
-                  } ${mobileFocused ? 'bg-white ring-1 ring-black/5 shadow-card-hover border-brand-teal' : 'hover:bg-white/80'}`}
+                  } ${mobileFocused ? 'bg-white ring-1 ring-black/5 shadow-card-hover border-brand-teal' : 'hover:bg-white/95'} ${
+                    !locked ? 'relative before:absolute before:left-0 before:top-0 before:h-[2px] before:w-14 before:bg-brand-teal/60' : ''
+                  }`}
                   onClick={(e) => handleModuleClick(e, m)}
                   onMouseEnter={() => !isMobile && setHoveredModuleId(m.id)}
                 >
@@ -364,7 +372,7 @@ const App: React.FC = () => {
             </div>
 
             {/* Left column */}
-            <div className="w-full md:w-1/3 bg-[#111] text-white p-8 md:p-12 flex flex-col justify-between shrink-0">
+            <div className="w-full md:w-[31%] bg-[#0f1314] text-white p-8 md:p-12 flex flex-col justify-between shrink-0">
               <div>
                 <div className="text-xs font-mono opacity-50 mb-8 flex justify-between">
                   <span>{openModule.index} / {String(visibleModules.length).padStart(2, '0')}</span>
@@ -383,7 +391,7 @@ const App: React.FC = () => {
             </div>
 
             {/* Right column */}
-            <div ref={modalScrollRef} className="w-full md:w-2/3 p-8 md:p-16 bg-white md:overflow-y-auto">
+            <div ref={modalScrollRef} className="w-full md:w-[69%] p-8 md:p-14 bg-[#fbfcfb] md:overflow-y-auto">
               {openModule.id === 'intake' ? (
                 <IntakeFlow
                   uid={user.uid}

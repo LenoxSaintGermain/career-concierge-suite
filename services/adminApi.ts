@@ -31,6 +31,9 @@ const normalizeAdminConfig = (input: any): AppConfig => {
     prompts: {
       suite_appendix: String(source?.prompts?.suite_appendix ?? ''),
       binge_appendix: String(source?.prompts?.binge_appendix ?? ''),
+      rom_appendix: String(source?.prompts?.rom_appendix ?? ''),
+      live_appendix: String(source?.prompts?.live_appendix ?? ''),
+      art_director_appendix: String(source?.prompts?.art_director_appendix ?? ''),
     },
     ui: {
       show_prologue: Boolean(source?.ui?.show_prologue ?? true),

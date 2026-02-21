@@ -160,6 +160,9 @@ export interface AppConfig {
   prompts: {
     suite_appendix: string;
     binge_appendix: string;
+    rom_appendix: string;
+    live_appendix: string;
+    art_director_appendix: string;
   };
   ui: {
     show_prologue: boolean;
@@ -210,6 +213,14 @@ export interface VoiceSynthesisResponse {
   mime_type: string;
   audio_base64: string;
   generated_at: string;
+}
+
+export interface GeminiLiveTokenResponse {
+  token_name: string;
+  model: string;
+  voice_name: string;
+  issued_at: string;
+  expires_at: string;
 }
 
 export interface ArtifactDoc<T = unknown> {

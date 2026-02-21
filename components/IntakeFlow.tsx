@@ -15,6 +15,7 @@ import {
 } from '../services/stubGenerator';
 import { generateSuiteArtifacts } from '../services/suiteApi';
 import { synthesizeConciergeVoice } from '../services/voiceApi';
+import { GeminiLivePanel } from './GeminiLivePanel';
 
 type Step = 'intent' | 'concierge' | 'questions' | 'prefs' | 'plating' | 'done';
 const SUITE_FEEL_OPTIONS = ['STRATEGIC', 'GROUNDED', 'STORY', 'JOB-SEARCH', 'SKILLS', 'LEADERSHIP'];
@@ -32,6 +33,7 @@ export function IntakeFlow(props: {
   const [error, setError] = useState<string | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [lastVoiceProvider, setLastVoiceProvider] = useState<'sesame' | 'gemini_live' | null>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export function IntakeFlow(props: {
           value={readText(field.id)}
           onChange={(e) => setText(field.id, e.target.value)}
           placeholder={field.placeholder ?? ''}
-          className="border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+          className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
         />
       );
     }
@@ -86,7 +88,7 @@ export function IntakeFlow(props: {
           value={readText(field.id)}
           onChange={(e) => setText(field.id, e.target.value)}
           placeholder={field.placeholder ?? ''}
-          className="min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm leading-relaxed"
+          className="w-full min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm leading-relaxed bg-white"
         />
       );
     }
@@ -96,7 +98,7 @@ export function IntakeFlow(props: {
         <select
           value={readText(field.id)}
           onChange={(e) => setSingle(field.id, e.target.value)}
-          className="border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+          className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
         >
           <option value="">Select…</option>
           {(field.options ?? []).map((option) => (
@@ -190,6 +192,7 @@ export function IntakeFlow(props: {
     setVoiceError(null);
     try {
       const response = await synthesizeConciergeVoice(buildVoiceScript());
+      setLastVoiceProvider(response.provider);
       const mime = response.mime_type || 'audio/wav';
       const dataUrl = `data:${mime};base64,${response.audio_base64}`;
       if (activeAudioRef.current) {
@@ -255,7 +258,7 @@ export function IntakeFlow(props: {
   };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 max-w-[860px]">
       <div>
         <div className="text-xs font-mono uppercase tracking-widest text-brand-teal mb-3">Smart Start Intake</div>
         <h2 className="text-3xl md:text-4xl font-editorial leading-tight">A short concierge conversation.</h2>
@@ -279,7 +282,7 @@ export function IntakeFlow(props: {
           {voiceBusy ? 'Rendering voice…' : 'Play concierge voice'}
         </button>
         <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">
-          Sesame voice engine
+          {lastVoiceProvider ? `${lastVoiceProvider} engine` : 'Configured voice engine'}
         </div>
       </div>
       {voiceError && (
@@ -327,6 +330,7 @@ export function IntakeFlow(props: {
 
       {step === 'concierge' && (
         <div className="space-y-8">
+          <GeminiLivePanel />
           <section className="border border-black/10 p-5 bg-gray-50 space-y-4">
             <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Conversation Flow</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -338,7 +342,7 @@ export function IntakeFlow(props: {
                   value={readText('conversation_current_reality')}
                   onChange={(e) => setText('conversation_current_reality', e.target.value)}
                   placeholder="Constraints, timelines, competing priorities."
-                  className="min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm leading-relaxed"
+                  className="w-full min-h-28 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm leading-relaxed bg-white"
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -375,7 +379,7 @@ export function IntakeFlow(props: {
           </section>
           <div className="flex items-center gap-3 pt-2">
             <button
-              onClick={() => setStep('concierge')}
+              onClick={() => setStep('intent')}
               className="text-xs uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity"
             >
               Back
@@ -413,7 +417,7 @@ export function IntakeFlow(props: {
           </div>
           <div className="flex items-center gap-3 pt-2">
             <button
-              onClick={() => setStep('intent')}
+              onClick={() => setStep('concierge')}
               className="text-xs uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity"
             >
               Back
