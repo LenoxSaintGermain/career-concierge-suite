@@ -6,6 +6,11 @@ import { GeminiLiveTokenResponse } from '../types';
 type LiveState = 'idle' | 'connecting' | 'connected' | 'error';
 const PCM_SMOOTHING_BUFFER_MS = 70;
 const PCM_PLAYBACK_LOOKAHEAD_SEC = 0.07;
+const CONNECTING_SCENES = [
+  'Loading concierge identity',
+  'Aligning ROM tone and pacing',
+  'Opening low-latency voice channel',
+];
 
 const base64ToBytes = (base64: string) => {
   const binary = atob(base64);
@@ -88,6 +93,7 @@ export function GeminiLivePanel() {
   const [micEnabled, setMicEnabled] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<GeminiLiveTokenResponse | null>(null);
   const [showProTools, setShowProTools] = useState(false);
+  const [loadingSceneIndex, setLoadingSceneIndex] = useState(0);
 
   const sessionRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -115,6 +121,14 @@ export function GeminiLivePanel() {
   const statusLabel =
     state === 'connected' ? 'Connected' : state === 'connecting' ? 'Connecting' : state === 'error' ? 'Issue' : 'Standby';
   const stageIndex = state !== 'connected' ? 1 : engagementReady ? 4 : cameraReady ? 3 : micReady ? 2 : 1;
+  const firstName = String(tokenInfo?.client_name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)[0];
+  const personalGreeting = firstName
+    ? `Welcome, ${firstName}. Your concierge is learning your context in real time.`
+    : 'Welcome. Your concierge is learning your context in real time.';
+  const connectingScene = CONNECTING_SCENES[loadingSceneIndex];
 
   const clearCameraLoop = () => {
     if (cameraLoopRef.current) {
@@ -516,6 +530,17 @@ export function GeminiLivePanel() {
   };
 
   useEffect(() => {
+    if (state !== 'connecting') {
+      setLoadingSceneIndex(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setLoadingSceneIndex((prev) => (prev + 1) % CONNECTING_SCENES.length);
+    }, 950);
+    return () => window.clearInterval(id);
+  }, [state]);
+
+  useEffect(() => {
     return () => {
       closeSession();
       if (activeAudioRef.current) {
@@ -535,13 +560,13 @@ export function GeminiLivePanel() {
       <div className="relative space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-brand-teal">Concierge Presence</div>
+            <div className="text-[10px] uppercase tracking-[0.25em] text-brand-teal">Concierge Live Studio</div>
             <h3 className="text-[28px] md:text-[34px] font-editorial italic leading-tight mt-2">
               Tune your AI concierge in one living conversation.
             </h3>
             <p className="text-sm text-[#c7d5d7] leading-relaxed mt-3 max-w-2xl">
-              This is your calibration moment. Speak naturally, share context, and the suite adapts in real time to
-              your priorities.
+              {personalGreeting} Speak naturally, share pressure points, and the suite adapts to your priorities as you
+              talk.
             </p>
           </div>
 
@@ -557,10 +582,10 @@ export function GeminiLivePanel() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[
-            '1. Start Session',
-            '2. Open Voice',
-            '3. Add Camera',
-            '4. Converse',
+            '1. Enter Studio',
+            '2. Share Voice',
+            '3. Add Visuals',
+            '4. Co-Design',
           ].map((label, idx) => {
             const active = idx + 1 <= stageIndex;
             return (
@@ -578,8 +603,43 @@ export function GeminiLivePanel() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-5 items-start">
           <div className="space-y-4">
-            <div className="border border-[#254149] bg-black/55 p-3">
-              <video ref={videoRef} autoPlay muted playsInline className="w-full aspect-video object-cover bg-black/85" />
+            <div className="relative overflow-hidden border border-[#254149] bg-black/55 p-3">
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full aspect-video object-cover bg-black/85"
+              />
+              {!cameraEnabled && (
+                <div className="absolute inset-3 bg-[radial-gradient(circle_at_20%_20%,rgba(38,200,188,0.18),rgba(7,22,26,0.95)_62%)]">
+                  <div className="absolute inset-0 opacity-35">
+                    <div className="absolute top-0 left-[-20%] h-[1px] w-[40%] bg-brand-teal/70 animate-shimmer" />
+                    <div className="absolute bottom-16 right-[-20%] h-[1px] w-[42%] bg-brand-teal/50 animate-shimmer" />
+                  </div>
+                  <div className="absolute inset-0 flex flex-col justify-end p-5">
+                    {state === 'connecting' ? (
+                      <>
+                        <div className="text-[10px] uppercase tracking-[0.28em] text-brand-teal">Live Warmup</div>
+                        <div className="mt-2 text-2xl font-editorial italic text-[#ebf3f4]">{connectingScene}</div>
+                        <div className="mt-3 h-1 w-full overflow-hidden bg-white/15">
+                          <div className="h-full w-[32%] bg-brand-teal animate-shimmer" />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-[10px] uppercase tracking-[0.28em] text-brand-teal">Cinematic Context</div>
+                        <div className="mt-2 text-2xl font-editorial italic text-[#ebf3f4]">
+                          Voice-first by default.
+                        </div>
+                        <div className="mt-2 text-xs uppercase tracking-[0.2em] text-[#a8bcbe]">
+                          Add camera only when visual context helps.
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -590,7 +650,7 @@ export function GeminiLivePanel() {
                   disabled={state === 'connecting'}
                   className="px-5 py-3 btn-brand text-[10px] uppercase tracking-[0.24em] disabled:opacity-40"
                 >
-                  {state === 'connecting' ? 'Waking concierge…' : 'Begin Tuning Session'}
+                  {state === 'connecting' ? 'Opening Live Studio…' : 'Step 1: Enter Live Studio'}
                 </button>
               ) : (
                 <button
@@ -608,7 +668,7 @@ export function GeminiLivePanel() {
                 disabled={state !== 'connected'}
                 className="px-5 py-3 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.24em] text-[#d0ddde] transition-colors disabled:opacity-45 hover:border-brand-teal"
               >
-                {micEnabled ? 'Pause Voice Link' : 'Open Voice Link'}
+                {micEnabled ? 'Pause Voice Channel' : 'Step 2: Open Voice Channel'}
               </button>
 
               <button
@@ -617,12 +677,12 @@ export function GeminiLivePanel() {
                 disabled={state !== 'connected'}
                 className="px-5 py-3 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.24em] text-[#d0ddde] transition-colors disabled:opacity-45 hover:border-brand-teal"
               >
-                {cameraEnabled ? 'Hide Camera Context' : 'Enable Camera Context'}
+                {cameraEnabled ? 'Pause Visual Context' : 'Step 3: Invite Visual Context'}
               </button>
             </div>
 
             <div className="text-[10px] uppercase tracking-[0.2em] text-[#7f9599]">
-              Speak as you would to a trusted strategist. The concierge learns your rhythm as you talk.
+              Talk as you would with a trusted strategist. The concierge picks up your rhythm as you speak.
             </div>
           </div>
 
@@ -632,13 +692,13 @@ export function GeminiLivePanel() {
               <div className="mt-2 text-sm leading-relaxed text-[#d0ddde]">
                 {state === 'connected'
                   ? 'Live and adaptive. Keep speaking to shape how your suite responds.'
-                  : 'Standby. Start the session when you are ready to calibrate.'}
+                  : 'Standby. Enter the studio when you are ready to shape your next move.'}
               </div>
             </div>
             <div className="border border-[#274148] bg-[#0d2025] p-4">
               <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Conversation Memory</div>
               <div className="mt-2 text-sm leading-relaxed text-[#d0ddde]">
-                Transcript is intentionally hidden during calibration to keep focus on the conversation.
+                Transcript is intentionally hidden in this view to keep focus on presence and flow.
               </div>
             </div>
             {error && (
@@ -655,7 +715,7 @@ export function GeminiLivePanel() {
             onClick={() => setShowProTools((prev) => !prev)}
             className="text-[10px] uppercase tracking-[0.24em] text-[#9bb1b4] hover:text-brand-teal transition-colors"
           >
-            {showProTools ? 'Hide Studio Pro Tools' : 'Show Studio Pro Tools'}
+            {showProTools ? 'Hide Studio Controls' : 'Reveal Studio Controls'}
           </button>
 
           {showProTools && (

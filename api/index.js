@@ -98,6 +98,21 @@ const liveTokenAi = geminiApiKey
   : null;
 
 const nonEmpty = (value) => String(value ?? '').trim();
+const toDisplayName = (user) => {
+  const fromClaims = nonEmpty(user?.claims?.name);
+  const fromEmail = nonEmpty(user?.email).split('@')[0] || '';
+  const raw = fromClaims || fromEmail;
+  const cleaned = raw
+    .replace(/[._-]+/g, ' ')
+    .replace(/\d+/g, ' ')
+    .trim();
+  if (!cleaned) return '';
+  return cleaned
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+};
 const adminEmailSet = new Set(
   (process.env.ADMIN_EMAILS || '')
     .split(',')
@@ -321,10 +336,18 @@ const suiteSystemInstruction = (runtimeConfig) =>
 const bingeSystemInstruction = (runtimeConfig) =>
   joinInstructionParts(composeBingeSystemInstruction(), runtimeConfig?.prompts?.rom_appendix);
 
-const liveSystemInstruction = (runtimeConfig) =>
+const liveSystemInstruction = (runtimeConfig, clientName = '') =>
   joinInstructionParts(
     CONCIERGE_ROM_SYSTEM,
     runtimeConfig?.prompts?.rom_appendix,
+    `LIVE OPENING PROTOCOL:
+- First response should feel like meeting a trusted concierge, not an assessment.
+- If a name is available, use it once naturally: ${clientName || 'client'}.
+- Opening should be 1-2 short sentences, then one concise question.
+- Focus the question on today's priority and immediate pressure.
+- Never use the words: calibrated, calibration, assessment, or test.
+- Prefer "understanding your context" and "shaping your suite around you."
+- Keep tone composed, premium, and quietly encouraging.`,
     runtimeConfig?.voice?.narration_style || DEFAULT_APP_CONFIG.voice.narration_style,
     runtimeConfig?.prompts?.live_appendix
   );
@@ -699,7 +722,7 @@ const synthesizeWithSesame = async ({ runtimeConfig, text }) => {
   }
 };
 
-const synthesizeWithGeminiLive = async ({ runtimeConfig, text }) => {
+const synthesizeWithGeminiLive = async ({ runtimeConfig, text, clientName }) => {
   if (!ai) {
     throw new Error('missing_gemini_api_key');
   }
@@ -707,7 +730,7 @@ const synthesizeWithGeminiLive = async ({ runtimeConfig, text }) => {
   const timeoutMs = Number(process.env.GEMINI_LIVE_TIMEOUT_MS || 30000);
   const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
   const voiceName = nonEmpty(runtimeConfig.voice.gemini_voice_name) || nonEmpty(runtimeConfig.voice.speaker) || 'Aoede';
-  const instruction = liveSystemInstruction(runtimeConfig);
+  const instruction = liveSystemInstruction(runtimeConfig, clientName);
 
   return await new Promise(async (resolve, reject) => {
     let session = null;
@@ -954,6 +977,7 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
 
   const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
   const voiceName = nonEmpty(runtimeConfig.voice.gemini_voice_name) || nonEmpty(runtimeConfig.voice.speaker) || 'Aoede';
+  const clientName = toDisplayName(_req.user);
   const startSensitivity =
     runtimeConfig.voice.live_vad_start_sensitivity === 'low'
       ? StartSensitivity.START_SENSITIVITY_LOW
@@ -981,7 +1005,7 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
           model,
           config: {
             responseModalities: [Modality.AUDIO],
-            systemInstruction: liveSystemInstruction(runtimeConfig),
+            systemInstruction: liveSystemInstruction(runtimeConfig, clientName),
             temperature: runtimeConfig.voice.temperature,
             realtimeInputConfig: {
               automaticActivityDetection: {
@@ -1011,6 +1035,7 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
       token_name: token.name,
       model,
       voice_name: voiceName,
+      client_name: clientName || undefined,
       issued_at: issuedAt.toISOString(),
       expires_at: expiresAt.toISOString(),
     });
@@ -1024,6 +1049,7 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
 
 app.post('/v1/voice/synthesize', requireAuth, async (req, res) => {
   const runtimeConfig = await loadAppConfig();
+  const clientName = toDisplayName(req.user);
   const text = nonEmpty(req.body?.text);
   if (!text) return res.status(400).json({ error: 'text_required' });
   if (text.length > 1200) return res.status(400).json({ error: 'text_too_long' });
@@ -1035,7 +1061,7 @@ app.post('/v1/voice/synthesize', requireAuth, async (req, res) => {
     const provider = runtimeConfig.voice.provider === 'gemini_live' ? 'gemini_live' : 'sesame';
     const payload =
       provider === 'gemini_live'
-        ? await synthesizeWithGeminiLive({ runtimeConfig, text })
+        ? await synthesizeWithGeminiLive({ runtimeConfig, text, clientName })
         : await synthesizeWithSesame({ runtimeConfig, text });
     return res.json(payload);
   } catch (error) {

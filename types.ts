@@ -223,6 +223,7 @@ export interface GeminiLiveTokenResponse {
   token_name: string;
   model: string;
   voice_name: string;
+  client_name?: string;
   issued_at: string;
   expires_at: string;
 }

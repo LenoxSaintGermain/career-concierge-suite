@@ -238,7 +238,7 @@ const App: React.FC = () => {
             <p className="text-white/70 text-sm md:text-base leading-relaxed">
               This suite is designed to keep you moving with premium pacing and clear next actions.
               <br />
-              No tests. No chaos. Just a calibrated plan.
+              No tests. No chaos. Just a plan shaped around your context.
             </p>
             <div className="inline-block border-t border-b border-white/20 py-4 px-10">
               <div className="text-white text-[10px] font-bold tracking-[0.3em] uppercase">SkillSync AI Concierge Suite</div>
@@ -297,7 +297,7 @@ const App: React.FC = () => {
             <div className="text-[10px] uppercase tracking-[0.3em] opacity-40">Suite Home</div>
             <div className="text-3xl md:text-4xl font-editorial italic mt-3">Your modules.</div>
             <p className="text-sm text-black/50 leading-relaxed mt-4 max-w-2xl">
-              Start with Intake. Everything else unlocks as soon as we calibrate your profile and generate your Brief.
+              Start with Intake. Everything else unlocks as soon as we shape your profile and generate your Brief.
             </p>
             <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal mt-4">
               Semantic color: Teal = action and completion

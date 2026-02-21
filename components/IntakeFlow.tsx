@@ -173,16 +173,16 @@ export function IntakeFlow(props: {
     const suiteFeel = readText('suite_feel') || 'STRATEGIC';
 
     if (step === 'intent') {
-      return `Welcome. This is not a test. We are calibrating your suite for immediate action. Select your intent, and we will build your Brief, Your Suite Distilled, and your 72-hour plan.`;
+      return `Welcome. We are here to shape your suite around what matters most to you right now. Choose your direction, and we will build your Brief, Your Suite Distilled, and your 72-hour momentum plan.`;
     }
     if (step === 'concierge') {
-      return `Current calibration: role ${currentTitle}, industry ${industry}, target direction ${target}. Suite feel is ${suiteFeel}. We are assembling your professional DNA, not collecting generic form data.`;
+      return `Current snapshot: role ${currentTitle}, industry ${industry}, target direction ${target}. Preferred suite feel is ${suiteFeel}. We are building your professional DNA, not collecting generic form data.`;
     }
     if (step === 'questions') {
-      return `Complete Smart Start Intake with concise specifics. The intake is the single data capture event that powers readiness routing and ConciergeJobSearch execution.`;
+      return `Complete Smart Start Intake with concise specifics. This single intake powers readiness routing and ConciergeJobSearch execution.`;
     }
     if (step === 'prefs') {
-      return `Final calibration before generation. Confirm pace and focus so your outputs arrive with the right rhythm and decision framing.`;
+      return `Final tuning before generation. Confirm pace and focus so your outputs land with the right rhythm and decision framing.`;
     }
     return `Preparing your suite.`;
   };
@@ -261,9 +261,9 @@ export function IntakeFlow(props: {
     <div className="space-y-10 max-w-[860px]">
       <div>
         <div className="text-xs font-mono uppercase tracking-widest text-brand-teal mb-3">Smart Start Intake</div>
-        <h2 className="text-3xl md:text-4xl font-editorial leading-tight">A short concierge conversation.</h2>
+        <h2 className="text-3xl md:text-4xl font-editorial leading-tight">A concierge conversation, tailored to you.</h2>
         <p className="text-sm text-gray-600 leading-relaxed mt-4 max-w-2xl">
-          You’re not taking a test. We’re calibrating your suite so the outputs are useful immediately.
+          No tests and no scripts. We start by understanding your context so your suite is useful from the first move.
         </p>
       </div>
 

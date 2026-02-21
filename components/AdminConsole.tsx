@@ -9,6 +9,53 @@ type Props = {
 };
 
 const cloneConfig = (config: AppConfig): AppConfig => JSON.parse(JSON.stringify(config));
+type VoicePreset = {
+  id: 'fast' | 'balanced' | 'cinematic';
+  label: string;
+  summary: string;
+  temperature: number;
+  live_vad_silence_ms: number;
+  live_vad_prefix_padding_ms: number;
+  live_vad_start_sensitivity: 'high' | 'low';
+  live_vad_end_sensitivity: 'high' | 'low';
+  narration_style: string;
+};
+
+const VOICE_PRESETS: VoicePreset[] = [
+  {
+    id: 'fast',
+    label: 'Fast & Crisp',
+    summary: 'Lowest pause window for tighter turn-taking.',
+    temperature: 0.7,
+    live_vad_silence_ms: 240,
+    live_vad_prefix_padding_ms: 70,
+    live_vad_start_sensitivity: 'high',
+    live_vad_end_sensitivity: 'high',
+    narration_style: 'Confident, concise, direct concierge guidance with minimal ornamentation.',
+  },
+  {
+    id: 'balanced',
+    label: 'Balanced Concierge',
+    summary: 'Natural rhythm for most live conversations.',
+    temperature: 0.82,
+    live_vad_silence_ms: 360,
+    live_vad_prefix_padding_ms: 120,
+    live_vad_start_sensitivity: 'high',
+    live_vad_end_sensitivity: 'high',
+    narration_style: 'Calm concierge narration with subtle warmth, precision, and steady pacing.',
+  },
+  {
+    id: 'cinematic',
+    label: 'Cinematic Warmth',
+    summary: 'Softer cadence with elevated storytelling feel.',
+    temperature: 0.95,
+    live_vad_silence_ms: 520,
+    live_vad_prefix_padding_ms: 180,
+    live_vad_start_sensitivity: 'low',
+    live_vad_end_sensitivity: 'low',
+    narration_style: 'Editorial, textured, human cadence with reflective pauses and premium tone.',
+  },
+];
 
 export function AdminConsole({ open, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
@@ -16,6 +63,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const [showAdvancedVoice, setShowAdvancedVoice] = useState(false);
 
   const isReady = useMemo(() => !!config && !loading, [config, loading]);
 
@@ -23,6 +71,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     setLoading(true);
     setError(null);
     setSuccess(null);
+    setShowAdvancedVoice(false);
     try {
       const cfg = await fetchAdminConfig();
       setConfig(cfg);
@@ -48,6 +97,24 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
         generation: {
           ...prev.generation,
           [path]: value,
+        },
+      };
+    });
+  };
+
+  const applyVoicePreset = (preset: VoicePreset) => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        voice: {
+          ...prev.voice,
+          temperature: preset.temperature,
+          live_vad_silence_ms: preset.live_vad_silence_ms,
+          live_vad_prefix_padding_ms: preset.live_vad_prefix_padding_ms,
+          live_vad_start_sensitivity: preset.live_vad_start_sensitivity,
+          live_vad_end_sensitivity: preset.live_vad_end_sensitivity,
+          narration_style: preset.narration_style,
         },
       };
     });
@@ -539,7 +606,37 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
 
               <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Voice Engine</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="text-xs text-gray-600">
+                  Pick a voice posture first, then open studio tuning only when you need deeper control.
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {VOICE_PRESETS.map((preset) => {
+                    const active =
+                      config.voice.temperature === preset.temperature &&
+                      config.voice.live_vad_silence_ms === preset.live_vad_silence_ms &&
+                      config.voice.live_vad_prefix_padding_ms === preset.live_vad_prefix_padding_ms &&
+                      config.voice.live_vad_start_sensitivity === preset.live_vad_start_sensitivity &&
+                      config.voice.live_vad_end_sensitivity === preset.live_vad_end_sensitivity;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => applyVoicePreset(preset)}
+                        className={`text-left border p-3 transition-all ${
+                          active
+                            ? 'border-brand-teal bg-brand-soft shadow-[0_8px_24px_rgba(0,0,0,0.04)]'
+                            : 'border-black/10 hover-border-brand-teal bg-white'
+                        }`}
+                      >
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Voice Preset</div>
+                        <div className="mt-2 text-lg font-editorial italic">{preset.label}</div>
+                        <div className="mt-1 text-xs text-gray-600 leading-relaxed">{preset.summary}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                   <label className="flex items-center gap-3 text-sm">
                     <input
                       type="checkbox"
@@ -659,152 +756,165 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-700">Max Audio Length (ms)</label>
-                    <input
-                      type="number"
-                      min={3000}
-                      max={30000}
-                      value={config.voice.max_audio_length_ms}
-                      onChange={(e) =>
-                        setConfig((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                voice: { ...prev.voice, max_audio_length_ms: Number(e.target.value) },
-                              }
-                            : prev
-                        )
-                      }
-                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-700">Voice Temperature</label>
-                    <input
-                      type="number"
-                      min={0.1}
-                      max={1.5}
-                      step="0.05"
-                      value={config.voice.temperature}
-                      onChange={(e) =>
-                        setConfig((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                voice: { ...prev.voice, temperature: Number(e.target.value) },
-                              }
-                            : prev
-                        )
-                      }
-                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-700">VAD Silence Window (ms)</label>
-                    <input
-                      type="number"
-                      min={180}
-                      max={2000}
-                      value={config.voice.live_vad_silence_ms}
-                      onChange={(e) =>
-                        setConfig((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                voice: { ...prev.voice, live_vad_silence_ms: Number(e.target.value) },
-                              }
-                            : prev
-                        )
-                      }
-                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-700">VAD Prefix Padding (ms)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={600}
-                      value={config.voice.live_vad_prefix_padding_ms}
-                      onChange={(e) =>
-                        setConfig((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                voice: { ...prev.voice, live_vad_prefix_padding_ms: Number(e.target.value) },
-                              }
-                            : prev
-                        )
-                      }
-                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-700">Start-of-Speech Sensitivity</label>
-                    <select
-                      value={config.voice.live_vad_start_sensitivity}
-                      onChange={(e) =>
-                        setConfig((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                voice: {
-                                  ...prev.voice,
-                                  live_vad_start_sensitivity:
-                                    e.target.value === 'low' ? 'low' : 'high',
-                                },
-                              }
-                            : prev
-                        )
-                      }
-                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
-                    >
-                      <option value="high">high</option>
-                      <option value="low">low</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-700">End-of-Speech Sensitivity</label>
-                    <select
-                      value={config.voice.live_vad_end_sensitivity}
-                      onChange={(e) =>
-                        setConfig((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                voice: {
-                                  ...prev.voice,
-                                  live_vad_end_sensitivity:
-                                    e.target.value === 'low' ? 'low' : 'high',
-                                },
-                              }
-                            : prev
-                        )
-                      }
-                      className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
-                    >
-                      <option value="high">high</option>
-                      <option value="low">low</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-xs text-gray-700">Narration Style Hint</label>
-                    <textarea
-                      value={config.voice.narration_style}
-                      onChange={(e) =>
-                        setConfig((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                voice: { ...prev.voice, narration_style: e.target.value },
-                              }
-                            : prev
-                        )
-                      }
-                      className="w-full min-h-20 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
-                    />
-                  </div>
+                </div>
+
+                <div className="border-t border-black/10 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedVoice((prev) => !prev)}
+                    className="text-[10px] uppercase tracking-[0.22em] text-black/50 hover-text-brand-teal transition-colors"
+                  >
+                    {showAdvancedVoice ? 'Hide Studio Tuning' : 'Show Studio Tuning'}
+                  </button>
+
+                  {showAdvancedVoice && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 animate-[fadeUp_280ms_ease-out]">
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-700">Max Audio Length (ms)</label>
+                        <input
+                          type="number"
+                          min={3000}
+                          max={30000}
+                          value={config.voice.max_audio_length_ms}
+                          onChange={(e) =>
+                            setConfig((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    voice: { ...prev.voice, max_audio_length_ms: Number(e.target.value) },
+                                  }
+                                : prev
+                            )
+                          }
+                          className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-700">Voice Temperature</label>
+                        <input
+                          type="number"
+                          min={0.1}
+                          max={1.5}
+                          step="0.05"
+                          value={config.voice.temperature}
+                          onChange={(e) =>
+                            setConfig((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    voice: { ...prev.voice, temperature: Number(e.target.value) },
+                                  }
+                                : prev
+                            )
+                          }
+                          className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-700">VAD Silence Window (ms)</label>
+                        <input
+                          type="number"
+                          min={180}
+                          max={2000}
+                          value={config.voice.live_vad_silence_ms}
+                          onChange={(e) =>
+                            setConfig((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    voice: { ...prev.voice, live_vad_silence_ms: Number(e.target.value) },
+                                  }
+                                : prev
+                            )
+                          }
+                          className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-700">VAD Prefix Padding (ms)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={600}
+                          value={config.voice.live_vad_prefix_padding_ms}
+                          onChange={(e) =>
+                            setConfig((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    voice: { ...prev.voice, live_vad_prefix_padding_ms: Number(e.target.value) },
+                                  }
+                                : prev
+                            )
+                          }
+                          className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-700">Start-of-Speech Sensitivity</label>
+                        <select
+                          value={config.voice.live_vad_start_sensitivity}
+                          onChange={(e) =>
+                            setConfig((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    voice: {
+                                      ...prev.voice,
+                                      live_vad_start_sensitivity: e.target.value === 'low' ? 'low' : 'high',
+                                    },
+                                  }
+                                : prev
+                            )
+                          }
+                          className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+                        >
+                          <option value="high">high</option>
+                          <option value="low">low</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-700">End-of-Speech Sensitivity</label>
+                        <select
+                          value={config.voice.live_vad_end_sensitivity}
+                          onChange={(e) =>
+                            setConfig((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    voice: {
+                                      ...prev.voice,
+                                      live_vad_end_sensitivity: e.target.value === 'low' ? 'low' : 'high',
+                                    },
+                                  }
+                                : prev
+                            )
+                          }
+                          className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+                        >
+                          <option value="high">high</option>
+                          <option value="low">low</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-xs text-gray-700">Narration Style Hint</label>
+                        <textarea
+                          value={config.voice.narration_style}
+                          onChange={(e) =>
+                            setConfig((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    voice: { ...prev.voice, narration_style: e.target.value },
+                                  }
+                                : prev
+                            )
+                          }
+                          className="w-full min-h-20 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
 
