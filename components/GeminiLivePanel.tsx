@@ -12,6 +12,30 @@ const base64ToBytes = (base64: string) => {
   return bytes;
 };
 
+const bytesToBase64 = (bytes: Uint8Array) => {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...Array.from(chunk));
+  }
+  return btoa(binary);
+};
+
+const blobToBase64 = async (blob: Blob) => {
+  const buffer = await blob.arrayBuffer();
+  return bytesToBase64(new Uint8Array(buffer));
+};
+
+const float32ToPcm16 = (input: Float32Array) => {
+  const out = new Int16Array(input.length);
+  for (let i = 0; i < input.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, input[i]));
+    out[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+  }
+  return new Uint8Array(out.buffer);
+};
+
 const parsePcmRate = (mimeType: string) => {
   const match = String(mimeType || '').match(/rate=(\d+)/i);
   return match ? Number(match[1]) : 24000;
@@ -67,6 +91,10 @@ export function GeminiLivePanel() {
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const audioProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const audioGainRef = useRef<GainNode | null>(null);
   const cameraLoopRef = useRef<number | null>(null);
   const audioChunksRef = useRef<string[]>([]);
   const audioMimeRef = useRef<string>('audio/pcm;rate=24000');
@@ -101,6 +129,28 @@ export function GeminiLivePanel() {
       // noop
     }
     mediaRecorderRef.current = null;
+    try {
+      audioProcessorRef.current?.disconnect();
+    } catch {
+      // noop
+    }
+    try {
+      audioSourceRef.current?.disconnect();
+    } catch {
+      // noop
+    }
+    try {
+      audioGainRef.current?.disconnect();
+    } catch {
+      // noop
+    }
+    if (audioContextRef.current) {
+      void audioContextRef.current.close().catch(() => undefined);
+    }
+    audioContextRef.current = null;
+    audioSourceRef.current = null;
+    audioProcessorRef.current = null;
+    audioGainRef.current = null;
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((track) => track.stop());
       micStreamRef.current = null;
@@ -271,11 +321,88 @@ export function GeminiLivePanel() {
         ctx.drawImage(videoRef.current, 0, 0, vw, vh);
         const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.72));
         if (!blob) return;
-        sessionRef.current.sendRealtimeInput({ video: blob });
+        const mimeType = blob.type || 'image/jpeg';
+        const data = await blobToBase64(blob);
+        try {
+          sessionRef.current.sendRealtimeInput({
+            video: {
+              mimeType,
+              data,
+            },
+          });
+        } catch {
+          // Socket might be closing; suppress noisy runtime errors.
+        }
       }, 1200);
     } catch (e: any) {
       setError(e?.message ?? 'Unable to start camera relay.');
     }
+  };
+
+  const startPcmMicStream = async (stream: MediaStream) => {
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) throw new Error('AudioContext unavailable on this browser');
+    const context = new AudioContextCtor({ sampleRate: 16000 });
+    const source = context.createMediaStreamSource(stream);
+    const processor = context.createScriptProcessor(2048, 1, 1);
+    const gain = context.createGain();
+    gain.gain.value = 0;
+
+    processor.onaudioprocess = (event: AudioProcessingEvent) => {
+      if (!sessionRef.current) return;
+      const channel = event.inputBuffer.getChannelData(0);
+      if (!channel?.length) return;
+      const pcmBytes = float32ToPcm16(channel);
+      if (!pcmBytes.byteLength) return;
+      try {
+        sessionRef.current.sendRealtimeInput({
+          audio: {
+            mimeType: 'audio/pcm;rate=16000',
+            data: bytesToBase64(pcmBytes),
+          },
+        });
+      } catch {
+        // Socket might be closing; suppress noisy runtime errors.
+      }
+    };
+
+    source.connect(processor);
+    processor.connect(gain);
+    gain.connect(context.destination);
+
+    if (context.state === 'suspended') {
+      await context.resume();
+    }
+
+    audioContextRef.current = context;
+    audioSourceRef.current = source;
+    audioProcessorRef.current = processor;
+    audioGainRef.current = gain;
+  };
+
+  const startMediaRecorderFallback = async (stream: MediaStream) => {
+    const preferredMimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+    const mimeType = preferredMimes.find((entry) => MediaRecorder.isTypeSupported(entry));
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    mediaRecorderRef.current = recorder;
+    recorder.ondataavailable = (event) => {
+      if (!event.data || event.data.size === 0 || !sessionRef.current) return;
+      void (async () => {
+        try {
+          const audioMime = event.data.type || recorder.mimeType || mimeType || 'audio/webm';
+          const data = await blobToBase64(event.data);
+          sessionRef.current?.sendRealtimeInput({
+            audio: {
+              mimeType: audioMime,
+              data,
+            },
+          });
+        } catch {
+          // Socket might be closing; suppress noisy runtime errors.
+        }
+      })();
+    };
+    recorder.start(250);
   };
 
   const startMic = async () => {
@@ -286,15 +413,11 @@ export function GeminiLivePanel() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       micStreamRef.current = stream;
-      const preferredMimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
-      const mimeType = preferredMimes.find((entry) => MediaRecorder.isTypeSupported(entry));
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      recorder.ondataavailable = (event) => {
-        if (!event.data || event.data.size === 0 || !sessionRef.current) return;
-        sessionRef.current.sendRealtimeInput({ audio: event.data });
-      };
-      recorder.start(250);
+      try {
+        await startPcmMicStream(stream);
+      } catch {
+        await startMediaRecorderFallback(stream);
+      }
       setMicEnabled(true);
     } catch (e: any) {
       setError(e?.message ?? 'Unable to start microphone stream.');
