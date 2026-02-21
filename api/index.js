@@ -925,7 +925,12 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
   const newSessionExpireAt = new Date(issuedAt.getTime() + 4 * 60 * 1000);
 
   try {
-    const token = await liveTokenAi.tokens.create({
+    const tokenClient = liveTokenAi.authTokens || liveTokenAi.tokens;
+    if (!tokenClient?.create) {
+      throw new Error('live_token_client_unavailable');
+    }
+
+    const token = await tokenClient.create({
       config: {
         uses: 3,
         expireTime: expiresAt.toISOString(),

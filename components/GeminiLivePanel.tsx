@@ -73,6 +73,9 @@ export function GeminiLivePanel() {
   const firstByteAtRef = useRef<number | null>(null);
   const promptSentAtRef = useRef<number | null>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const cameraReady = state === 'connected' && cameraEnabled;
+  const micReady = state === 'connected' && micEnabled;
+  const engagementReady = state === 'connected' && (micEnabled || prompt.trim().length > 0);
 
   const clearCameraLoop = () => {
     if (cameraLoopRef.current) {
@@ -311,11 +314,11 @@ export function GeminiLivePanel() {
     <section className="border border-[#d7ece9] bg-[#f4fbfa] p-5 md:p-6 space-y-5 shadow-[0_1px_0_0_rgba(0,0,0,0.02)]">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Gemini Live Console</div>
-          <div className="text-xl font-editorial italic mt-1">Low-latency voice + video interaction surface.</div>
+          <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Concierge Live Studio</div>
+          <div className="text-xl font-editorial italic mt-1">Step into a live conversation with your suite.</div>
           <p className="text-xs text-black/55 mt-2 max-w-xl leading-relaxed">
-            Client-direct session with ephemeral token. Camera frames are relayed every 1.2s. Audio responses stream
-            with ROM-aligned voice behavior.
+            This is your OS interaction rail: real-time voice, optional visual context, and immediate strategic
+            guidance with ROM-aligned tone.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -327,6 +330,21 @@ export function GeminiLivePanel() {
           <div className="text-[10px] uppercase tracking-[0.2em] text-black/55">
             {state === 'connected' ? 'Live' : state === 'connecting' ? 'Connecting' : state === 'error' ? 'Error' : 'Idle'}
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+        <div className={`border p-2 text-[10px] uppercase tracking-[0.16em] ${state === 'connected' ? 'border-brand-teal text-brand-teal bg-white' : 'border-black/10 text-black/50 bg-white/80'}`}>
+          1. Initiate Session
+        </div>
+        <div className={`border p-2 text-[10px] uppercase tracking-[0.16em] ${micReady ? 'border-brand-teal text-brand-teal bg-white' : 'border-black/10 text-black/50 bg-white/80'}`}>
+          2. Open Voice
+        </div>
+        <div className={`border p-2 text-[10px] uppercase tracking-[0.16em] ${cameraReady ? 'border-brand-teal text-brand-teal bg-white' : 'border-black/10 text-black/50 bg-white/80'}`}>
+          3. Add Camera (Optional)
+        </div>
+        <div className={`border p-2 text-[10px] uppercase tracking-[0.16em] ${engagementReady ? 'border-brand-teal text-brand-teal bg-white' : 'border-black/10 text-black/50 bg-white/80'}`}>
+          4. Ask For Guidance
         </div>
       </div>
 
@@ -343,7 +361,7 @@ export function GeminiLivePanel() {
                 disabled={state === 'connecting'}
                 className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
               >
-                {state === 'connecting' ? 'Connecting…' : 'Connect Live'}
+                {state === 'connecting' ? 'Opening Studio…' : 'Initiate Conversation'}
               </button>
             ) : (
               <button
@@ -351,7 +369,7 @@ export function GeminiLivePanel() {
                 onClick={closeSession}
                 className="px-4 py-2 border border-black/20 text-[10px] uppercase tracking-[0.22em] hover-border-brand-teal"
               >
-                Disconnect
+                End Live Session
               </button>
             )}
             <button
@@ -360,7 +378,7 @@ export function GeminiLivePanel() {
               disabled={state !== 'connected'}
               className="px-4 py-2 border border-black/20 text-[10px] uppercase tracking-[0.22em] disabled:opacity-40 hover-border-brand-teal"
             >
-              {cameraEnabled ? 'Stop Camera Relay' : 'Start Camera Relay'}
+              {cameraEnabled ? 'Pause Visual Context' : 'Invite Visual Context'}
             </button>
             <button
               type="button"
@@ -368,8 +386,11 @@ export function GeminiLivePanel() {
               disabled={state !== 'connected'}
               className="px-4 py-2 border border-black/20 text-[10px] uppercase tracking-[0.22em] disabled:opacity-40 hover-border-brand-teal"
             >
-              {micEnabled ? 'Stop Mic Stream' : 'Start Mic Stream'}
+              {micEnabled ? 'Close Voice Channel' : 'Open Voice Channel'}
             </button>
+          </div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">
+            You can stay text-only, voice-first, or add camera context. The system adapts.
           </div>
         </div>
 
@@ -382,11 +403,11 @@ export function GeminiLivePanel() {
             <div className="text-xs text-black/70">Token expires: {tokenInfo?.expires_at ?? 'n/a'}</div>
           </div>
           <div className="border border-black/10 bg-white p-3 space-y-2">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">Prompt Relay</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">Guided Prompt</div>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Send a constrained prompt to the live session..."
+              placeholder="Ask for positioning, rehearsal, or your next high-leverage move..."
               className="w-full min-h-24 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm leading-relaxed"
             />
             <button
@@ -395,7 +416,7 @@ export function GeminiLivePanel() {
               disabled={state !== 'connected' || sending || !prompt.trim()}
               className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
             >
-              {sending ? 'Sending…' : 'Send Turn'}
+              {sending ? 'Sending…' : 'Ask Concierge'}
             </button>
           </div>
         </div>

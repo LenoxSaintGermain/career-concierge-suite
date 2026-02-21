@@ -279,10 +279,10 @@ export function IntakeFlow(props: {
           disabled={voiceBusy || step === 'plating'}
           className="px-4 py-2 border border-brand-teal text-brand-teal text-[10px] uppercase tracking-[0.22em] hover:bg-brand-soft transition-colors disabled:opacity-50"
         >
-          {voiceBusy ? 'Rendering voice…' : 'Play concierge voice'}
+          {voiceBusy ? 'Preparing voice preview…' : 'Hear Concierge Preview'}
         </button>
         <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">
-          {lastVoiceProvider ? `${lastVoiceProvider} engine` : 'Configured voice engine'}
+          {lastVoiceProvider ? `${lastVoiceProvider} voice route` : 'Configured voice route'}
         </div>
       </div>
       {voiceError && (
