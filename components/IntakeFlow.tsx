@@ -20,6 +20,13 @@ import { GeminiLivePanel } from './GeminiLivePanel';
 type Step = 'intent' | 'concierge' | 'questions' | 'prefs' | 'plating' | 'done';
 const SUITE_FEEL_OPTIONS = ['STRATEGIC', 'GROUNDED', 'STORY', 'JOB-SEARCH', 'SKILLS', 'LEADERSHIP'];
 
+const base64ToBytes = (base64: string) => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
+
 export function IntakeFlow(props: {
   uid: string;
   onComplete: () => void;
@@ -35,6 +42,8 @@ export function IntakeFlow(props: {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [lastVoiceProvider, setLastVoiceProvider] = useState<'sesame' | 'gemini_live' | null>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewAudioContextRef = useRef<AudioContext | null>(null);
+  const previewAudioUnlockedRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -42,8 +51,63 @@ export function IntakeFlow(props: {
         activeAudioRef.current.pause();
         activeAudioRef.current = null;
       }
+      if (previewAudioContextRef.current) {
+        void previewAudioContextRef.current.close().catch(() => undefined);
+        previewAudioContextRef.current = null;
+      }
     };
   }, []);
+
+  const ensurePreviewAudioUnlocked = async () => {
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) return;
+    if (!previewAudioContextRef.current) {
+      previewAudioContextRef.current = new AudioContextCtor();
+    }
+    const context = previewAudioContextRef.current;
+    if (context.state === 'suspended') {
+      await context.resume();
+    }
+    if (!previewAudioUnlockedRef.current) {
+      const unlockBuffer = context.createBuffer(1, 1, 22050);
+      const source = context.createBufferSource();
+      source.buffer = unlockBuffer;
+      source.connect(context.destination);
+      source.start(0);
+      previewAudioUnlockedRef.current = true;
+    }
+  };
+
+  const playVoiceResponse = async (mimeType: string, audioBase64: string) => {
+    const bytes = base64ToBytes(audioBase64);
+    const mime = String(mimeType || 'audio/wav');
+    const lowerMime = mime.toLowerCase();
+    const context = previewAudioContextRef.current;
+
+    if (context && !lowerMime.startsWith('audio/pcm')) {
+      try {
+        if (context.state === 'suspended') await context.resume();
+        const raw = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        const decoded = await context.decodeAudioData(raw as ArrayBuffer);
+        const source = context.createBufferSource();
+        source.buffer = decoded;
+        source.connect(context.destination);
+        source.start();
+        return;
+      } catch {
+        // Fallback to element playback.
+      }
+    }
+
+    const blob = new Blob([bytes], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.preload = 'auto';
+    activeAudioRef.current = audio;
+    audio.onended = () => URL.revokeObjectURL(url);
+    audio.onerror = () => URL.revokeObjectURL(url);
+    await audio.play();
+  };
 
   const prefs: ClientPreferences = useMemo(() => ({ pace, focus }), [pace, focus]);
   const fieldsBySection = useMemo(() => {
@@ -191,19 +255,25 @@ export function IntakeFlow(props: {
     setVoiceBusy(true);
     setVoiceError(null);
     try {
+      await ensurePreviewAudioUnlocked();
       const response = await synthesizeConciergeVoice(buildVoiceScript());
       setLastVoiceProvider(response.provider);
-      const mime = response.mime_type || 'audio/wav';
-      const dataUrl = `data:${mime};base64,${response.audio_base64}`;
       if (activeAudioRef.current) {
         activeAudioRef.current.pause();
         activeAudioRef.current = null;
       }
-      const audio = new Audio(dataUrl);
-      activeAudioRef.current = audio;
-      await audio.play();
+      await playVoiceResponse(response.mime_type || 'audio/wav', response.audio_base64);
     } catch (e: any) {
-      setVoiceError(e?.message ?? 'Voice playback failed.');
+      const message = String(e?.message ?? '');
+      if (
+        e?.name === 'NotAllowedError' ||
+        message.toLowerCase().includes('user agent') ||
+        message.toLowerCase().includes('permission')
+      ) {
+        setVoiceError('This device blocked audio playback. Tap the preview button once more to allow sound.');
+      } else {
+        setVoiceError(message || 'Voice playback failed.');
+      }
     } finally {
       setVoiceBusy(false);
     }
