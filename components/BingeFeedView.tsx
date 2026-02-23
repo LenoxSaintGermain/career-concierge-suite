@@ -40,6 +40,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     if (!activeMediaId) return library.items[0];
     return library.items.find((item) => item.id === activeMediaId) ?? library.items[0];
   }, [library?.items, activeMediaId]);
+
   const hasCuratedButNoMatch =
     Boolean(library) && (library.total_items ?? 0) > 0 && (library.matched_items ?? 0) === 0;
   const libraryStatusText = libraryLoading
@@ -54,6 +55,13 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     : mediaPack
       ? 'Scene pack ready'
       : 'Ready';
+  const featuredBackdrop = useMemo(() => {
+    return activeMedia?.thumbnail_url || imageAsset?.image_data_url || '';
+  }, [activeMedia?.thumbnail_url, imageAsset?.image_data_url]);
+  const routeSummary = useMemo(() => {
+    if (!library?.context) return null;
+    return `${library.context.intake_complete ? 'post-intake' : 'pre-intake'} / ${library.context.intent || 'all intents'} / ${library.context.focus || 'all focuses'} / ${library.context.pace || 'all paces'}`;
+  }, [library?.context]);
 
   const load = async () => {
     setLoading(true);
@@ -160,23 +168,26 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   };
 
   const renderCard = (label: string, body: string) => (
-    <div className="border border-black/5 bg-gray-50 p-6">
-      <div className="text-[10px] uppercase tracking-widest text-brand-teal mb-4">{label}</div>
-      <div className="text-xl md:text-2xl font-editorial italic leading-relaxed">{body}</div>
+    <div className="relative overflow-hidden border border-[#224048] bg-[#0b1f24] p-6 text-[#dde8ea]">
+      <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-[#2dc5c220] blur-2xl" />
+      <div className="relative">
+        <div className="text-[10px] uppercase tracking-widest text-brand-teal mb-4">{label}</div>
+        <div className="text-2xl font-editorial italic leading-relaxed">{body}</div>
+      </div>
     </div>
   );
 
   if (loading && !episode) {
     return (
-      <div className="py-16 space-y-6">
+      <div className="space-y-5 py-10">
         <div className="text-center">
-          <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Preparing Episodes Workspace…</div>
-          <div className="text-xs text-gray-500 mt-2">Loading story state, mapped media, and visual surfaces.</div>
+          <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Preparing episodes workspace...</div>
+          <div className="text-xs text-gray-500 mt-2">Loading story state, mapped media, and cinematic surfaces.</div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="h-24 bg-gray-100 border border-black/5 animate-pulse" />
-          <div className="h-24 bg-gray-100 border border-black/5 animate-pulse" />
-          <div className="h-24 bg-gray-100 border border-black/5 animate-pulse" />
+          <div className="h-28 border border-black/10 bg-gray-100 animate-pulse" />
+          <div className="h-28 border border-black/10 bg-gray-100 animate-pulse" />
+          <div className="h-28 border border-black/10 bg-gray-100 animate-pulse" />
         </div>
       </div>
     );
@@ -186,9 +197,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     return (
       <div className="border border-black/5 bg-gray-50 p-6">
         <div className="text-2xl font-editorial italic">Unable to load episode.</div>
-        {loadError && (
-          <p className="mt-4 text-sm text-red-700 leading-relaxed">{loadError}</p>
-        )}
+        {loadError && <p className="mt-4 text-sm text-red-700 leading-relaxed">{loadError}</p>}
         <button
           onClick={load}
           className="mt-6 px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
@@ -200,229 +209,257 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <div>
         <div className="text-xs font-mono uppercase tracking-widest text-brand-teal mb-3">Episodes</div>
-        <h2 className="text-4xl md:text-5xl font-editorial leading-none">{episode.title}</h2>
+        <h2 className="text-4xl md:text-6xl font-editorial leading-[0.95]">{episode.title}</h2>
         <p className="text-sm text-gray-600 leading-relaxed mt-5 max-w-2xl">
           No lectures. No quizzes. You survive a micro-drama by executing the skill.
         </p>
       </div>
 
-      <section className="border border-black/5 p-5 bg-brand-soft">
-        <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Curated Library</div>
-            <div className="text-lg font-editorial italic mt-1">Pre-produced media routed by segment and journey step.</div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-black/45 mt-2">{libraryStatusText}</div>
-          </div>
-          <button
-            onClick={loadCuratedLibrary}
-            disabled={libraryLoading}
-            className="px-3 py-2 border border-black/20 text-[10px] uppercase tracking-[0.2em] hover-border-brand-teal disabled:opacity-40"
-          >
-            {libraryLoading ? 'Refreshing Routes…' : 'Refresh Library'}
-          </button>
-        </div>
-        {libraryError && (
-          <div className="border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-700 leading-relaxed mb-3">
-            {libraryError}
-          </div>
+      <section className="relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6">
+        {featuredBackdrop && (
+          <div
+            className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-30"
+            style={{ backgroundImage: `url(${featuredBackdrop})` }}
+          />
         )}
-        {libraryLoading && !library ? (
-          <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-4">
-            <div className="bg-white border border-black/10 p-3">
-              <div className="w-full aspect-video border border-black/10 bg-gray-100 animate-pulse" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(38,200,188,0.20),rgba(7,22,26,0.95)_64%)]" />
+
+        <div className="relative space-y-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Curated Library</div>
+              <div className="text-2xl md:text-3xl font-editorial italic mt-2">Cinematic gallery, routed by journey context.</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7] mt-3">{libraryStatusText}</div>
             </div>
-            <div className="bg-white border border-black/10 p-3 space-y-3 max-h-[420px] overflow-auto">
-              <div className="h-14 border border-black/10 bg-gray-100 animate-pulse" />
-              <div className="h-14 border border-black/10 bg-gray-100 animate-pulse" />
-              <div className="h-14 border border-black/10 bg-gray-100 animate-pulse" />
-            </div>
+            <button
+              onClick={loadCuratedLibrary}
+              disabled={libraryLoading}
+              className="px-3 py-2 border border-[#2d4a51] bg-[#0f242a] text-[10px] uppercase tracking-[0.2em] hover-border-brand-teal disabled:opacity-40"
+            >
+              {libraryLoading ? 'Refreshing routes...' : 'Refresh Library'}
+            </button>
           </div>
-        ) : activeMedia ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-4">
-              <div className="bg-white border border-black/10 p-3">
-                <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">{activeMedia.platform_resolved}</div>
-                    <div className="text-xl font-editorial italic mt-1">{activeMedia.title || 'Untitled Media'}</div>
-                  </div>
-                  <a
-                    href={activeMedia.open_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] uppercase tracking-[0.2em] text-brand-teal hover:opacity-70"
-                  >
-                    Open Source
-                  </a>
-                </div>
-                {activeMedia.embed_url ? (
-                  <div className="relative">
-                    {activeMedia.platform_resolved === 'direct' ? (
-                      <video
-                        controls
-                        preload="metadata"
-                        src={activeMedia.embed_url}
-                        poster={activeMedia.thumbnail_url || undefined}
-                        onLoadedData={() => setEmbedLoading(false)}
-                        className="w-full aspect-video border border-black/10 bg-black"
-                      />
-                    ) : (
-                      <iframe
-                        src={activeMedia.embed_url}
-                        title={activeMedia.title || 'External media'}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                        loading="eager"
-                        onLoad={() => setEmbedLoading(false)}
-                        className="w-full aspect-video border border-black/10 bg-black"
-                      />
-                    )}
-                    {embedLoading && (
-                      <div className="absolute inset-0 border border-brand-teal/20 bg-brand-soft/95 flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal animate-pulse">Loading media preview…</div>
-                          <div className="text-xs text-gray-600 mt-2">Preparing playback surface</div>
-                        </div>
+
+          {libraryError && (
+            <div className="border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200 leading-relaxed">
+              {libraryError}
+            </div>
+          )}
+
+          {libraryLoading && !library ? (
+            <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_0.75fr] gap-4">
+              <div className="h-64 border border-[#29464d] bg-[#10262b] animate-pulse" />
+              <div className="h-64 border border-[#29464d] bg-[#10262b] animate-pulse" />
+            </div>
+          ) : activeMedia ? (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-[1.22fr_0.78fr] gap-4">
+                <div className="border border-[#29464d] bg-[#0d2227] p-3 md:p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.22em] text-[#8aa0a4]">{activeMedia.platform_resolved}</div>
+                      <div className="text-3xl md:text-4xl font-editorial italic mt-2 leading-[0.92]">
+                        {activeMedia.title || 'Untitled Media'}
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="w-full aspect-video border border-dashed border-black/20 flex flex-col items-center justify-center text-center p-6">
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Preview unavailable</div>
-                    <div className="text-sm text-gray-600 mt-2">Open this source in a new tab.</div>
-                  </div>
-                )}
-                {activeMedia.subtitle && (
-                  <p className="mt-3 text-sm text-gray-600 leading-relaxed">{activeMedia.subtitle}</p>
-                )}
-              </div>
-              <div className="bg-white border border-black/10 p-3 space-y-3 max-h-[420px] overflow-auto">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">Media Grid</div>
-                {library?.items.map((item) => {
-                  const active = activeMedia.id === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setActiveMediaId(item.id)}
-                      className={`w-full text-left border p-3 transition-colors ${
-                        active ? 'border-brand-teal bg-brand-soft' : 'border-black/10 hover-border-brand-teal bg-white'
-                      }`}
+                    </div>
+                    <a
+                      href={activeMedia.open_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] uppercase tracking-[0.2em] text-brand-teal hover:opacity-70"
                     >
-                      <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">{item.platform_resolved}</div>
-                      <div className="text-sm font-semibold mt-1">{item.title || 'Untitled media'}</div>
-                      {item.subtitle && <div className="text-xs text-gray-600 mt-1 line-clamp-2">{item.subtitle}</div>}
-                    </button>
-                  );
-                })}
+                      Open Source
+                    </a>
+                  </div>
+
+                  {activeMedia.embed_url ? (
+                    <div className="relative overflow-hidden border border-[#314f56] bg-black">
+                      {activeMedia.platform_resolved === 'direct' ? (
+                        <video
+                          controls
+                          preload="metadata"
+                          src={activeMedia.embed_url}
+                          poster={activeMedia.thumbnail_url || undefined}
+                          onLoadedData={() => setEmbedLoading(false)}
+                          className="w-full aspect-video object-cover"
+                        />
+                      ) : (
+                        <iframe
+                          src={activeMedia.embed_url}
+                          title={activeMedia.title || 'External media'}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          loading="eager"
+                          onLoad={() => setEmbedLoading(false)}
+                          className="w-full aspect-video"
+                        />
+                      )}
+                      {embedLoading && (
+                        <div className="absolute inset-0 border border-brand-teal/20 bg-[#0a1f24]/95 flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal animate-pulse">Loading media preview...</div>
+                            <div className="text-xs text-[#a2b8bc] mt-2">Preparing playback surface</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full aspect-video border border-dashed border-[#36535a] flex flex-col items-center justify-center text-center p-6 bg-[#0a1d22]">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-[#8da3a7]">Preview unavailable</div>
+                      <div className="text-sm text-[#a9bcc0] mt-2">Open this source in a new tab.</div>
+                    </div>
+                  )}
+
+                  {activeMedia.subtitle && <p className="text-sm text-[#afc2c6] leading-relaxed">{activeMedia.subtitle}</p>}
+                </div>
+
+                <div className="border border-[#29464d] bg-[#0d2227] p-3 md:p-4">
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-[#90a5a9] mb-3">Media Grid</div>
+                  <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar lg:flex-col lg:overflow-x-visible lg:overflow-y-auto lg:max-h-[470px]">
+                    {library?.items.map((item) => {
+                      const active = activeMedia.id === item.id;
+                      const thumb = item.thumbnail_url || '';
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setActiveMediaId(item.id)}
+                          className={`relative min-w-[230px] lg:min-w-0 text-left border transition-all p-3 ${
+                            active
+                              ? 'border-brand-teal bg-[#153740]'
+                              : 'border-[#35535b] bg-[#102830] hover-border-brand-teal'
+                          }`}
+                        >
+                          {thumb && (
+                            <div
+                              className="absolute inset-0 opacity-25 bg-cover bg-center"
+                              style={{ backgroundImage: `url(${thumb})` }}
+                            />
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-b from-[#08191d]/30 to-[#08191d]/95" />
+                          <div className="relative">
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-[#95acb0]">{item.platform_resolved}</div>
+                            <div className="mt-2 text-lg font-editorial italic leading-[1.05] text-[#e7eff1]">
+                              {item.title || 'Untitled media'}
+                            </div>
+                            {item.subtitle && <div className="text-xs text-[#b5c7ca] mt-2 line-clamp-2">{item.subtitle}</div>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {routeSummary && (
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Routing context: {routeSummary}</div>
+              )}
+            </>
+          ) : hasCuratedButNoMatch ? (
+            <div className="border border-[#2d4a51] bg-[#0d2329] p-4 space-y-2">
+              <div className="text-sm text-[#d4e0e2]">
+                Library has {library?.total_items ?? 0} media item(s), but none match this routing context.
+              </div>
+              <div className="text-xs text-[#9db2b6]">
+                Check surface + intent/focus/pace filters in Admin, or relax filters for pre-intake users.
               </div>
             </div>
-            {library?.context && (
-              <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">
-                Routing context: {library.context.intake_complete ? 'post-intake' : 'pre-intake'} /{' '}
-                {library.context.intent || 'all intents'} / {library.context.focus || 'all focuses'} /{' '}
-                {library.context.pace || 'all paces'}
-              </div>
-            )}
-          </div>
-        ) : hasCuratedButNoMatch ? (
-          <div className="bg-white border border-black/10 p-4 space-y-2">
-            <div className="text-sm text-gray-700">
-              Library has {library?.total_items ?? 0} media item(s), but none match this routing context.
+          ) : (
+            <div className="border border-[#2d4a51] bg-[#0d2329] p-4 text-sm text-[#a8bcc0]">
+              No external media has been added yet. Add a YouTube/Vimeo item in Admin and map it to Episodes.
             </div>
-            <div className="text-xs text-gray-500">
-              Check surface + intent/focus/pace filters in Admin, or relax filters for pre-intake users.
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white border border-black/10 p-4 text-sm text-gray-600">
-            No external media has been added yet. Add a YouTube/Vimeo item in Admin and map it to Episodes.
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
-      <section className="border border-black/5 p-5 bg-brand-soft">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+      <section className="relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6 space-y-4">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_14%,rgba(38,200,188,0.14),transparent_52%)]" />
+
+        <div className="relative flex items-center justify-between gap-4 flex-wrap">
           <div>
             <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Art Director Queue</div>
-            <div className="text-lg font-editorial italic mt-1">Model routing for multimedia generation.</div>
+            <div className="text-2xl md:text-3xl font-editorial italic mt-2">Model routing for multimedia generation.</div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">{queueStatusText}</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#8fa4a8]">{queueStatusText}</div>
             <button
               onClick={loadMediaPack}
               disabled={mediaLoading}
-              className="px-3 py-2 btn-brand text-[10px] uppercase tracking-[0.2em] disabled:opacity-40"
+              className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.2em] disabled:opacity-40"
             >
-              {mediaLoading ? 'Working…' : 'Generate Scene Pack'}
+              {mediaLoading ? 'Working...' : 'Generate Scene Pack'}
             </button>
           </div>
         </div>
+
         {recommendedModels.length > 0 && (
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-3">
             {recommendedModels.map((entry, idx) => (
-              <div key={`${entry.kind}-${idx}`} className="bg-white border border-black/10 p-3">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">{entry.kind}</div>
-                <div className="font-mono text-xs mt-1">{entry.model}</div>
-                {entry.note && <p className="text-xs text-gray-600 mt-2 leading-relaxed">{entry.note}</p>}
+              <div key={`${entry.kind}-${idx}`} className="border border-[#2e4c53] bg-[#0d2329] p-3">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#91a7ab]">{entry.kind}</div>
+                <div className="font-mono text-xs mt-1 text-[#dce7e8]">{entry.model}</div>
+                {entry.note && <p className="text-xs text-[#a9bcc0] mt-2 leading-relaxed">{entry.note}</p>}
               </div>
             ))}
           </div>
         )}
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-          <div className="bg-white border border-black/10 p-3">
-            <div className="uppercase tracking-[0.2em] text-black/50 mb-2">Image prompt</div>
-            <p className="leading-relaxed text-gray-700">{episode.art_direction?.image_prompt ?? 'Not provided'}</p>
+
+        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="border border-[#2e4c53] bg-[#0d2329] p-3">
+            <div className="uppercase tracking-[0.2em] text-[#8ea3a7] mb-2">Image prompt</div>
+            <p className="leading-relaxed text-[#d6e2e4]">{episode.art_direction?.image_prompt ?? 'Not provided'}</p>
           </div>
-          <div className="bg-white border border-black/10 p-3">
-            <div className="uppercase tracking-[0.2em] text-black/50 mb-2">Video prompt</div>
-            <p className="leading-relaxed text-gray-700">{episode.art_direction?.video_prompt ?? 'Not provided'}</p>
+          <div className="border border-[#2e4c53] bg-[#0d2329] p-3">
+            <div className="uppercase tracking-[0.2em] text-[#8ea3a7] mb-2">Video prompt</div>
+            <p className="leading-relaxed text-[#d6e2e4]">{episode.art_direction?.video_prompt ?? 'Not provided'}</p>
           </div>
-          <div className="bg-white border border-black/10 p-3">
-            <div className="uppercase tracking-[0.2em] text-black/50 mb-2">Audio prompt</div>
-            <p className="leading-relaxed text-gray-700">{episode.art_direction?.audio_prompt ?? 'Not provided'}</p>
+          <div className="border border-[#2e4c53] bg-[#0d2329] p-3">
+            <div className="uppercase tracking-[0.2em] text-[#8ea3a7] mb-2">Audio prompt</div>
+            <p className="leading-relaxed text-[#d6e2e4]">{episode.art_direction?.audio_prompt ?? 'Not provided'}</p>
           </div>
         </div>
+
         {mediaError && (
-          <div className="mt-4 border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-700 leading-relaxed">
+          <div className="border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200 leading-relaxed">
             {mediaError}
           </div>
         )}
+
         {mediaPack && (
-          <div className="mt-4 space-y-3">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">Generated Narrative Assets</div>
-            <div className="text-xs text-gray-600 leading-relaxed">{mediaPack.narrative}</div>
+          <div className="relative space-y-3">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Generated Narrative Assets</div>
+            <div className="text-xs text-[#a9bcc0] leading-relaxed">{mediaPack.narrative}</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="bg-white border border-black/10 p-3 space-y-3">
+              <div className="border border-[#2e4c53] bg-[#0d2329] p-3 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">Image Still</div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Image still</div>
                   <div className="text-[10px] uppercase tracking-[0.2em] text-brand-teal">{imageAsset?.status ?? 'n/a'}</div>
                 </div>
                 {imageAsset?.image_data_url ? (
                   <img
                     src={imageAsset.image_data_url}
                     alt="Generated episode still"
-                    className="w-full aspect-video object-cover border border-black/10"
+                    className="w-full aspect-video object-cover border border-[#37565d]"
                   />
                 ) : (
-                  <div className="w-full aspect-video border border-dashed border-black/20 flex items-center justify-center text-[10px] uppercase tracking-[0.2em] text-black/40">
+                  <div className="w-full aspect-video border border-dashed border-[#36535a] flex items-center justify-center text-[10px] uppercase tracking-[0.2em] text-[#8aa0a4]">
                     image unavailable
                   </div>
                 )}
-                <div className="text-[11px] font-mono text-black/70">{imageAsset?.model ?? 'n/a'}</div>
-                {imageAsset?.note && <p className="text-xs text-gray-600 leading-relaxed">{imageAsset.note}</p>}
+                <div className="text-[11px] font-mono text-[#c6d6d9]">{imageAsset?.model ?? 'n/a'}</div>
+                {imageAsset?.note && <p className="text-xs text-[#a9bcc0] leading-relaxed">{imageAsset.note}</p>}
               </div>
 
-              <div className="bg-white border border-black/10 p-3 space-y-3">
+              <div className="border border-[#2e4c53] bg-[#0d2329] p-3 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">Video Clip</div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Video clip</div>
                   <div className="text-[10px] uppercase tracking-[0.2em] text-brand-teal">{videoAsset?.status ?? 'n/a'}</div>
                 </div>
-                <div className="text-[11px] font-mono text-black/70">{videoAsset?.model ?? 'n/a'}</div>
-                {videoAsset?.note && <p className="text-xs text-gray-600 leading-relaxed">{videoAsset.note}</p>}
+                <div className="text-[11px] font-mono text-[#c6d6d9]">{videoAsset?.model ?? 'n/a'}</div>
+                {videoAsset?.note && <p className="text-xs text-[#a9bcc0] leading-relaxed">{videoAsset.note}</p>}
                 {videoAsset?.video_uri ? (
                   <a
                     href={videoAsset.video_uri}
@@ -433,7 +470,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
                     Open Generated Clip
                   </a>
                 ) : (
-                  <p className="text-xs text-black/50 leading-relaxed">
+                  <p className="text-xs text-[#a9bcc0] leading-relaxed">
                     No video URI yet. If queued, refresh status after a short delay.
                   </p>
                 )}
@@ -441,9 +478,9 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
                   <button
                     onClick={refreshVideoStatus}
                     disabled={videoRefreshBusy}
-                    className="px-3 py-2 border border-black/20 text-[10px] uppercase tracking-[0.2em] hover-border-brand-teal disabled:opacity-40"
+                    className="px-3 py-2 border border-[#3a5961] bg-[#102930] text-[10px] uppercase tracking-[0.2em] hover-border-brand-teal disabled:opacity-40"
                   >
-                    {videoRefreshBusy ? 'Refreshing…' : 'Refresh Video Status'}
+                    {videoRefreshBusy ? 'Refreshing...' : 'Refresh Video Status'}
                   </button>
                 )}
               </div>
@@ -453,35 +490,35 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
       </section>
 
       {scene === 'hook' && renderCard('Cold Open', episode.hook_card)}
-      {scene === 'swipe1' && renderCard('Swipe 1', swipes[0] ?? '…')}
-      {scene === 'swipe2' && renderCard('Swipe 2', swipes[1] ?? '…')}
-      {scene === 'swipe3' && renderCard('Swipe 3', swipes[2] ?? '…')}
+      {scene === 'swipe1' && renderCard('Swipe 1', swipes[0] ?? '...')}
+      {scene === 'swipe2' && renderCard('Swipe 2', swipes[1] ?? '...')}
+      {scene === 'swipe3' && renderCard('Swipe 3', swipes[2] ?? '...')}
 
       {scene === 'challenge' && (
-        <div className="border border-black/5 p-6">
+        <div className="border border-[#224048] bg-[#0b1f24] p-6 text-[#dde8ea]">
           <div className="text-[10px] uppercase tracking-widest text-brand-teal mb-4">Guided Outcome</div>
-          <div className="text-xl font-editorial italic leading-relaxed">{episode.challenge_terminal.prompt}</div>
+          <div className="text-2xl font-editorial italic leading-relaxed">{episode.challenge_terminal.prompt}</div>
           <div className="mt-6">
             <textarea
               value={terminalInput}
               onChange={(e) => setTerminalInput(e.target.value)}
               placeholder={episode.challenge_terminal.placeholder}
-              className="w-full min-h-32 border border-black/10 focus-border-brand-teal outline-none p-4 font-mono text-xs leading-relaxed"
+              className="w-full min-h-32 border border-[#34535a] bg-[#0a1d22] focus-border-brand-teal outline-none p-4 font-mono text-xs leading-relaxed text-[#dce7e8]"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-3 leading-relaxed">
-            MVP behavior: any attempt advances. Phase 1: we’ll evaluate and fail-forward.
+          <p className="text-xs text-[#9bb0b4] mt-3 leading-relaxed">
+            MVP behavior: any attempt advances. Phase 1: we will evaluate and fail-forward.
           </p>
         </div>
       )}
 
       {scene === 'reward' && (
-        <div className="border border-black/5 bg-gray-50 p-6">
+        <div className="border border-[#224048] bg-[#0b1f24] p-6 text-[#dde8ea]">
           <div className="text-[10px] uppercase tracking-widest text-brand-teal mb-4">Unlocked</div>
-          <div className="text-2xl font-editorial italic leading-relaxed">{episode.reward_asset}</div>
-          <div className="mt-6 border-t border-black/5 pt-6">
-            <div className="text-[10px] uppercase tracking-widest opacity-50 mb-3">Cliffhanger</div>
-            <div className="text-lg font-editorial italic leading-relaxed">{episode.cliffhanger}</div>
+          <div className="text-3xl font-editorial italic leading-relaxed">{episode.reward_asset}</div>
+          <div className="mt-6 border-t border-[#28474f] pt-6">
+            <div className="text-[10px] uppercase tracking-widest text-[#8da2a6] mb-3">Cliffhanger</div>
+            <div className="text-xl font-editorial italic leading-relaxed">{episode.cliffhanger}</div>
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
             <button
@@ -492,7 +529,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
             </button>
             <button
               onClick={props.onOpenPlan}
-              className="px-5 py-3 border border-black/20 text-black text-xs uppercase tracking-[0.25em] hover-border-brand-teal transition-colors"
+              className="px-5 py-3 border border-[#3b5a61] text-[#dde8ea] text-xs uppercase tracking-[0.25em] hover-border-brand-teal transition-colors"
             >
               Open Your Plan
             </button>
@@ -500,7 +537,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex items-center justify-between pt-2 border-t border-black/10">
         <button
           onClick={() => setScene('hook')}
           className="text-xs uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity"
