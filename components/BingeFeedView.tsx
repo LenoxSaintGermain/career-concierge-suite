@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BingeEpisode, CuratedMediaLibraryResponse, GeneratedMediaPack, ResolvedCuratedMediaItem } from '../types';
 import {
   fetchCuratedMediaLibrary,
@@ -24,6 +24,14 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [activeMediaId, setActiveMediaId] = useState<string | null>(null);
   const [embedLoading, setEmbedLoading] = useState(false);
+  const [heroRevealed, setHeroRevealed] = useState(false);
+  const [queueRevealed, setQueueRevealed] = useState(false);
+  const [storyRevealed, setStoryRevealed] = useState(false);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const heroSectionRef = useRef<HTMLElement | null>(null);
+  const queueSectionRef = useRef<HTMLElement | null>(null);
+  const storySectionRef = useRef<HTMLDivElement | null>(null);
 
   const swipes = useMemo(() => episode?.lesson_swipes ?? [], [episode?.lesson_swipes]);
   const recommendedModels = useMemo(() => episode?.art_direction?.recommended_models ?? [], [episode?.art_direction]);
@@ -62,6 +70,14 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     if (!library?.context) return null;
     return `${library.context.intake_complete ? 'post-intake' : 'pre-intake'} / ${library.context.intent || 'all intents'} / ${library.context.focus || 'all focuses'} / ${library.context.pace || 'all paces'}`;
   }, [library?.context]);
+  const sceneSteps: Array<{ id: Scene; label: string }> = [
+    { id: 'hook', label: 'Cold Open' },
+    { id: 'swipe1', label: 'Swipe I' },
+    { id: 'swipe2', label: 'Swipe II' },
+    { id: 'swipe3', label: 'Swipe III' },
+    { id: 'challenge', label: 'Challenge' },
+    { id: 'reward', label: 'Reward' },
+  ];
 
   const load = async () => {
     setLoading(true);
@@ -156,6 +172,44 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     setEmbedLoading(true);
   }, [activeMedia?.id, activeMedia?.embed_url]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const marker = (entry.target as HTMLElement).dataset.reveal;
+          if (marker === 'hero') setHeroRevealed(true);
+          if (marker === 'queue') setQueueRevealed(true);
+          if (marker === 'story') setStoryRevealed(true);
+        });
+      },
+      { threshold: 0.2, rootMargin: '0px 0px -8% 0px' }
+    );
+
+    if (heroSectionRef.current) observer.observe(heroSectionRef.current);
+    if (queueSectionRef.current) observer.observe(queueSectionRef.current);
+    if (storySectionRef.current) observer.observe(storySectionRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const onHeroMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (reduceMotion) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const nx = (event.clientX - rect.left) / rect.width - 0.5;
+    const ny = (event.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: nx * 4.5, y: -ny * 4.5 });
+  };
+
+  const onHeroLeave = () => {
+    setTilt({ x: 0, y: 0 });
+  };
+
   const next = () => {
     setScene((s) => {
       if (s === 'hook') return 'swipe1';
@@ -218,7 +272,13 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
         </p>
       </div>
 
-      <section className="relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6">
+      <section
+        ref={heroSectionRef}
+        data-reveal="hero"
+        className={`relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6 transition-all dur-cinematic ease-exit ${
+          heroRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+        }`}
+      >
         {featuredBackdrop && (
           <div
             className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-30"
@@ -257,7 +317,18 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
           ) : activeMedia ? (
             <>
               <div className="grid grid-cols-1 lg:grid-cols-[1.22fr_0.78fr] gap-4">
-                <div className="border border-[#29464d] bg-[#0d2227] p-3 md:p-4 space-y-3">
+                <div
+                  onMouseMove={onHeroMove}
+                  onMouseLeave={onHeroLeave}
+                  className="border border-[#29464d] bg-[#0d2227] p-3 md:p-4 space-y-3 transition-transform dur-md ease-exit will-change-transform"
+                  style={
+                    reduceMotion
+                      ? undefined
+                      : {
+                          transform: `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
+                        }
+                  }
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.22em] text-[#8aa0a4]">{activeMedia.platform_resolved}</div>
@@ -318,7 +389,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
 
                 <div className="border border-[#29464d] bg-[#0d2227] p-3 md:p-4">
                   <div className="text-[10px] uppercase tracking-[0.2em] text-[#90a5a9] mb-3">Media Grid</div>
-                  <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar lg:flex-col lg:overflow-x-visible lg:overflow-y-auto lg:max-h-[470px]">
+                  <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory lg:flex-col lg:overflow-x-visible lg:overflow-y-auto lg:max-h-[470px]">
                     {library?.items.map((item) => {
                       const active = activeMedia.id === item.id;
                       const thumb = item.thumbnail_url || '';
@@ -327,7 +398,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
                           key={item.id}
                           type="button"
                           onClick={() => setActiveMediaId(item.id)}
-                          className={`relative min-w-[230px] lg:min-w-0 text-left border transition-all p-3 ${
+                          className={`relative min-w-[230px] shrink-0 snap-start lg:min-w-0 lg:shrink text-left border transition-all dur-sm ease-exit hover:-translate-y-0.5 p-3 ${
                             active
                               ? 'border-brand-teal bg-[#153740]'
                               : 'border-[#35535b] bg-[#102830] hover-border-brand-teal'
@@ -375,7 +446,13 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
         </div>
       </section>
 
-      <section className="relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6 space-y-4">
+      <section
+        ref={queueSectionRef}
+        data-reveal="queue"
+        className={`relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6 space-y-4 transition-all dur-cinematic ease-exit ${
+          queueRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+        }`}
+      >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_14%,rgba(38,200,188,0.14),transparent_52%)]" />
 
         <div className="relative flex items-center justify-between gap-4 flex-wrap">
@@ -489,6 +566,34 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
         )}
       </section>
 
+      <div className="border border-black/10 bg-white/60 p-3 md:p-4">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-black/45 mb-3">Episode Progression</div>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar snap-x snap-mandatory">
+          {sceneSteps.map((step, idx) => {
+            const active = step.id === scene;
+            return (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => setScene(step.id)}
+                className={`shrink-0 snap-start px-3 py-2 text-[10px] uppercase tracking-[0.2em] border transition-all ${
+                  active
+                    ? 'border-brand-teal bg-brand-soft text-brand-teal'
+                    : 'border-black/15 text-black/55 hover-border-brand-teal'
+                }`}
+              >
+                {(idx + 1).toString().padStart(2, '0')} · {step.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div
+        ref={storySectionRef}
+        data-reveal="story"
+        className={`transition-all dur-cinematic ease-exit ${storyRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}
+      >
       {scene === 'hook' && renderCard('Cold Open', episode.hook_card)}
       {scene === 'swipe1' && renderCard('Swipe 1', swipes[0] ?? '...')}
       {scene === 'swipe2' && renderCard('Swipe 2', swipes[1] ?? '...')}
@@ -536,6 +641,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
           </div>
         </div>
       )}
+      </div>
 
       <div className="flex items-center justify-between pt-2 border-t border-black/10">
         <button
