@@ -342,17 +342,25 @@ export function IntakeFlow(props: {
           {error}
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={playConciergeVoice}
-          disabled={voiceBusy || step === 'plating'}
-          className="px-4 py-2 border border-brand-teal text-brand-teal text-[10px] uppercase tracking-[0.22em] hover:bg-brand-soft transition-colors disabled:opacity-50"
-        >
-          {voiceBusy ? 'Preparing voice preview…' : 'Hear Concierge Preview'}
-        </button>
-        <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">
-          {lastVoiceProvider ? `${lastVoiceProvider} voice route` : 'Configured voice route'}
+      <div className="border border-black/10 bg-brand-soft p-4 md:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Immersive Play Rail</div>
+            <div className="text-sm text-gray-700 mt-2">
+              Start with voice to set tone, then move into the live studio scrollytelling flow.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={playConciergeVoice}
+            disabled={voiceBusy || step === 'plating'}
+            className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] transition-colors disabled:opacity-50"
+          >
+            {voiceBusy ? 'Scoring cinematic preview…' : 'Play Concierge Preview'}
+          </button>
+        </div>
+        <div className="mt-3 text-[10px] uppercase tracking-[0.2em] text-gray-500">
+          {lastVoiceProvider ? `${lastVoiceProvider} route active` : 'Voice route ready'}
         </div>
       </div>
       {voiceError && (

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { createGeminiLiveToken } from '../services/liveApi';
 import { GeminiLiveTokenResponse } from '../types';
@@ -10,6 +10,43 @@ const CONNECTING_SCENES = [
   'Loading concierge identity',
   'Aligning ROM tone and pacing',
   'Opening low-latency voice channel',
+];
+type StorySceneId = 'arrival' | 'signal' | 'co_design' | 'launch';
+const STORY_SCENES: Array<{
+  id: StorySceneId;
+  kicker: string;
+  title: string;
+  body: string;
+  cue: string;
+}> = [
+  {
+    id: 'arrival',
+    kicker: 'Scene 01',
+    title: 'Enter the studio with one decisive intent.',
+    body: 'Start voice-first. The concierge listens for pressure, constraints, and what a real win looks like this week.',
+    cue: 'Press play and speak naturally for 20 seconds.',
+  },
+  {
+    id: 'signal',
+    kicker: 'Scene 02',
+    title: 'Convert raw context into strategic signal.',
+    body: 'Your tone, pacing, and phrasing become structured direction for the suite. No quiz energy. No generic scripts.',
+    cue: 'Name one friction pattern that keeps repeating.',
+  },
+  {
+    id: 'co_design',
+    kicker: 'Scene 03',
+    title: 'Co-design the next move in real time.',
+    body: 'Invite camera only if visual context helps. The system stays focused on decisions, not visual noise.',
+    cue: 'Ask for a better framing of your next high-leverage move.',
+  },
+  {
+    id: 'launch',
+    kicker: 'Scene 04',
+    title: 'Launch with momentum already shaped.',
+    body: 'Your live calibration feeds Intake and drives your brief, plan, and execution stack with less friction.',
+    cue: 'Close the session once your direction feels precise.',
+  },
 ];
 
 const base64ToBytes = (base64: string) => {
@@ -94,8 +131,10 @@ export function GeminiLivePanel() {
   const [tokenInfo, setTokenInfo] = useState<GeminiLiveTokenResponse | null>(null);
   const [showProTools, setShowProTools] = useState(false);
   const [loadingSceneIndex, setLoadingSceneIndex] = useState(0);
+  const [activeStoryScene, setActiveStoryScene] = useState<StorySceneId>('arrival');
 
   const sessionRef = useRef<any>(null);
+  const storyRailRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -129,6 +168,20 @@ export function GeminiLivePanel() {
     ? `Welcome, ${firstName}. Your concierge is learning your context in real time.`
     : 'Welcome. Your concierge is learning your context in real time.';
   const connectingScene = CONNECTING_SCENES[loadingSceneIndex];
+  const activeStory = useMemo(
+    () => STORY_SCENES.find((scene) => scene.id === activeStoryScene) ?? STORY_SCENES[0],
+    [activeStoryScene]
+  );
+  const liveMood =
+    state === 'connected'
+      ? micEnabled
+        ? 'Voice channel active'
+        : 'Session open, waiting for your first words'
+      : state === 'connecting'
+        ? 'Assembling cinematic live surface'
+        : state === 'error'
+          ? 'Session interrupted'
+          : 'Immersive studio on standby';
 
   const clearCameraLoop = () => {
     if (cameraLoopRef.current) {
@@ -529,6 +582,15 @@ export function GeminiLivePanel() {
     }
   };
 
+  const scrollToStoryScene = (sceneId: StorySceneId) => {
+    const rail = storyRailRef.current;
+    if (!rail) return;
+    const target = rail.querySelector<HTMLElement>(`[data-story-scene="${sceneId}"]`);
+    if (!target) return;
+    setActiveStoryScene(sceneId);
+    target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
   useEffect(() => {
     if (state !== 'connecting') {
       setLoadingSceneIndex(0);
@@ -539,6 +601,27 @@ export function GeminiLivePanel() {
     }, 950);
     return () => window.clearInterval(id);
   }, [state]);
+
+  useEffect(() => {
+    const rail = storyRailRef.current;
+    if (!rail) return;
+    const nodes: NodeListOf<HTMLElement> = rail.querySelectorAll('[data-story-scene]');
+    if (!nodes.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible?.target) return;
+        const nextId = visible.target.getAttribute('data-story-scene') as StorySceneId | null;
+        if (nextId) setActiveStoryScene(nextId);
+      },
+      { root: rail, threshold: [0.45, 0.7, 0.9] }
+    );
+
+    nodes.forEach((node: HTMLElement) => observer.observe(node));
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -562,11 +645,11 @@ export function GeminiLivePanel() {
           <div>
             <div className="text-[10px] uppercase tracking-[0.25em] text-brand-teal">Concierge Live Studio</div>
             <h3 className="text-[28px] md:text-[34px] font-editorial italic leading-tight mt-2">
-              Tune your AI concierge in one living conversation.
+              Press play. Step into a cinematic calibration.
             </h3>
             <p className="text-sm text-[#c7d5d7] leading-relaxed mt-3 max-w-2xl">
-              {personalGreeting} Speak naturally, share pressure points, and the suite adapts to your priorities as you
-              talk.
+              {personalGreeting} This rail is designed as an immersive sequence, not a utility form. Speak naturally and
+              let the concierge tune itself to your momentum.
             </p>
           </div>
 
@@ -576,7 +659,7 @@ export function GeminiLivePanel() {
                 state === 'connected' ? 'bg-brand-teal animate-pulse' : state === 'error' ? 'bg-red-500' : 'bg-white/30'
               }`}
             />
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[#b5c5c8]">{statusLabel}</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#b5c5c8]">{statusLabel} · {liveMood}</div>
           </div>
         </div>
 
@@ -599,6 +682,51 @@ export function GeminiLivePanel() {
               </div>
             );
           })}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[0.85fr_1.15fr] gap-4 border border-[#214047] bg-[#0a1d22] p-3 md:p-4">
+          <div className="xl:sticky xl:top-3 self-start border border-[#2a4950] bg-[#102a31] p-4 md:p-5 min-h-[240px] flex flex-col justify-between">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">{activeStory.kicker}</div>
+              <div className="mt-3 text-[28px] leading-[1.05] font-editorial italic text-[#e7f1f2]">{activeStory.title}</div>
+              <p className="mt-4 text-sm leading-relaxed text-[#c4d4d6]">{activeStory.body}</p>
+            </div>
+            <div className="mt-5 border-t border-[#2d4b52] pt-4">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#8aa2a6]">Play Cue</div>
+              <div className="mt-2 text-sm text-[#d5e2e3]">{activeStory.cue}</div>
+            </div>
+          </div>
+
+          <div
+            ref={storyRailRef}
+            className="max-h-[280px] md:max-h-[320px] xl:max-h-[350px] overflow-y-auto no-scrollbar pr-1 space-y-3"
+          >
+            {STORY_SCENES.map((scene, idx) => {
+              const active = scene.id === activeStoryScene;
+              return (
+                <button
+                  key={scene.id}
+                  type="button"
+                  data-story-scene={scene.id}
+                  onClick={() => scrollToStoryScene(scene.id)}
+                  className={`w-full text-left border p-4 transition-all duration-500 ${
+                    active
+                      ? 'border-brand-teal bg-[#153740] shadow-[0_8px_24px_rgba(8,52,62,0.35)]'
+                      : 'border-[#2a4850] bg-[#0e242a] hover:border-brand-teal/70'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[10px] uppercase tracking-[0.22em] text-[#95adb1]">
+                      {(idx + 1).toString().padStart(2, '0')} · {scene.kicker}
+                    </div>
+                    <div className={`h-2 w-2 rounded-full ${active ? 'bg-brand-teal animate-pulse' : 'bg-[#4b666a]'}`} />
+                  </div>
+                  <div className="mt-2 text-xl font-editorial italic text-[#e6eff0]">{scene.title}</div>
+                  <div className="mt-2 text-xs uppercase tracking-[0.18em] text-[#9cb2b5]">{scene.cue}</div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-5 items-start">
@@ -650,7 +778,7 @@ export function GeminiLivePanel() {
                   disabled={state === 'connecting'}
                   className="px-5 py-3 btn-brand text-[10px] uppercase tracking-[0.24em] disabled:opacity-40"
                 >
-                  {state === 'connecting' ? 'Opening Live Studio…' : 'Step 1: Enter Live Studio'}
+                  {state === 'connecting' ? 'Opening Immersive Session…' : 'Play Immersive Session'}
                 </button>
               ) : (
                 <button
@@ -668,7 +796,7 @@ export function GeminiLivePanel() {
                 disabled={state !== 'connected'}
                 className="px-5 py-3 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.24em] text-[#d0ddde] transition-colors disabled:opacity-45 hover:border-brand-teal"
               >
-                {micEnabled ? 'Pause Voice Channel' : 'Step 2: Open Voice Channel'}
+                {micEnabled ? 'Pause Voice Channel' : 'Enable Voice Channel'}
               </button>
 
               <button
@@ -677,12 +805,12 @@ export function GeminiLivePanel() {
                 disabled={state !== 'connected'}
                 className="px-5 py-3 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.24em] text-[#d0ddde] transition-colors disabled:opacity-45 hover:border-brand-teal"
               >
-                {cameraEnabled ? 'Pause Visual Context' : 'Step 3: Invite Visual Context'}
+                {cameraEnabled ? 'Pause Visual Context' : 'Add Visual Context'}
               </button>
             </div>
 
             <div className="text-[10px] uppercase tracking-[0.2em] text-[#7f9599]">
-              Talk as you would with a trusted strategist. The concierge picks up your rhythm as you speak.
+              This is a guided live scene. Speak like you are briefing a trusted operator.
             </div>
           </div>
 
