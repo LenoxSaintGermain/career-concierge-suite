@@ -716,8 +716,12 @@ const isCuratedMediaMatch = ({ item, surface, context, isAdmin }) => {
   const surfaces = Array.isArray(item.surfaces) ? item.surfaces : [];
   const explicitSurfaces = surfaces.filter((entry) => entry !== 'pre_intake' && entry !== 'post_intake');
   if (explicitSurfaces.length && !explicitSurfaces.includes(surface)) return false;
-  if (surfaces.includes('pre_intake') && context.intake_complete) return false;
-  if (surfaces.includes('post_intake') && !context.intake_complete) return false;
+  const hasPreIntakeSurface = surfaces.includes('pre_intake');
+  const hasPostIntakeSurface = surfaces.includes('post_intake');
+  if (hasPreIntakeSurface || hasPostIntakeSurface) {
+    if (context.intake_complete && !hasPostIntakeSurface) return false;
+    if (!context.intake_complete && !hasPreIntakeSurface) return false;
+  }
 
   const audience = String(item?.rule?.audience ?? 'all');
   if (audience === 'admins' && !isAdmin) return false;
@@ -726,11 +730,11 @@ const isCuratedMediaMatch = ({ item, surface, context, isAdmin }) => {
   if (audience === 'active_clients' && !context.intake_complete) return false;
 
   const intents = Array.isArray(item?.rule?.intents) ? item.rule.intents : [];
-  if (intents.length && !intents.includes(context.intent)) return false;
+  if (intents.length && context.intent && !intents.includes(context.intent)) return false;
   const focuses = Array.isArray(item?.rule?.focuses) ? item.rule.focuses : [];
-  if (focuses.length && !focuses.includes(context.focus)) return false;
+  if (focuses.length && context.focus && !focuses.includes(context.focus)) return false;
   const paces = Array.isArray(item?.rule?.paces) ? item.rule.paces : [];
-  if (paces.length && !paces.includes(context.pace)) return false;
+  if (paces.length && context.pace && !paces.includes(context.pace)) return false;
 
   const requiredUnlocks = Array.isArray(item?.rule?.required_module_unlocks)
     ? item.rule.required_module_unlocks
@@ -1424,6 +1428,8 @@ app.get('/v1/media/library', requireAuth, async (req, res) => {
   return res.json({
     surface,
     generated_at: new Date().toISOString(),
+    total_items: curated.length,
+    matched_items: visible.length,
     context: {
       intake_complete: context.intake_complete,
       intent: context.intent,

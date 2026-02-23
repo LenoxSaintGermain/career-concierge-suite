@@ -23,6 +23,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [activeMediaId, setActiveMediaId] = useState<string | null>(null);
+  const [embedLoading, setEmbedLoading] = useState(false);
 
   const swipes = useMemo(() => episode?.lesson_swipes ?? [], [episode?.lesson_swipes]);
   const recommendedModels = useMemo(() => episode?.art_direction?.recommended_models ?? [], [episode?.art_direction]);
@@ -39,6 +40,20 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     if (!activeMediaId) return library.items[0];
     return library.items.find((item) => item.id === activeMediaId) ?? library.items[0];
   }, [library?.items, activeMediaId]);
+  const hasCuratedButNoMatch =
+    Boolean(library) && (library.total_items ?? 0) > 0 && (library.matched_items ?? 0) === 0;
+  const libraryStatusText = libraryLoading
+    ? 'Resolving routed media...'
+    : hasCuratedButNoMatch
+      ? 'Library loaded, no route match'
+      : activeMedia
+        ? 'Routed media ready'
+        : 'No media mapped yet';
+  const queueStatusText = mediaLoading
+    ? 'Generating scene pack...'
+    : mediaPack
+      ? 'Scene pack ready'
+      : 'Ready';
 
   const load = async () => {
     setLoading(true);
@@ -125,6 +140,14 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     loadCuratedLibrary();
   }, []);
 
+  useEffect(() => {
+    if (!activeMedia?.embed_url) {
+      setEmbedLoading(false);
+      return;
+    }
+    setEmbedLoading(true);
+  }, [activeMedia?.id, activeMedia?.embed_url]);
+
   const next = () => {
     setScene((s) => {
       if (s === 'hook') return 'swipe1';
@@ -145,8 +168,16 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
 
   if (loading && !episode) {
     return (
-      <div className="py-16 text-center">
-        <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Generating episode…</div>
+      <div className="py-16 space-y-6">
+        <div className="text-center">
+          <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Preparing Episodes Workspace…</div>
+          <div className="text-xs text-gray-500 mt-2">Loading story state, mapped media, and visual surfaces.</div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="h-24 bg-gray-100 border border-black/5 animate-pulse" />
+          <div className="h-24 bg-gray-100 border border-black/5 animate-pulse" />
+          <div className="h-24 bg-gray-100 border border-black/5 animate-pulse" />
+        </div>
       </div>
     );
   }
@@ -183,13 +214,14 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
           <div>
             <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Curated Library</div>
             <div className="text-lg font-editorial italic mt-1">Pre-produced media routed by segment and journey step.</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-black/45 mt-2">{libraryStatusText}</div>
           </div>
           <button
             onClick={loadCuratedLibrary}
             disabled={libraryLoading}
             className="px-3 py-2 border border-black/20 text-[10px] uppercase tracking-[0.2em] hover-border-brand-teal disabled:opacity-40"
           >
-            {libraryLoading ? 'Refreshing…' : 'Refresh Library'}
+            {libraryLoading ? 'Refreshing Routes…' : 'Refresh Library'}
           </button>
         </div>
         {libraryError && (
@@ -197,7 +229,18 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
             {libraryError}
           </div>
         )}
-        {activeMedia ? (
+        {libraryLoading && !library ? (
+          <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-4">
+            <div className="bg-white border border-black/10 p-3">
+              <div className="w-full aspect-video border border-black/10 bg-gray-100 animate-pulse" />
+            </div>
+            <div className="bg-white border border-black/10 p-3 space-y-3 max-h-[420px] overflow-auto">
+              <div className="h-14 border border-black/10 bg-gray-100 animate-pulse" />
+              <div className="h-14 border border-black/10 bg-gray-100 animate-pulse" />
+              <div className="h-14 border border-black/10 bg-gray-100 animate-pulse" />
+            </div>
+          </div>
+        ) : activeMedia ? (
           <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-4">
               <div className="bg-white border border-black/10 p-3">
@@ -216,23 +259,36 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
                   </a>
                 </div>
                 {activeMedia.embed_url ? (
-                  activeMedia.platform_resolved === 'direct' ? (
-                    <video
-                      controls
-                      preload="metadata"
-                      src={activeMedia.embed_url}
-                      poster={activeMedia.thumbnail_url || undefined}
-                      className="w-full aspect-video border border-black/10 bg-black"
-                    />
-                  ) : (
-                    <iframe
-                      src={activeMedia.embed_url}
-                      title={activeMedia.title || 'External media'}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      className="w-full aspect-video border border-black/10 bg-black"
-                    />
-                  )
+                  <div className="relative">
+                    {activeMedia.platform_resolved === 'direct' ? (
+                      <video
+                        controls
+                        preload="metadata"
+                        src={activeMedia.embed_url}
+                        poster={activeMedia.thumbnail_url || undefined}
+                        onLoadedData={() => setEmbedLoading(false)}
+                        className="w-full aspect-video border border-black/10 bg-black"
+                      />
+                    ) : (
+                      <iframe
+                        src={activeMedia.embed_url}
+                        title={activeMedia.title || 'External media'}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        loading="eager"
+                        onLoad={() => setEmbedLoading(false)}
+                        className="w-full aspect-video border border-black/10 bg-black"
+                      />
+                    )}
+                    {embedLoading && (
+                      <div className="absolute inset-0 border border-brand-teal/20 bg-brand-soft/95 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal animate-pulse">Loading media preview…</div>
+                          <div className="text-xs text-gray-600 mt-2">Preparing playback surface</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="w-full aspect-video border border-dashed border-black/20 flex flex-col items-center justify-center text-center p-6">
                     <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Preview unavailable</div>
@@ -272,9 +328,18 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
               </div>
             )}
           </div>
+        ) : hasCuratedButNoMatch ? (
+          <div className="bg-white border border-black/10 p-4 space-y-2">
+            <div className="text-sm text-gray-700">
+              Library has {library?.total_items ?? 0} media item(s), but none match this routing context.
+            </div>
+            <div className="text-xs text-gray-500">
+              Check surface + intent/focus/pace filters in Admin, or relax filters for pre-intake users.
+            </div>
+          </div>
         ) : (
           <div className="bg-white border border-black/10 p-4 text-sm text-gray-600">
-            No external media is mapped to this user segment and journey step yet.
+            No external media has been added yet. Add a YouTube/Vimeo item in Admin and map it to Episodes.
           </div>
         )}
       </section>
@@ -286,9 +351,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
             <div className="text-lg font-editorial italic mt-1">Model routing for multimedia generation.</div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">
-              {mediaLoading ? 'Generating scene pack...' : loading ? 'Generating...' : 'Ready'}
-            </div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">{queueStatusText}</div>
             <button
               onClick={loadMediaPack}
               disabled={mediaLoading}

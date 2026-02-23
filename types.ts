@@ -198,6 +198,8 @@ export interface ResolvedCuratedMediaItem extends CuratedMediaItem {
 export interface CuratedMediaLibraryResponse {
   surface: MediaJourneySurface;
   generated_at: string;
+  total_items?: number;
+  matched_items?: number;
   context: {
     intake_complete: boolean;
     intent: ClientIntent | null;
