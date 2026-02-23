@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BingeEpisode, GeneratedMediaPack } from '../types';
-import { generateBingeEpisode, generateEpisodeMediaPack, refreshVideoOperation } from '../services/bingeApi';
+import { BingeEpisode, CuratedMediaLibraryResponse, GeneratedMediaPack, ResolvedCuratedMediaItem } from '../types';
+import {
+  fetchCuratedMediaLibrary,
+  generateBingeEpisode,
+  generateEpisodeMediaPack,
+  refreshVideoOperation,
+} from '../services/bingeApi';
 
 type Scene = 'hook' | 'swipe1' | 'swipe2' | 'swipe3' | 'challenge' | 'reward';
 
@@ -14,6 +19,10 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   const [mediaLoading, setMediaLoading] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [videoRefreshBusy, setVideoRefreshBusy] = useState(false);
+  const [library, setLibrary] = useState<CuratedMediaLibraryResponse | null>(null);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [activeMediaId, setActiveMediaId] = useState<string | null>(null);
 
   const swipes = useMemo(() => episode?.lesson_swipes ?? [], [episode?.lesson_swipes]);
   const recommendedModels = useMemo(() => episode?.art_direction?.recommended_models ?? [], [episode?.art_direction]);
@@ -25,6 +34,11 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     () => mediaPack?.assets.find((asset) => asset.kind === 'video'),
     [mediaPack]
   );
+  const activeMedia = useMemo<ResolvedCuratedMediaItem | null>(() => {
+    if (!library?.items?.length) return null;
+    if (!activeMediaId) return library.items[0];
+    return library.items.find((item) => item.id === activeMediaId) ?? library.items[0];
+  }, [library?.items, activeMediaId]);
 
   const load = async () => {
     setLoading(true);
@@ -55,6 +69,24 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
       setMediaError(e?.message ?? 'Unable to generate media pack.');
     } finally {
       setMediaLoading(false);
+    }
+  };
+
+  const loadCuratedLibrary = async () => {
+    setLibraryLoading(true);
+    setLibraryError(null);
+    try {
+      const payload = await fetchCuratedMediaLibrary('episodes');
+      setLibrary(payload);
+      setActiveMediaId((prev) => {
+        if (prev && payload.items.some((item) => item.id === prev)) return prev;
+        return payload.items[0]?.id ?? null;
+      });
+    } catch (e: any) {
+      setLibrary(null);
+      setLibraryError(e?.message ?? 'Unable to load external media library.');
+    } finally {
+      setLibraryLoading(false);
     }
   };
 
@@ -90,6 +122,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
 
   useEffect(() => {
     load();
+    loadCuratedLibrary();
   }, []);
 
   const next = () => {
@@ -144,6 +177,107 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
           No lectures. No quizzes. You survive a micro-drama by executing the skill.
         </p>
       </div>
+
+      <section className="border border-black/5 p-5 bg-brand-soft">
+        <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Curated Library</div>
+            <div className="text-lg font-editorial italic mt-1">Pre-produced media routed by segment and journey step.</div>
+          </div>
+          <button
+            onClick={loadCuratedLibrary}
+            disabled={libraryLoading}
+            className="px-3 py-2 border border-black/20 text-[10px] uppercase tracking-[0.2em] hover-border-brand-teal disabled:opacity-40"
+          >
+            {libraryLoading ? 'Refreshing…' : 'Refresh Library'}
+          </button>
+        </div>
+        {libraryError && (
+          <div className="border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-700 leading-relaxed mb-3">
+            {libraryError}
+          </div>
+        )}
+        {activeMedia ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-4">
+              <div className="bg-white border border-black/10 p-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">{activeMedia.platform_resolved}</div>
+                    <div className="text-xl font-editorial italic mt-1">{activeMedia.title || 'Untitled Media'}</div>
+                  </div>
+                  <a
+                    href={activeMedia.open_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] uppercase tracking-[0.2em] text-brand-teal hover:opacity-70"
+                  >
+                    Open Source
+                  </a>
+                </div>
+                {activeMedia.embed_url ? (
+                  activeMedia.platform_resolved === 'direct' ? (
+                    <video
+                      controls
+                      preload="metadata"
+                      src={activeMedia.embed_url}
+                      poster={activeMedia.thumbnail_url || undefined}
+                      className="w-full aspect-video border border-black/10 bg-black"
+                    />
+                  ) : (
+                    <iframe
+                      src={activeMedia.embed_url}
+                      title={activeMedia.title || 'External media'}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full aspect-video border border-black/10 bg-black"
+                    />
+                  )
+                ) : (
+                  <div className="w-full aspect-video border border-dashed border-black/20 flex flex-col items-center justify-center text-center p-6">
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Preview unavailable</div>
+                    <div className="text-sm text-gray-600 mt-2">Open this source in a new tab.</div>
+                  </div>
+                )}
+                {activeMedia.subtitle && (
+                  <p className="mt-3 text-sm text-gray-600 leading-relaxed">{activeMedia.subtitle}</p>
+                )}
+              </div>
+              <div className="bg-white border border-black/10 p-3 space-y-3 max-h-[420px] overflow-auto">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">Media Grid</div>
+                {library?.items.map((item) => {
+                  const active = activeMedia.id === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setActiveMediaId(item.id)}
+                      className={`w-full text-left border p-3 transition-colors ${
+                        active ? 'border-brand-teal bg-brand-soft' : 'border-black/10 hover-border-brand-teal bg-white'
+                      }`}
+                    >
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">{item.platform_resolved}</div>
+                      <div className="text-sm font-semibold mt-1">{item.title || 'Untitled media'}</div>
+                      {item.subtitle && <div className="text-xs text-gray-600 mt-1 line-clamp-2">{item.subtitle}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {library?.context && (
+              <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">
+                Routing context: {library.context.intake_complete ? 'post-intake' : 'pre-intake'} /{' '}
+                {library.context.intent || 'all intents'} / {library.context.focus || 'all focuses'} /{' '}
+                {library.context.pace || 'all paces'}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white border border-black/10 p-4 text-sm text-gray-600">
+            No external media is mapped to this user segment and journey step yet.
+          </div>
+        )}
+      </section>
 
       <section className="border border-black/5 p-5 bg-brand-soft">
         <div className="flex items-center justify-between gap-4 flex-wrap">

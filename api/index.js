@@ -160,6 +160,8 @@ const DEFAULT_APP_CONFIG = {
     video_duration_seconds: 8,
     video_generate_audio: false,
     auto_generate_on_episode: false,
+    external_media_enabled: true,
+    curated_library: [],
   },
   voice: {
     enabled: false,
@@ -202,6 +204,82 @@ const normalizeSensitivity = (value, fallback) => {
   const normalized = String(value ?? '').trim().toLowerCase();
   if (normalized === 'high' || normalized === 'low') return normalized;
   return fallback;
+};
+
+const MODULE_IDS = new Set([
+  'intake',
+  'episodes',
+  'brief',
+  'suite_distilled',
+  'profile',
+  'ai_profile',
+  'gaps',
+  'readiness',
+  'cjs_execution',
+  'plan',
+  'assets',
+]);
+const JOURNEY_SURFACES = new Set(['suite_home', 'pre_intake', 'post_intake', ...MODULE_IDS]);
+const MEDIA_SOURCE_KINDS = new Set(['single', 'playlist']);
+const MEDIA_PLATFORMS = new Set([
+  'auto',
+  'youtube',
+  'vimeo',
+  'tiktok',
+  'instagram',
+  'linkedin',
+  'x',
+  'loom',
+  'direct',
+  'other',
+]);
+const MEDIA_AUDIENCES = new Set(['all', 'new_clients', 'active_clients', 'admins', 'non_admins']);
+const CLIENT_INTENT_SET = new Set(['current_role', 'target_role', 'not_sure']);
+const FOCUS_PREF_SET = new Set(['job_search', 'skills', 'leadership']);
+const PACE_PREF_SET = new Set(['straight', 'standard', 'story']);
+
+const toStringList = (value) =>
+  Array.isArray(value)
+    ? value
+        .map((entry) => String(entry ?? '').trim())
+        .filter(Boolean)
+    : [];
+
+const normalizeCuratedMediaItem = (value, index) => {
+  const item = value && typeof value === 'object' ? value : {};
+  const id = nonEmpty(item.id) || `media-${index + 1}`;
+  const sourceKind = nonEmpty(item.source_kind).toLowerCase();
+  const platform = nonEmpty(item.platform).toLowerCase();
+  const audience = nonEmpty(item?.rule?.audience).toLowerCase();
+  const surfaces = toStringList(item.surfaces).filter((entry) => JOURNEY_SURFACES.has(entry));
+  const intents = toStringList(item?.rule?.intents).filter((entry) => CLIENT_INTENT_SET.has(entry));
+  const focuses = toStringList(item?.rule?.focuses).filter((entry) => FOCUS_PREF_SET.has(entry));
+  const paces = toStringList(item?.rule?.paces).filter((entry) => PACE_PREF_SET.has(entry));
+  const requiredUnlocks = toStringList(item?.rule?.required_module_unlocks).filter((entry) =>
+    MODULE_IDS.has(entry)
+  );
+  const priority = clampInteger(item.priority, 100, 1, 999);
+
+  return {
+    id,
+    enabled: typeof item.enabled === 'boolean' ? item.enabled : true,
+    title: String(item.title ?? '').trim(),
+    subtitle: String(item.subtitle ?? '').trim(),
+    source_url: nonEmpty(item.source_url),
+    source_kind: MEDIA_SOURCE_KINDS.has(sourceKind) ? sourceKind : 'single',
+    platform: MEDIA_PLATFORMS.has(platform) ? platform : 'auto',
+    thumbnail_url: nonEmpty(item.thumbnail_url),
+    tags: toStringList(item.tags),
+    priority,
+    surfaces: surfaces.length ? surfaces : ['episodes'],
+    rule: {
+      audience: MEDIA_AUDIENCES.has(audience) ? audience : 'all',
+      intents,
+      focuses,
+      paces,
+      required_module_unlocks: requiredUnlocks,
+    },
+  };
 };
 
 const normalizeConfig = (input = {}) => {
@@ -272,6 +350,15 @@ const normalizeConfig = (input = {}) => {
         typeof media.auto_generate_on_episode === 'boolean'
           ? media.auto_generate_on_episode
           : DEFAULT_APP_CONFIG.media.auto_generate_on_episode,
+      external_media_enabled:
+        typeof media.external_media_enabled === 'boolean'
+          ? media.external_media_enabled
+          : DEFAULT_APP_CONFIG.media.external_media_enabled,
+      curated_library: Array.isArray(media.curated_library)
+        ? media.curated_library.map((entry, index) => normalizeCuratedMediaItem(entry, index))
+        : DEFAULT_APP_CONFIG.media.curated_library.map((entry, index) =>
+            normalizeCuratedMediaItem(entry, index)
+          ),
     },
     voice: {
       enabled: typeof voice.enabled === 'boolean' ? voice.enabled : DEFAULT_APP_CONFIG.voice.enabled,
@@ -506,6 +593,154 @@ const loadClientDna = async (uid) => {
     console.error('dna_load_error', error);
     return {};
   }
+};
+
+const loadClientJourneyProfile = async (uid) => {
+  try {
+    const snap = await db.collection('clients').doc(uid).get();
+    if (!snap.exists) {
+      return { intake_complete: false, intent: null, focus: null, pace: null };
+    }
+    const data = snap.data() ?? {};
+    return {
+      intake_complete: Boolean(data?.intake?.completed_at),
+      intent: CLIENT_INTENT_SET.has(String(data?.intent ?? '')) ? String(data.intent) : null,
+      focus: FOCUS_PREF_SET.has(String(data?.preferences?.focus ?? '')) ? String(data.preferences.focus) : null,
+      pace: PACE_PREF_SET.has(String(data?.preferences?.pace ?? '')) ? String(data.preferences.pace) : null,
+    };
+  } catch (error) {
+    console.error('client_profile_load_error', error);
+    return { intake_complete: false, intent: null, focus: null, pace: null };
+  }
+};
+
+const inferMediaPlatform = (sourceUrl, configuredPlatform = 'auto') => {
+  if (configuredPlatform && configuredPlatform !== 'auto') return configuredPlatform;
+  try {
+    const host = new URL(sourceUrl).hostname.toLowerCase();
+    if (host.includes('youtube.com') || host.includes('youtu.be')) return 'youtube';
+    if (host.includes('vimeo.com')) return 'vimeo';
+    if (host.includes('tiktok.com')) return 'tiktok';
+    if (host.includes('instagram.com')) return 'instagram';
+    if (host.includes('linkedin.com')) return 'linkedin';
+    if (host.includes('x.com') || host.includes('twitter.com')) return 'x';
+    if (host.includes('loom.com')) return 'loom';
+  } catch {}
+  const lower = String(sourceUrl ?? '').toLowerCase();
+  if (/\.(mp4|webm|ogg)(\?|#|$)/.test(lower)) return 'direct';
+  return 'other';
+};
+
+const resolveExternalMediaUrls = (item) => {
+  const openUrl = nonEmpty(item.source_url);
+  const platform = inferMediaPlatform(openUrl, item.platform);
+  if (!openUrl) return { platform_resolved: platform, open_url: '', embed_url: '' };
+
+  try {
+    const url = new URL(openUrl);
+    if (platform === 'youtube') {
+      let videoId = '';
+      if (url.hostname.includes('youtu.be')) {
+        videoId = url.pathname.split('/').filter(Boolean)[0] || '';
+      } else if (url.pathname.startsWith('/shorts/')) {
+        videoId = url.pathname.split('/')[2] || '';
+      } else {
+        videoId = url.searchParams.get('v') || '';
+      }
+      const playlistId = url.searchParams.get('list') || '';
+      if (item.source_kind === 'playlist' && playlistId) {
+        return {
+          platform_resolved: 'youtube',
+          open_url: openUrl,
+          embed_url: `https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(playlistId)}`,
+        };
+      }
+      if (videoId) {
+        const listPart = playlistId ? `?list=${encodeURIComponent(playlistId)}` : '';
+        return {
+          platform_resolved: 'youtube',
+          open_url: openUrl,
+          embed_url: `https://www.youtube.com/embed/${encodeURIComponent(videoId)}${listPart}`,
+        };
+      }
+    }
+
+    if (platform === 'vimeo') {
+      const segments = url.pathname.split('/').filter(Boolean);
+      const id = segments.reverse().find((segment) => /^\d+$/.test(segment)) || '';
+      if (id) {
+        return {
+          platform_resolved: 'vimeo',
+          open_url: openUrl,
+          embed_url: `https://player.vimeo.com/video/${encodeURIComponent(id)}`,
+        };
+      }
+    }
+
+    if (platform === 'loom') {
+      const segments = url.pathname.split('/').filter(Boolean);
+      const key = segments[1] && segments[0] === 'share' ? segments[1] : '';
+      if (key) {
+        return {
+          platform_resolved: 'loom',
+          open_url: openUrl,
+          embed_url: `https://www.loom.com/embed/${encodeURIComponent(key)}`,
+        };
+      }
+    }
+
+    if (platform === 'tiktok') {
+      const segments = url.pathname.split('/').filter(Boolean);
+      const id = segments.find((segment) => /^\d+$/.test(segment)) || '';
+      if (id) {
+        return {
+          platform_resolved: 'tiktok',
+          open_url: openUrl,
+          embed_url: `https://www.tiktok.com/embed/v2/${encodeURIComponent(id)}`,
+        };
+      }
+    }
+  } catch {}
+
+  if (platform === 'direct') {
+    return { platform_resolved: 'direct', open_url: openUrl, embed_url: openUrl };
+  }
+
+  return { platform_resolved: platform, open_url: openUrl, embed_url: '' };
+};
+
+const isCuratedMediaMatch = ({ item, surface, context, isAdmin }) => {
+  if (!item.enabled) return false;
+  if (!nonEmpty(item.source_url)) return false;
+
+  const surfaces = Array.isArray(item.surfaces) ? item.surfaces : [];
+  const explicitSurfaces = surfaces.filter((entry) => entry !== 'pre_intake' && entry !== 'post_intake');
+  if (explicitSurfaces.length && !explicitSurfaces.includes(surface)) return false;
+  if (surfaces.includes('pre_intake') && context.intake_complete) return false;
+  if (surfaces.includes('post_intake') && !context.intake_complete) return false;
+
+  const audience = String(item?.rule?.audience ?? 'all');
+  if (audience === 'admins' && !isAdmin) return false;
+  if (audience === 'non_admins' && isAdmin) return false;
+  if (audience === 'new_clients' && context.intake_complete) return false;
+  if (audience === 'active_clients' && !context.intake_complete) return false;
+
+  const intents = Array.isArray(item?.rule?.intents) ? item.rule.intents : [];
+  if (intents.length && !intents.includes(context.intent)) return false;
+  const focuses = Array.isArray(item?.rule?.focuses) ? item.rule.focuses : [];
+  if (focuses.length && !focuses.includes(context.focus)) return false;
+  const paces = Array.isArray(item?.rule?.paces) ? item.rule.paces : [];
+  if (paces.length && !paces.includes(context.pace)) return false;
+
+  const requiredUnlocks = Array.isArray(item?.rule?.required_module_unlocks)
+    ? item.rule.required_module_unlocks
+    : [];
+  if (requiredUnlocks.length && !context.intake_complete) {
+    const requiresLockedModule = requiredUnlocks.some((moduleId) => moduleId !== 'intake');
+    if (requiresLockedModule) return false;
+  }
+
+  return true;
 };
 
 const defaultArtPrompts = {
@@ -1152,6 +1387,52 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       artifacts: withArtifactMeta(buildSuiteFallback(answers), meta),
     });
   }
+});
+
+app.get('/v1/media/library', requireAuth, async (req, res) => {
+  const runtimeConfig = await loadAppConfig();
+  const surfaceCandidate = nonEmpty(req.query?.surface).toLowerCase();
+  const surface = JOURNEY_SURFACES.has(surfaceCandidate) ? surfaceCandidate : 'episodes';
+  const context = await loadClientJourneyProfile(req.user.uid);
+  const isAdmin = isAdminUser(req.user);
+
+  if (!runtimeConfig.media.external_media_enabled) {
+    return res.json({
+      surface,
+      generated_at: new Date().toISOString(),
+      context: { ...context, is_admin: isAdmin },
+      items: [],
+    });
+  }
+
+  const curated = Array.isArray(runtimeConfig.media.curated_library)
+    ? runtimeConfig.media.curated_library
+    : [];
+  const visible = curated
+    .filter((item) => isCuratedMediaMatch({ item, surface, context, isAdmin }))
+    .sort((a, b) => {
+      const pa = Number.isFinite(Number(a.priority)) ? Number(a.priority) : 100;
+      const pb = Number.isFinite(Number(b.priority)) ? Number(b.priority) : 100;
+      if (pa !== pb) return pa - pb;
+      return String(a.title ?? '').localeCompare(String(b.title ?? ''));
+    })
+    .map((item) => ({
+      ...item,
+      ...resolveExternalMediaUrls(item),
+    }));
+
+  return res.json({
+    surface,
+    generated_at: new Date().toISOString(),
+    context: {
+      intake_complete: context.intake_complete,
+      intent: context.intent,
+      focus: context.focus,
+      pace: context.pace,
+      is_admin: isAdmin,
+    },
+    items: visible,
+  });
 });
 
 // B.I.N.G.E: Generate one episode (fast).

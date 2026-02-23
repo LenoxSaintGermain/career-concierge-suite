@@ -1,5 +1,17 @@
 import { auth } from './firebase';
-import { AppConfig, PublicConfig } from '../types';
+import {
+  AppConfig,
+  ClientIntent,
+  CuratedMediaItem,
+  FocusPreference,
+  MediaAudience,
+  MediaJourneySurface,
+  MediaPlatform,
+  MediaSourceKind,
+  PacePreference,
+  PublicConfig,
+  SuiteModuleId,
+} from '../types';
 
 const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
 const defaultBaseUrl = 'https://career-concierge-api-pplaphmpxq-uw.a.run.app';
@@ -7,6 +19,88 @@ const defaultBaseUrl = 'https://career-concierge-api-pplaphmpxq-uw.a.run.app';
 const resolveBaseUrl = () => {
   const value = (configuredBaseUrl || defaultBaseUrl).trim();
   return value.endsWith('/') ? value.slice(0, -1) : value;
+};
+
+const MODULE_IDS: SuiteModuleId[] = [
+  'intake',
+  'episodes',
+  'brief',
+  'suite_distilled',
+  'profile',
+  'ai_profile',
+  'gaps',
+  'readiness',
+  'cjs_execution',
+  'plan',
+  'assets',
+];
+const SURFACE_SET = new Set<MediaJourneySurface>([...MODULE_IDS, 'suite_home', 'pre_intake', 'post_intake']);
+const PLATFORM_SET = new Set<MediaPlatform>([
+  'auto',
+  'youtube',
+  'vimeo',
+  'tiktok',
+  'instagram',
+  'linkedin',
+  'x',
+  'loom',
+  'direct',
+  'other',
+]);
+const SOURCE_KIND_SET = new Set<MediaSourceKind>(['single', 'playlist']);
+const AUDIENCE_SET = new Set<MediaAudience>(['all', 'new_clients', 'active_clients', 'admins', 'non_admins']);
+const INTENT_SET = new Set<ClientIntent>(['current_role', 'target_role', 'not_sure']);
+const FOCUS_SET = new Set<FocusPreference>(['job_search', 'skills', 'leadership']);
+const PACE_SET = new Set<PacePreference>(['straight', 'standard', 'story']);
+
+const cleanList = (input: unknown): string[] =>
+  Array.isArray(input)
+    ? input.map((entry) => String(entry ?? '').trim()).filter(Boolean)
+    : [];
+
+const toMediaId = (value: unknown, index: number) => {
+  const raw = String(value ?? '').trim();
+  if (raw) return raw;
+  return `media-${index + 1}`;
+};
+
+const normalizeCuratedMediaItem = (input: unknown, index: number): CuratedMediaItem => {
+  const source = input && typeof input === 'object' ? (input as any) : {};
+  const sourceKind = String(source?.source_kind ?? '').trim();
+  const platform = String(source?.platform ?? '').trim();
+  const audience = String(source?.rule?.audience ?? '').trim();
+  const intents = cleanList(source?.rule?.intents).filter((entry): entry is ClientIntent => INTENT_SET.has(entry as ClientIntent));
+  const focuses = cleanList(source?.rule?.focuses).filter(
+    (entry): entry is FocusPreference => FOCUS_SET.has(entry as FocusPreference)
+  );
+  const paces = cleanList(source?.rule?.paces).filter((entry): entry is PacePreference => PACE_SET.has(entry as PacePreference));
+  const requiredModuleUnlocks = cleanList(source?.rule?.required_module_unlocks).filter(
+    (entry): entry is SuiteModuleId => MODULE_IDS.includes(entry as SuiteModuleId)
+  );
+  const surfaces = cleanList(source?.surfaces).filter(
+    (entry): entry is MediaJourneySurface => SURFACE_SET.has(entry as MediaJourneySurface)
+  );
+
+  return {
+    id: toMediaId(source?.id, index),
+    enabled: Boolean(source?.enabled ?? true),
+    title: String(source?.title ?? '').trim(),
+    subtitle: String(source?.subtitle ?? '').trim(),
+    source_url: String(source?.source_url ?? '').trim(),
+    source_kind: SOURCE_KIND_SET.has(sourceKind as MediaSourceKind) ? (sourceKind as MediaSourceKind) : 'single',
+    platform: PLATFORM_SET.has(platform as MediaPlatform) ? (platform as MediaPlatform) : 'auto',
+    thumbnail_url: String(source?.thumbnail_url ?? '').trim(),
+    tags: cleanList(source?.tags),
+    priority: Number.isFinite(Number(source?.priority)) ? Math.max(1, Math.min(999, Math.round(Number(source.priority)))) : 100,
+    surfaces: surfaces.length ? surfaces : ['episodes'],
+    rule: {
+      audience: AUDIENCE_SET.has(audience as MediaAudience) ? (audience as MediaAudience) : 'all',
+      intents,
+      focuses,
+      paces,
+      required_module_unlocks: requiredModuleUnlocks,
+    },
+  };
 };
 
 const authHeaders = async () => {
@@ -57,6 +151,12 @@ const normalizeAdminConfig = (input: any): AppConfig => {
       video_duration_seconds: Number(source?.media?.video_duration_seconds ?? 8),
       video_generate_audio: Boolean(source?.media?.video_generate_audio ?? false),
       auto_generate_on_episode: Boolean(source?.media?.auto_generate_on_episode ?? false),
+      external_media_enabled: Boolean(source?.media?.external_media_enabled ?? true),
+      curated_library: Array.isArray(source?.media?.curated_library)
+        ? source.media.curated_library.map((entry: unknown, index: number) =>
+            normalizeCuratedMediaItem(entry, index)
+          )
+        : [],
     },
     voice: {
       enabled: Boolean(source?.voice?.enabled ?? false),

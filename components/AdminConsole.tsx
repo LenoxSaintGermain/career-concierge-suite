@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AppConfig } from '../types';
+import { CLIENT_INTENTS, FOCUS_PREFS, PACE_PREFS } from '../constants';
+import { AppConfig, CuratedMediaItem, MediaAudience, MediaJourneySurface, MediaPlatform, MediaSourceKind } from '../types';
 import { fetchAdminConfig, saveAdminConfig } from '../services/adminApi';
 
 type Props = {
@@ -56,6 +57,58 @@ const VOICE_PRESETS: VoicePreset[] = [
     narration_style: 'Editorial, textured, human cadence with reflective pauses and premium tone.',
   },
 ];
+
+const JOURNEY_SURFACES: MediaJourneySurface[] = [
+  'pre_intake',
+  'post_intake',
+  'suite_home',
+  'intake',
+  'episodes',
+  'brief',
+  'suite_distilled',
+  'profile',
+  'ai_profile',
+  'gaps',
+  'readiness',
+  'cjs_execution',
+  'plan',
+  'assets',
+];
+const EXTERNAL_PLATFORMS: MediaPlatform[] = [
+  'auto',
+  'youtube',
+  'vimeo',
+  'tiktok',
+  'instagram',
+  'linkedin',
+  'x',
+  'loom',
+  'direct',
+  'other',
+];
+const SOURCE_KINDS: MediaSourceKind[] = ['single', 'playlist'];
+const AUDIENCES: MediaAudience[] = ['all', 'new_clients', 'active_clients', 'admins', 'non_admins'];
+
+const createMediaItem = (): CuratedMediaItem => ({
+  id: `media-${Date.now().toString(36)}`,
+  enabled: true,
+  title: '',
+  subtitle: '',
+  source_url: '',
+  source_kind: 'single',
+  platform: 'auto',
+  thumbnail_url: '',
+  tags: [],
+  priority: 100,
+  surfaces: ['episodes'],
+  rule: {
+    audience: 'all',
+    intents: [],
+    focuses: [],
+    paces: [],
+    required_module_unlocks: [],
+  },
+});
 
 export function AdminConsole({ open, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
@@ -115,6 +168,49 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           live_vad_start_sensitivity: preset.live_vad_start_sensitivity,
           live_vad_end_sensitivity: preset.live_vad_end_sensitivity,
           narration_style: preset.narration_style,
+        },
+      };
+    });
+  };
+
+  const updateMediaItem = (index: number, updater: (item: CuratedMediaItem) => CuratedMediaItem) => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      const next = [...prev.media.curated_library];
+      const current = next[index];
+      if (!current) return prev;
+      next[index] = updater(current);
+      return {
+        ...prev,
+        media: {
+          ...prev.media,
+          curated_library: next,
+        },
+      };
+    });
+  };
+
+  const addMediaItem = () => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        media: {
+          ...prev.media,
+          curated_library: [...prev.media.curated_library, createMediaItem()],
+        },
+      };
+    });
+  };
+
+  const removeMediaItem = (index: number) => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        media: {
+          ...prev.media,
+          curated_library: prev.media.curated_library.filter((_, i) => i !== index),
         },
       };
     });
@@ -476,6 +572,324 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       className="w-full min-h-20 border border-black/10 focus-border-brand-teal outline-none p-3 text-sm"
                     />
                   </div>
+                </div>
+
+                <div className="border-t border-black/10 pt-5 space-y-4">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">External Media Library</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        Add YouTube/Vimeo/social links or playlists, then target by user segment and journey step.
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={config.media.external_media_enabled}
+                        onChange={(e) =>
+                          setConfig((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  media: { ...prev.media, external_media_enabled: e.target.checked },
+                                }
+                              : prev
+                          )
+                        }
+                      />
+                      External library enabled
+                    </label>
+                  </div>
+
+                  <div className="space-y-3">
+                    {config.media.curated_library.map((item, index) => (
+                      <div key={item.id || `media-${index}`} className="border border-black/10 bg-[#fafcfc] p-4 space-y-4">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Media Item {index + 1}</div>
+                          <button
+                            type="button"
+                            onClick={() => removeMediaItem(index)}
+                            className="text-[10px] uppercase tracking-[0.2em] text-red-600/80 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <label className="flex items-center gap-3 text-sm md:col-span-2">
+                            <input
+                              type="checkbox"
+                              checked={item.enabled}
+                              onChange={(e) => updateMediaItem(index, (prev) => ({ ...prev, enabled: e.target.checked }))}
+                            />
+                            Enabled
+                          </label>
+                          <div className="space-y-2">
+                            <label className="text-xs text-gray-700">Title</label>
+                            <input
+                              value={item.title}
+                              onChange={(e) => updateMediaItem(index, (prev) => ({ ...prev, title: e.target.value }))}
+                              className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs text-gray-700">Subtitle</label>
+                            <input
+                              value={item.subtitle}
+                              onChange={(e) => updateMediaItem(index, (prev) => ({ ...prev, subtitle: e.target.value }))}
+                              className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="text-xs text-gray-700">Video or Playlist URL</label>
+                            <input
+                              value={item.source_url}
+                              onChange={(e) => updateMediaItem(index, (prev) => ({ ...prev, source_url: e.target.value }))}
+                              placeholder="https://www.youtube.com/watch?v=... or playlist URL"
+                              className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs text-gray-700">Platform</label>
+                            <select
+                              value={item.platform}
+                              onChange={(e) =>
+                                updateMediaItem(index, (prev) => ({
+                                  ...prev,
+                                  platform: (e.target.value as MediaPlatform) || 'auto',
+                                }))
+                              }
+                              className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+                            >
+                              {EXTERNAL_PLATFORMS.map((platform) => (
+                                <option key={platform} value={platform}>
+                                  {platform}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs text-gray-700">Source Type</label>
+                            <select
+                              value={item.source_kind}
+                              onChange={(e) =>
+                                updateMediaItem(index, (prev) => ({
+                                  ...prev,
+                                  source_kind: (e.target.value as MediaSourceKind) || 'single',
+                                }))
+                              }
+                              className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+                            >
+                              {SOURCE_KINDS.map((kind) => (
+                                <option key={kind} value={kind}>
+                                  {kind}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs text-gray-700">Priority</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={999}
+                              value={item.priority}
+                              onChange={(e) =>
+                                updateMediaItem(index, (prev) => ({
+                                  ...prev,
+                                  priority: Number(e.target.value || 100),
+                                }))
+                              }
+                              className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs text-gray-700">Audience</label>
+                            <select
+                              value={item.rule.audience}
+                              onChange={(e) =>
+                                updateMediaItem(index, (prev) => ({
+                                  ...prev,
+                                  rule: {
+                                    ...prev.rule,
+                                    audience: (e.target.value as MediaAudience) || 'all',
+                                  },
+                                }))
+                              }
+                              className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
+                            >
+                              {AUDIENCES.map((audience) => (
+                                <option key={audience} value={audience}>
+                                  {audience}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="text-xs text-gray-700">Thumbnail URL (optional)</label>
+                            <input
+                              value={item.thumbnail_url}
+                              onChange={(e) =>
+                                updateMediaItem(index, (prev) => ({ ...prev, thumbnail_url: e.target.value }))
+                              }
+                              className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="text-xs text-gray-700">Tags (comma separated)</label>
+                            <input
+                              value={item.tags.join(', ')}
+                              onChange={(e) =>
+                                updateMediaItem(index, (prev) => ({
+                                  ...prev,
+                                  tags: e.target.value
+                                    .split(',')
+                                    .map((entry) => entry.trim())
+                                    .filter(Boolean),
+                                }))
+                              }
+                              className="w-full border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Journey Surfaces</div>
+                          <div className="flex flex-wrap gap-2">
+                            {JOURNEY_SURFACES.map((surface) => {
+                              const active = item.surfaces.includes(surface);
+                              return (
+                                <button
+                                  key={surface}
+                                  type="button"
+                                  onClick={() =>
+                                    updateMediaItem(index, (prev) => ({
+                                      ...prev,
+                                      surfaces: active
+                                        ? prev.surfaces.filter((entry) => entry !== surface)
+                                        : [...prev.surfaces, surface],
+                                    }))
+                                  }
+                                  className={`px-3 py-2 text-[10px] uppercase tracking-[0.16em] border transition-colors ${
+                                    active
+                                      ? 'border-brand-teal bg-brand-soft text-brand-teal'
+                                      : 'border-black/10 hover-border-brand-teal'
+                                  }`}
+                                >
+                                  {surface}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="space-y-2">
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Intent Filters</div>
+                            <div className="flex flex-wrap gap-2">
+                              {CLIENT_INTENTS.map((intent) => {
+                                const active = item.rule.intents.includes(intent);
+                                return (
+                                  <button
+                                    key={intent}
+                                    type="button"
+                                    onClick={() =>
+                                      updateMediaItem(index, (prev) => ({
+                                        ...prev,
+                                        rule: {
+                                          ...prev.rule,
+                                          intents: active
+                                            ? prev.rule.intents.filter((entry) => entry !== intent)
+                                            : [...prev.rule.intents, intent],
+                                        },
+                                      }))
+                                    }
+                                    className={`px-3 py-2 text-[10px] uppercase tracking-[0.16em] border transition-colors ${
+                                      active
+                                        ? 'border-brand-teal bg-brand-soft text-brand-teal'
+                                        : 'border-black/10 hover-border-brand-teal'
+                                    }`}
+                                  >
+                                    {intent}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Focus Filters</div>
+                            <div className="flex flex-wrap gap-2">
+                              {FOCUS_PREFS.map((focus) => {
+                                const active = item.rule.focuses.includes(focus);
+                                return (
+                                  <button
+                                    key={focus}
+                                    type="button"
+                                    onClick={() =>
+                                      updateMediaItem(index, (prev) => ({
+                                        ...prev,
+                                        rule: {
+                                          ...prev.rule,
+                                          focuses: active
+                                            ? prev.rule.focuses.filter((entry) => entry !== focus)
+                                            : [...prev.rule.focuses, focus],
+                                        },
+                                      }))
+                                    }
+                                    className={`px-3 py-2 text-[10px] uppercase tracking-[0.16em] border transition-colors ${
+                                      active
+                                        ? 'border-brand-teal bg-brand-soft text-brand-teal'
+                                        : 'border-black/10 hover-border-brand-teal'
+                                    }`}
+                                  >
+                                    {focus}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Pace Filters</div>
+                            <div className="flex flex-wrap gap-2">
+                              {PACE_PREFS.map((pace) => {
+                                const active = item.rule.paces.includes(pace);
+                                return (
+                                  <button
+                                    key={pace}
+                                    type="button"
+                                    onClick={() =>
+                                      updateMediaItem(index, (prev) => ({
+                                        ...prev,
+                                        rule: {
+                                          ...prev.rule,
+                                          paces: active
+                                            ? prev.rule.paces.filter((entry) => entry !== pace)
+                                            : [...prev.rule.paces, pace],
+                                        },
+                                      }))
+                                    }
+                                    className={`px-3 py-2 text-[10px] uppercase tracking-[0.16em] border transition-colors ${
+                                      active
+                                        ? 'border-brand-teal bg-brand-soft text-brand-teal'
+                                        : 'border-black/10 hover-border-brand-teal'
+                                    }`}
+                                  >
+                                    {pace}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addMediaItem}
+                    className="px-4 py-2 border border-black/20 text-[10px] uppercase tracking-[0.2em] hover-border-brand-teal"
+                  >
+                    Add External Media Item
+                  </button>
                 </div>
               </section>
 

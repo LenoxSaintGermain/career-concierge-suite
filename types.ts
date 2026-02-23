@@ -150,6 +150,64 @@ export interface GeneratedMediaPack {
   assets: GeneratedMediaAsset[];
 }
 
+export type MediaPlatform =
+  | 'auto'
+  | 'youtube'
+  | 'vimeo'
+  | 'tiktok'
+  | 'instagram'
+  | 'linkedin'
+  | 'x'
+  | 'loom'
+  | 'direct'
+  | 'other';
+
+export type MediaSourceKind = 'single' | 'playlist';
+export type MediaAudience = 'all' | 'new_clients' | 'active_clients' | 'admins' | 'non_admins';
+export type MediaJourneySurface = SuiteModuleId | 'suite_home' | 'pre_intake' | 'post_intake';
+
+export interface CuratedMediaRule {
+  audience: MediaAudience;
+  intents: ClientIntent[];
+  focuses: FocusPreference[];
+  paces: PacePreference[];
+  required_module_unlocks: SuiteModuleId[];
+}
+
+export interface CuratedMediaItem {
+  id: string;
+  enabled: boolean;
+  title: string;
+  subtitle: string;
+  source_url: string;
+  source_kind: MediaSourceKind;
+  platform: MediaPlatform;
+  thumbnail_url: string;
+  tags: string[];
+  priority: number;
+  surfaces: MediaJourneySurface[];
+  rule: CuratedMediaRule;
+}
+
+export interface ResolvedCuratedMediaItem extends CuratedMediaItem {
+  platform_resolved: Exclude<MediaPlatform, 'auto'>;
+  open_url: string;
+  embed_url: string;
+}
+
+export interface CuratedMediaLibraryResponse {
+  surface: MediaJourneySurface;
+  generated_at: string;
+  context: {
+    intake_complete: boolean;
+    intent: ClientIntent | null;
+    focus: FocusPreference | null;
+    pace: PacePreference | null;
+    is_admin: boolean;
+  };
+  items: ResolvedCuratedMediaItem[];
+}
+
 export interface AppConfig {
   generation: {
     suite_model: string;
@@ -186,6 +244,8 @@ export interface AppConfig {
     video_duration_seconds: number;
     video_generate_audio: boolean;
     auto_generate_on_episode: boolean;
+    external_media_enabled: boolean;
+    curated_library: CuratedMediaItem[];
   };
   voice: {
     enabled: boolean;
