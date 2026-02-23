@@ -24,9 +24,9 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [activeMediaId, setActiveMediaId] = useState<string | null>(null);
   const [embedLoading, setEmbedLoading] = useState(false);
-  const [heroRevealed, setHeroRevealed] = useState(false);
-  const [queueRevealed, setQueueRevealed] = useState(false);
-  const [storyRevealed, setStoryRevealed] = useState(false);
+  const [heroRevealed, setHeroRevealed] = useState(true);
+  const [queueRevealed, setQueueRevealed] = useState(true);
+  const [storyRevealed, setStoryRevealed] = useState(true);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [reduceMotion, setReduceMotion] = useState(false);
   const heroSectionRef = useRef<HTMLElement | null>(null);
@@ -178,6 +178,13 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
+      setHeroRevealed(true);
+      setQueueRevealed(true);
+      setStoryRevealed(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
