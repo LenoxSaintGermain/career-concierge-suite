@@ -32,6 +32,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const queueSectionRef = useRef<HTMLElement | null>(null);
   const storySectionRef = useRef<HTMLDivElement | null>(null);
+  const mediaStageRef = useRef<HTMLDivElement | null>(null);
 
   const swipes = useMemo(() => episode?.lesson_swipes ?? [], [episode?.lesson_swipes]);
   const recommendedModels = useMemo(() => episode?.art_direction?.recommended_models ?? [], [episode?.art_direction]);
@@ -217,6 +218,10 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
     setTilt({ x: 0, y: 0 });
   };
 
+  const jumpToMediaStage = () => {
+    mediaStageRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  };
+
   const next = () => {
     setScene((s) => {
       if (s === 'hook') return 'swipe1';
@@ -297,7 +302,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
         <div className="relative space-y-4">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Curated Library</div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Cinematic Studio</div>
               <div className="text-2xl md:text-3xl font-editorial italic mt-2">Cinematic gallery, routed by journey context.</div>
               <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7] mt-3">{libraryStatusText}</div>
             </div>
@@ -323,34 +328,80 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
             </div>
           ) : activeMedia ? (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-[1.22fr_0.78fr] gap-4">
-                <div
-                  onMouseMove={onHeroMove}
-                  onMouseLeave={onHeroLeave}
-                  className="border border-[#29464d] bg-[#0d2227] p-3 md:p-4 space-y-3 transition-transform dur-md ease-exit will-change-transform"
-                  style={
-                    reduceMotion
-                      ? undefined
-                      : {
-                          transform: `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
-                        }
-                  }
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.22em] text-[#8aa0a4]">{activeMedia.platform_resolved}</div>
-                      <div className="text-3xl md:text-4xl font-editorial italic mt-2 leading-[0.92]">
-                        {activeMedia.title || 'Untitled Media'}
-                      </div>
+              <div
+                className="relative overflow-hidden border border-[#2a4a52] bg-[#081a1f] min-h-[320px] md:min-h-[360px] p-4 md:p-6"
+                onMouseMove={onHeroMove}
+                onMouseLeave={onHeroLeave}
+                style={
+                  reduceMotion
+                    ? undefined
+                    : {
+                        transform: `perspective(1100px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
+                      }
+                }
+              >
+                {(activeMedia.thumbnail_url || featuredBackdrop) && (
+                  <div
+                    className="absolute inset-0 bg-cover bg-center scale-[1.02]"
+                    style={{ backgroundImage: `url(${activeMedia.thumbnail_url || featuredBackdrop})` }}
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#050f12] via-[#081820]/75 to-[#081820]/35" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#061319]/95 via-transparent to-transparent" />
+                <div className="relative h-full flex flex-col justify-between gap-5">
+                  <div className="max-w-2xl">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">
+                      {activeMedia.platform_resolved} spotlight
                     </div>
+                    <div className="text-4xl md:text-6xl font-editorial leading-[0.9] mt-3">
+                      {activeMedia.title || episode.title}
+                    </div>
+                    {activeMedia.subtitle && (
+                      <p className="text-sm md:text-base text-[#c6d7da] mt-4 leading-relaxed max-w-xl">
+                        {activeMedia.subtitle}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={jumpToMediaStage}
+                      className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em]"
+                    >
+                      Watch Preview
+                    </button>
                     <a
                       href={activeMedia.open_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[10px] uppercase tracking-[0.2em] text-brand-teal hover:opacity-70"
+                      className="px-4 py-2 border border-[#3a5b63] bg-[#0b2026]/70 text-[10px] uppercase tracking-[0.22em] hover-border-brand-teal"
                     >
                       Open Source
                     </a>
+                    {routeSummary && (
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-[#97b0b4]">
+                        {routeSummary}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1.22fr_0.78fr] gap-4">
+                <div
+                  ref={mediaStageRef}
+                  className="border border-[#29464d] bg-[#0d2227] p-3 md:p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.22em] text-[#8aa0a4]">Now Playing</div>
+                      <div className="text-2xl md:text-3xl font-editorial italic mt-2 leading-[0.92]">
+                        {activeMedia.title || 'Untitled media'}
+                      </div>
+                    </div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">
+                      {activeMedia.platform_resolved}
+                    </div>
                   </div>
 
                   {activeMedia.embed_url ? (
