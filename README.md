@@ -59,5 +59,6 @@ For the clean move into a new GCP/Firebase project, use:
 - `scripts/deploy_api_cloudrun.sh`
 - `scripts/deploy_ui_cloudrun.sh`
 - `scripts/migrate_firestore_between_projects.sh`
+- `scripts/migrate_firestore_rest.mjs`
 
 The frontend Firebase config is now environment-driven through `VITE_FIREBASE_*` variables instead of being fixed to a single project.

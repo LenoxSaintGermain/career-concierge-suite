@@ -48,7 +48,7 @@ Required values:
 
 ## 3. Configure API env
 
-Copy `config/ssai-482923.api.env.example` to `config/ssai-482923.api.env`.
+Copy `config/ssai-482923.api.env.example` to `config/ssai-482923.api.yaml`.
 
 Minimum required values:
 
@@ -89,8 +89,24 @@ The bucket must be writable by the source export job and readable by the target 
 ## 7. Deploy API then UI
 
 ```bash
-bash scripts/deploy_api_cloudrun.sh ssai-482923 europe-west1 config/ssai-482923.api.env
+bash scripts/deploy_api_cloudrun.sh ssai-482923 europe-west1 config/ssai-482923.api.yaml
 bash scripts/deploy_ui_cloudrun.sh ssai-482923 europe-west1 config/ssai-482923.ui.env
+```
+
+## Region mismatch note
+
+If the source Firestore database is US-based and the target database is EU-based, managed Firestore export/import cannot bridge them directly because each database is restricted to bucket locations within its own region family.
+
+Use the REST migration fallback instead:
+
+```bash
+SOURCE_FIRESTORE_TOKEN="$(CLOUDSDK_PYTHON=/usr/bin/python3 gcloud auth print-access-token --account=treble.design@gmail.com)" \
+TARGET_FIRESTORE_TOKEN="$(CLOUDSDK_PYTHON=/usr/bin/python3 gcloud auth print-access-token --account=gws@conciergecareerservices.com)" \
+node scripts/migrate_firestore_rest.mjs \
+  --source-project=third-signal \
+  --target-project=ssai-482923 \
+  --source-db=career-concierge \
+  --target-db=career-concierge
 ```
 
 ## 8. Validate
