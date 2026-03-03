@@ -6,6 +6,7 @@ REGION="${2:?Usage: scripts/deploy_ui_cloudrun.sh <project-id> <region> [ui-env-
 UI_ENV_FILE="${3:-config/${PROJECT_ID}.ui.env}"
 SERVICE_NAME="${SERVICE_NAME:-career-concierge-suite}"
 TEMP_ENV_FILE=".env.production.local"
+ALLOW_UNAUTHENTICATED="${ALLOW_UNAUTHENTICATED:-true}"
 
 export CLOUDSDK_PYTHON="${CLOUDSDK_PYTHON:-/usr/bin/python3}"
 
@@ -34,9 +35,17 @@ trap cleanup EXIT
 
 cp "$UI_ENV_FILE" "$TEMP_ENV_FILE"
 
-gcloud run deploy "$SERVICE_NAME" \
-  --source . \
-  --region "$REGION" \
-  --project "$PROJECT_ID" \
-  --platform managed \
+ARGS=(
+  "$SERVICE_NAME"
+  --source .
+  --region "$REGION"
+  --project "$PROJECT_ID"
+  --platform managed
   --quiet
+)
+
+if [ "$ALLOW_UNAUTHENTICATED" = "true" ]; then
+  ARGS+=(--allow-unauthenticated)
+fi
+
+gcloud run deploy "${ARGS[@]}"
