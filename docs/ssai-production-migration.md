@@ -32,15 +32,16 @@ Required roles are effectively:
 - Firestore rules are deployed
 - Firestore data has been copied from `third-signal`
 - Billing is attached
-- API service is deployed privately at `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
+- API service is deployed at `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
+- API service public invoker access is enabled and verified
 - Auth users import runs successfully
 - A reset workflow is prepared for the 15 email/password users whose source password hash settings were not recoverable through the source admin config API
 
 ## Remaining blockers
 
-- Org policy still blocks `allUsers` on Cloud Run in `ssai-f6191`, so the API/UI cannot be made publicly reachable with the current SPA + Cloud Run architecture.
 - Source deploys required granting the project compute service account `roles/storage.objectViewer`, `roles/artifactregistry.writer`, and `roles/logging.logWriter`.
 - Password-based users need either a hash-parameter-aware re-import or password reset emails. The repo now includes a reset-mailer workflow for that fallback path.
+- UI deploy and final cutover validation still need to be completed in `ssai-f6191`.
 
 ## 1. Bootstrap the target project
 
@@ -134,6 +135,16 @@ bash scripts/deploy_api_cloudrun.sh ssai-f6191 europe-west1 config/ssai-f6191.ap
 bash scripts/deploy_ui_cloudrun.sh ssai-f6191 europe-west1 config/ssai-f6191.ui.env
 ```
 
+If the UI service requires public access after deploy:
+
+```bash
+gcloud beta run services add-iam-policy-binding career-concierge-suite \
+  --region=europe-west1 \
+  --project=ssai-f6191 \
+  --member=allUsers \
+  --role=roles/run.invoker
+```
+
 ## Region mismatch note
 
 If the source Firestore database is US-based and the target database is EU-based, managed Firestore export/import cannot bridge them directly because each database is restricted to bucket locations within its own region family.
@@ -152,6 +163,7 @@ node scripts/migrate_firestore_rest.mjs \
 
 ## 8. Validate
 
+- Confirm Cloud Run API public reachability
 - Login with an imported user
 - Verify intake writes to `clients/{uid}`
 - Verify `system/career-concierge-config` loads in Admin
@@ -164,3 +176,4 @@ node scripts/migrate_firestore_rest.mjs \
 - The frontend is now env-driven for Firebase project selection.
 - The API must always deploy from `./api`, not repo root.
 - Keep `ADMIN_EMAILS` populated in production. Blank means the API currently falls back to permissive admin behavior.
+- The original `third-signal` project is now a source system and reference environment, not the canonical production target for this fork.

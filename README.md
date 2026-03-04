@@ -1,64 +1,115 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Career Concierge OS
 
-# Run and deploy your AI Studio app
+Career Concierge OS is the production fork of Signal Atlas.
+Signal Atlas established the editorial grid, module pattern, and agentic UX direction.
+This fork carries that pattern into a dedicated concierge-led career acceleration product with its own Firebase project, Firestore data, Cloud Run services, and admin operating model.
 
-This contains everything you need to run your app locally.
+## Canonical Production Environment
 
-View your app in AI Studio: https://ai.studio/apps/drive/1VcFeL_HCD12ewu1TzOhOVejmCorbG5Dh
+- Firebase / GCP project: `ssai-f6191`
+- Region: `europe-west1`
+- Firestore database ID: `career-concierge`
+- API service: `career-concierge-api`
+- UI service: `career-concierge-suite`
+- Current API URL: `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
 
-## Run Locally
+## Local Development
 
-**Prerequisites:**  Node.js
+Prerequisites:
 
+- Node.js
+
+Setup:
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   - `npm install`
+2. Create local env:
+   - `cp .env.local.example .env.local`
+3. Set required values in `.env.local`:
+   - `GEMINI_API_KEY`
+   - `VITE_CONCIERGE_API_URL`
+   - `VITE_FIREBASE_*`
+4. Start the app:
+   - `npm run dev`
 
-## Voice Engine (Provider Toggle)
+## Voice Engine Routing
 
-The onboarding flow now supports concierge voice playback through `POST /v1/voice/synthesize` on the Cloud Run API.
+The onboarding flow supports concierge voice playback through `POST /v1/voice/synthesize` on the Cloud Run API.
 
-Provider options in Admin Console:
+Provider options:
 
-- `sesame` (external endpoint such as Cerebrium)
-- `gemini_live` (Gemini Live API through your existing `GEMINI_API_KEY`)
+- `sesame`
+- `gemini_live`
 
-Set these on the API service for `sesame`:
+API env options for `sesame`:
 
-- `SESAME_API_URL` (for example a Cerebrium `.../generate_audio` endpoint)
-- `SESAME_API_KEY` (if your endpoint requires bearer auth)
-- Optional:
-  - `SESAME_AUTH_HEADER` (default: `Authorization`)
-  - `SESAME_AUTH_PREFIX` (default: `Bearer `)
-  - `SESAME_TIMEOUT_MS` (default: `45000`)
+- `SESAME_API_URL`
+- `SESAME_API_KEY`
+- `SESAME_AUTH_HEADER`
+- `SESAME_AUTH_PREFIX`
+- `SESAME_TIMEOUT_MS`
 
-Set these on the API service for `gemini_live` (optional overrides):
+API env options for `gemini_live`:
 
-- `GEMINI_MODEL_LIVE_VOICE` (default: `gemini-2.5-flash-native-audio-preview-12-2025`)
-- `GEMINI_VOICE_NAME` (default: `Aoede`)
-- `GEMINI_LIVE_TIMEOUT_MS` (default: `30000`)
+- `GEMINI_MODEL_LIVE_VOICE`
+- `GEMINI_VOICE_NAME`
+- `GEMINI_LIVE_TIMEOUT_MS`
+- `GEMINI_LIVE_VAD_SILENCE_MS`
+- `GEMINI_LIVE_VAD_PREFIX_MS`
+- `GEMINI_LIVE_VAD_START`
+- `GEMINI_LIVE_VAD_END`
 
-Then in the app Admin Console, configure:
+Admin controls expose:
 
-- `Voice Engine -> enabled`
-- `Voice Engine -> provider` (`sesame` or `gemini_live`)
-- Provider-specific route/model values
-- Speaker / max length / temperature / narration style
+- provider toggle
+- route/model selection
+- prompt appendices
+- speaker / temperature / max length
 
-## Production Migration
+## Deployment
 
-For the clean move into a new GCP/Firebase project, use:
+Deploy API:
 
+- `bash scripts/deploy_api_cloudrun.sh ssai-f6191 europe-west1 .context/deploy/ssai-f6191.api.yaml`
+
+Deploy UI:
+
+- `bash scripts/deploy_ui_cloudrun.sh ssai-f6191 europe-west1 .context/deploy/ssai-f6191.ui.env`
+
+Important:
+
+- API must deploy from `./api`
+- UI must deploy from repo root
+- this architecture expects public Cloud Run reachability, with app-level auth enforced inside the API and frontend
+
+## Documentation Set
+
+Core docs for this fork:
+
+- `docs/career-concierge-fork.md`
+- `docs/career-concierge-os.md`
+- `docs/operations-runbook.md`
 - `docs/ssai-production-migration.md`
-- `scripts/bootstrap_prod_project.sh`
-- `scripts/deploy_api_cloudrun.sh`
-- `scripts/deploy_ui_cloudrun.sh`
-- `scripts/migrate_firestore_between_projects.sh`
-- `scripts/migrate_firestore_rest.mjs`
+- `docs/decision-log.md`
+- `docs/documentation-map.md`
 
-The frontend Firebase config is now environment-driven through `VITE_FIREBASE_*` variables instead of being fixed to a single project.
+## Documentation Workflow
+
+Run the impact helper whenever production behavior changes:
+
+- `npm run docs:impact -- <changed-file> [more-files...]`
+
+This repo also has a dedicated local Codex skill:
+
+- `career-concierge-docs`
+
+Use it whenever architecture, deployment, Firebase/GCP, admin controls, modules, live voice/media, or migration state changes.
+
+## Current Migration Status
+
+- canonical target is now `ssai-f6191`
+- Firestore database `career-concierge` exists in `europe-west1`
+- Firestore data has been copied from `third-signal`
+- Firebase Auth users have been imported
+- API is deployed and publicly reachable
+- password-based legacy users may still require the reset workflow documented in `docs/operations-runbook.md`
