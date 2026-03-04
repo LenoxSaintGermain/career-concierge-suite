@@ -33,13 +33,14 @@ Required roles are effectively:
 - Firestore data has been copied from `third-signal`
 - Billing is attached
 - API service is deployed privately at `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
-- Auth users import runs successfully, but password-hash parameters from the source project still need to be supplied for email/password users
+- Auth users import runs successfully
+- A reset workflow is prepared for the 15 email/password users whose source password hash settings were not recoverable through the source admin config API
 
 ## Remaining blockers
 
 - Org policy still blocks `allUsers` on Cloud Run in `ssai-f6191`, so the API/UI cannot be made publicly reachable with the current SPA + Cloud Run architecture.
 - Source deploys required granting the project compute service account `roles/storage.objectViewer`, `roles/artifactregistry.writer`, and `roles/logging.logWriter`.
-- Auth import needs the source Firebase password hash settings if email/password users must keep their existing passwords.
+- Password-based users need either a hash-parameter-aware re-import or password reset emails. The repo now includes a reset-mailer workflow for that fallback path.
 
 ## 1. Bootstrap the target project
 
@@ -83,7 +84,7 @@ npx -y firebase-tools deploy --only "firestore:career-concierge" --project ssai-
 
 ## 5. Migrate Auth users
 
-Auth is initialized in `ssai-f6191`. For full email/password migration fidelity, re-run the import with the source project's hash parameters.
+Auth is initialized in `ssai-f6191`.
 
 Export from source project:
 
@@ -98,6 +99,25 @@ npx -y firebase-tools auth:import .context/auth-export.json --project ssai-f6191
 ```
 
 If admin/staff access relies on custom claims, reapply those claims after import.
+
+### Password reset fallback
+
+The source admin config API returned an empty `hashConfig`, so the exact legacy password hash parameters are still unavailable through the current access path. The operational fallback is to trigger Firebase password reset emails for the imported password users.
+
+Dry run:
+
+```bash
+npm run auth:resets:dry-run
+```
+
+Send the reset emails:
+
+```bash
+node scripts/send_password_reset_emails.mjs \
+  --api-key <ssai-f6191-web-api-key> \
+  --send \
+  --output .context/password-reset-report.sent.json
+```
 
 ## 6. Migrate Firestore data
 

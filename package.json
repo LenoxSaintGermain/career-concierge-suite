@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "auth:resets:dry-run": "node scripts/send_password_reset_emails.mjs --output .context/password-reset-report.json",
     "firebase:rules": "npm run firebase:rules:concierge",
     "firebase:rules:concierge": "bash scripts/firebase_deploy_rules.sh third-signal career-concierge",
     "firebase:rules:atlas": "bash scripts/firebase_deploy_rules.sh third-signal signal-atlas"
