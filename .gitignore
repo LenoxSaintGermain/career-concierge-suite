@@ -26,3 +26,6 @@ dist-ssr
 
 # Firebase CLI
 .firebase
+
+# Local working context (logs, auth exports, ephemeral notes)
+.context/
