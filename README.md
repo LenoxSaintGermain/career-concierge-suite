@@ -95,6 +95,7 @@ Core docs for this fork:
 - `docs/decision-log.md`
 - `docs/progress-log.md`
 - `docs/backlog-ledger.md`
+- `docs/mvp/demo_master_tasklist.md`
 - `docs/documentation-map.md`
 
 ## Documentation Workflow
@@ -113,6 +114,7 @@ Roadmap discipline:
 
 - Keep `docs/progress-log.md` updated in the same pass as feature work.
 - Keep `docs/backlog-ledger.md` updated with story-level status and execution rows in the same pass.
+- Keep `docs/mvp/demo_master_tasklist.md` aligned with test-user acceptance criteria and in-app roadmap tasks.
 - The in-app Roadmap validation module reflects these logs and should not drift from implementation reality.
 
 ## Current Migration Status

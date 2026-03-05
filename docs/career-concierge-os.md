@@ -66,7 +66,8 @@ It is not a temporary debug panel and should be documented and designed as a fir
 
 Backlog-to-implementation status is tracked in `docs/progress-log.md`.
 Story-level status plus execution history is tracked in `docs/backlog-ledger.md`.
-The roadmap validation module mirrors these logs, so both must be updated in the same pass as product changes.
+Demo task sequencing by persona is tracked in `docs/mvp/demo_master_tasklist.md`.
+The roadmap validation module mirrors these logs, so all three must be updated in the same pass as product changes.
 
 ### API Layer
 

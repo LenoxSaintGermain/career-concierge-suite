@@ -13,6 +13,15 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Removed frontend lockout pattern that could hide admin entry points during transient access-check failures.
 - Expanded shared module ID enums/lists to include `roadmap` for consistent routing and config validation.
 
+### Delivery: Demo Master Tasklist + Persona Tracks
+
+- Added canonical demo tasklist at `docs/mvp/demo_master_tasklist.md`, mapped to roadmap epics/stories and all four test-user specs.
+- Expanded `RoadmapView` with:
+  - test-user demo readiness tracks (`TU1` through `TU4`)
+  - in-product master tasklist cards (`MTL-01` through `MTL-08`)
+  - delivery pulse summary for active/queued/blocked demo tasks
+- Bound roadmap log guidance to include `docs/mvp/demo_master_tasklist.md` alongside backlog/progress logs.
+
 ### Backlog Status Snapshot
 
 | Epic | Status | Notes |
@@ -26,6 +35,6 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 
 ### Next Implementation Priority
 
-1. `E02-S03` Chief of Staff summary + interaction logging.
-2. `E06-S01` Resume upload pipeline.
-3. `E06-S02/E06-S03` Resume review + search strategy artifacts.
+1. `MTL-05` / `E06-S01/E06-S02/E06-S03`: CJS execution rail (upload, review, strategy).
+2. `MTL-06`: free-tier constraints and upgrade CTA for TU4 flow.
+3. `MTL-03`: Chief of Staff summary + interaction ledger for investor-proof audit trail.

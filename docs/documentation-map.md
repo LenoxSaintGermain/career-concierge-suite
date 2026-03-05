@@ -10,6 +10,7 @@
 - `docs/decision-log.md`: durable product and platform decisions
 - `docs/progress-log.md`: implementation progress against MVP backlog
 - `docs/backlog-ledger.md`: story-level backlog status and execution ledger
+- `docs/mvp/demo_master_tasklist.md`: demo-readiness tasks mapped to test-user specs
 - `docs/documentation-map.md`: update matrix for future work
 
 ## Update Matrix
@@ -72,6 +73,13 @@
 - demo-critical sequence state changes
 - blockers are introduced or resolved
 
+### Update `docs/mvp/demo_master_tasklist.md` when
+
+- persona-based acceptance criteria change
+- demo readiness task sequence changes
+- roadmap-to-test-spec mapping changes
+- in-app roadmap task cards are added, removed, or reordered
+
 ## Code-to-Docs Mapping
 
 - `api/` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`
@@ -84,6 +92,7 @@
 - durable product/platform choices -> `docs/decision-log.md`
 - backlog progress and roadmap node state -> `docs/progress-log.md`
 - story board and execution history -> `docs/backlog-ledger.md`
+- persona readiness mapping and demo task ordering -> `docs/mvp/demo_master_tasklist.md`
 
 ## Documentation Standard
 

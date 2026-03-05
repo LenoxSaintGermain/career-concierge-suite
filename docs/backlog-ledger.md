@@ -46,6 +46,25 @@ Investor-critical sequence:
 
 Current blocker in this sequence: Step 5 (`E02-S03`) is not implemented yet.
 
+## Demo Master Tasklist Snapshot
+
+Canonical demo tasklist:
+
+- `docs/mvp/demo_master_tasklist.md`
+
+Current task pulse:
+
+| Task | Status | Primary Persona Target |
+| :--- | :--- | :--- |
+| MTL-01 Persona fixture seed + deterministic intake payloads | In Progress | TU1/TU2/TU3/TU4 |
+| MTL-02 Intent-based journey routing + unlock order | In Progress | TU1/TU2/TU3 |
+| MTL-03 Chief of Staff interaction ledger | Queued | TU1/TU2/TU3 |
+| MTL-04 Episode personalization + modality routing | In Progress | TU1/TU3/TU4 |
+| MTL-05 CJS execution rail (upload/review/strategy) | Queued | TU2 |
+| MTL-06 Free-tier constrained surface + upgrade conversion CTA | Blocked | TU4 |
+| MTL-07 Mobile completion pass | In Progress | TU1/TU2/TU3/TU4 |
+| MTL-08 Manual QA script + acceptance proof capture | Queued | TU1/TU2/TU3/TU4 |
+
 ## Execution Ledger
 
 | UTC Timestamp | Scope | Change | Result | Evidence |
@@ -53,6 +72,7 @@ Current blocker in this sequence: Step 5 (`E02-S03`) is not implemented yet.
 | 2026-03-05 04:59:53Z | E04/E05 docs+UX | Added roadmap module with node visualization. | Done | `components/RoadmapView.tsx`, `App.tsx`, `docs/progress-log.md` |
 | 2026-03-05 05:00:00Z | Backlog governance | Added persistent backlog ledger + execution ledger process. | Done | `docs/backlog-ledger.md`, `docs/documentation-map.md`, `README.md` |
 | 2026-03-05 10:45:00Z | E04/E05 UX reliability | Exposed roadmap to signed-in users and added epic/story validation grid; removed fragile frontend admin lockout behavior. | Done | `components/RoadmapView.tsx`, `App.tsx`, `docs/progress-log.md` |
+| 2026-03-05 16:49:21Z | Demo readiness planning | Added test-user-based master tasklist and surfaced persona/task mapping in Roadmap module. | Done | `docs/mvp/demo_master_tasklist.md`, `components/RoadmapView.tsx`, `docs/progress-log.md` |
 
 ## Update Protocol
 

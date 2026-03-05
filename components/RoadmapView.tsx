@@ -30,6 +30,28 @@ interface StoryRow {
   validation: string;
 }
 
+interface PersonaTrack {
+  id: string;
+  name: string;
+  archetype: string;
+  tier: string;
+  intent: string;
+  status: DeliveryStatus;
+  stories: string[];
+  acceptanceFocus: string[];
+  nextGate: string;
+}
+
+interface MasterTask {
+  id: string;
+  title: string;
+  status: DeliveryStatus;
+  goal: string;
+  surfaces: string;
+  stories: string[];
+  personas: string[];
+}
+
 const ROADMAP_NODES: RoadmapNode[] = [
   {
     id: 's1',
@@ -275,6 +297,144 @@ const STORY_ROWS: StoryRow[] = [
   },
 ];
 
+const PERSONA_TRACKS: PersonaTrack[] = [
+  {
+    id: 'TU1',
+    name: 'Donell Woodson',
+    archetype: 'Skill-Sharpener',
+    tier: 'SkillSync AI Premier',
+    intent: 'Stay sharp in current role',
+    status: 'in_progress',
+    stories: ['E03-S01', 'E03-S02', 'E04-S02', 'E05-S02'],
+    acceptanceFocus: [
+      'AI Profile reflects regular AI usage + template work style.',
+      'Episode sequence starts with AI Strategy and Leadership in voice-first format.',
+      'Plan outputs internal AI initiative actions, not external search steps.',
+    ],
+    nextGate: 'Lock episode modality routing + AI Profile precision checks.',
+  },
+  {
+    id: 'TU2',
+    name: 'Garry Francois',
+    archetype: 'Career Accelerator',
+    tier: 'CJS Premier',
+    intent: 'Move into a specific next role',
+    status: 'queued',
+    stories: ['E06-S01', 'E06-S02', 'E06-S03', 'E02-S04'],
+    acceptanceFocus: [
+      'Your Plan includes KPI and ROI-driven 72-hour actions.',
+      'CJS rail drives resume review + internal promotion strategy.',
+      'Assets supports multi-version resume and proposal iteration.',
+    ],
+    nextGate: 'Ship CJS upload/review/search strategy pipeline end-to-end.',
+  },
+  {
+    id: 'TU3',
+    name: 'Taylor Fulton',
+    archetype: 'Direction-Seeker',
+    tier: 'SkillSync Foundation',
+    intent: 'Need help designing direction',
+    status: 'in_progress',
+    stories: ['E04-S02', 'E03-S01', 'E04-S03', 'E02-S03'],
+    acceptanceFocus: [
+      'Profile and Gaps highlight transferable skills into tech pathways.',
+      'Episode sequence starts with foundational process automation tracks.',
+      'MyConcierge guidance remains conversational and confidence-building.',
+    ],
+    nextGate: 'Add guided MyConcierge prompts + direction-specific plan templates.',
+  },
+  {
+    id: 'TU4',
+    name: 'Derrick Gervin',
+    archetype: 'Free Course User',
+    tier: 'Free Foundation Access',
+    intent: 'Learn AI fundamentals before upgrading',
+    status: 'blocked',
+    stories: ['E01-S01', 'E03-S01', 'E05-S03'],
+    acceptanceFocus: [
+      'Short intake only for foundational interests.',
+      'Only readiness + generic resource guide are visible.',
+      'Upgrade CTA appears after free playlist completion.',
+    ],
+    nextGate: 'Implement free-tier gating rules and upgrade conversion rail.',
+  },
+];
+
+const MASTER_TASKLIST: MasterTask[] = [
+  {
+    id: 'MTL-01',
+    title: 'Persona fixture seed + deterministic intake payloads',
+    status: 'in_progress',
+    goal: 'Create reusable test accounts/data aligned to all four test-user specs.',
+    surfaces: 'Auth, Firestore clients',
+    stories: ['E01-S01', 'E01-S02'],
+    personas: ['TU1', 'TU2', 'TU3', 'TU4'],
+  },
+  {
+    id: 'MTL-02',
+    title: 'Intent-based journey routing in suite home + module unlock order',
+    status: 'in_progress',
+    goal: 'Prioritize module order and CTA by intent: current role, target role, or unsure.',
+    surfaces: 'Suite Home, Routing',
+    stories: ['E04-S01', 'E05-S03'],
+    personas: ['TU1', 'TU2', 'TU3'],
+  },
+  {
+    id: 'MTL-03',
+    title: 'Chief of Staff interaction ledger',
+    status: 'queued',
+    goal: 'Persist conversation summary + next-action records for demo audit trail.',
+    surfaces: 'Chief of Staff, Firestore interactions',
+    stories: ['E02-S03'],
+    personas: ['TU1', 'TU2', 'TU3'],
+  },
+  {
+    id: 'MTL-04',
+    title: 'Episode personalization and modality routing',
+    status: 'in_progress',
+    goal: 'Match first episode topic + format to user focus and learning modality.',
+    surfaces: 'Episodes, Binge API',
+    stories: ['E03-S01', 'E03-S02', 'E03-S03'],
+    personas: ['TU1', 'TU3', 'TU4'],
+  },
+  {
+    id: 'MTL-05',
+    title: 'CJS execution rail (upload, resume review, search strategy)',
+    status: 'queued',
+    goal: 'Deliver full promotion/job-search workflow with persisted artifacts.',
+    surfaces: 'CJS Execution, Assets, API',
+    stories: ['E06-S01', 'E06-S02', 'E06-S03'],
+    personas: ['TU2'],
+  },
+  {
+    id: 'MTL-06',
+    title: 'Free-tier constrained surface + upgrade conversion CTA',
+    status: 'blocked',
+    goal: 'Gate modules/artifacts for free users and route to clear upgrade sequence.',
+    surfaces: 'Auth, Module visibility, Plan/CTA',
+    stories: ['E05-S03', 'E04-S01'],
+    personas: ['TU4'],
+  },
+  {
+    id: 'MTL-07',
+    title: 'Mobile completion pass for intake, episodes, and roadmap surfaces',
+    status: 'in_progress',
+    goal: 'Remove overflow and interaction regressions for iOS and Android demo runs.',
+    surfaces: 'Responsive UI',
+    stories: ['E04-S03'],
+    personas: ['TU1', 'TU2', 'TU3', 'TU4'],
+  },
+  {
+    id: 'MTL-08',
+    title: 'Manual QA script and acceptance proof capture',
+    status: 'queued',
+    goal: 'Produce one-click validation checklist per persona with evidence links.',
+    surfaces: 'Roadmap module, Docs',
+    stories: ['E02-S04', 'E04-S02'],
+    personas: ['TU1', 'TU2', 'TU3', 'TU4'],
+  },
+];
+
 const statusLabel: Record<DeliveryStatus, string> = {
   done: 'Shipped',
   in_progress: 'Active',
@@ -306,6 +466,9 @@ const dotTone: Record<DeliveryStatus, string> = {
 export const RoadmapView: React.FC = () => {
   const doneCount = ROADMAP_NODES.filter((node) => node.status === 'done').length;
   const activeCount = ROADMAP_NODES.filter((node) => node.status === 'in_progress').length;
+  const blockedTasks = MASTER_TASKLIST.filter((task) => task.status === 'blocked').length;
+  const queuedTasks = MASTER_TASKLIST.filter((task) => task.status === 'queued').length;
+  const activeTasks = MASTER_TASKLIST.filter((task) => task.status === 'in_progress').length;
 
   return (
     <section className="space-y-8">
@@ -424,11 +587,81 @@ export const RoadmapView: React.FC = () => {
         </div>
       </section>
 
+      <section className="space-y-4">
+        <div className="text-[10px] uppercase tracking-[0.26em] text-black/40">Demo Readiness Tracks (Test Users)</div>
+        <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
+          {PERSONA_TRACKS.map((persona) => (
+            <article key={persona.id} className={`border p-5 ${statusTone[persona.status]}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.22em]">
+                    {persona.id} · {persona.archetype}
+                  </div>
+                  <h4 className="mt-2 text-3xl leading-tight font-editorial">{persona.name}</h4>
+                  <div className="mt-2 text-[10px] uppercase tracking-[0.22em] opacity-75">{persona.tier}</div>
+                </div>
+                <span className="border border-current/25 px-3 py-1 text-[10px] uppercase tracking-[0.22em]">
+                  {statusLabel[persona.status]}
+                </span>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed opacity-90">{persona.intent}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {persona.stories.map((story) => (
+                  <span key={story} className="border border-current/25 px-2 py-1 text-[10px] uppercase tracking-[0.18em]">
+                    {story}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-4 space-y-2">
+                {persona.acceptanceFocus.map((item) => (
+                  <p key={item} className="text-sm leading-relaxed opacity-80">
+                    {item}
+                  </p>
+                ))}
+              </div>
+              <div className="mt-4 border border-current/25 px-3 py-2 text-[10px] uppercase tracking-[0.2em] opacity-85">
+                Next Gate: {persona.nextGate}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="text-[10px] uppercase tracking-[0.26em] text-black/40">Master Tasklist (Roadmap + Test Specs)</div>
+        <div className="grid grid-cols-1 gap-3">
+          {MASTER_TASKLIST.map((task) => (
+            <article key={task.id} className={`border p-4 ${statusTone[task.status]}`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-[11px] uppercase tracking-[0.22em]">{task.id}</div>
+                <span className="border border-current/25 px-2 py-1 text-[10px] uppercase tracking-[0.18em]">
+                  {statusLabel[task.status]}
+                </span>
+              </div>
+              <h5 className="mt-2 text-2xl leading-tight font-editorial">{task.title}</h5>
+              <p className="mt-2 text-sm leading-relaxed opacity-80">{task.goal}</p>
+              <div className="mt-3 text-[10px] uppercase tracking-[0.2em] opacity-70">Surfaces: {task.surfaces}</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {task.stories.map((story) => (
+                  <span key={story} className="border border-current/25 px-2 py-1 text-[10px] uppercase tracking-[0.18em]">
+                    {story}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-3 text-[10px] uppercase tracking-[0.2em] opacity-70">
+                Persona Coverage: {task.personas.join(' · ')}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <div className="border border-black/10 bg-white p-6">
         <div className="text-[10px] uppercase tracking-[0.24em] text-black/40">Log Binding</div>
         <p className="mt-3 text-sm leading-relaxed text-black/60">
-          Canonical tracking remains in <code>docs/backlog-ledger.md</code> and <code>docs/progress-log.md</code>.
-          Keep those updated in the same pass when story statuses change.
+          Canonical tracking remains in <code>docs/backlog-ledger.md</code>, <code>docs/progress-log.md</code>, and{' '}
+          <code>docs/mvp/demo_master_tasklist.md</code>. Current pulse: {activeTasks} active · {queuedTasks} queued ·{' '}
+          {blockedTasks} blocked.
         </p>
       </div>
     </section>
