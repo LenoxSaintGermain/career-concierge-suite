@@ -16,6 +16,11 @@ const Section = (props: { title: string; items: string[] }) => (
 );
 
 export function ReadinessView(props: { doc: ReadinessContent }) {
+  const resourceGuide = Array.isArray((props.doc as any).resource_guide)
+    ? ((props.doc as any).resource_guide as string[])
+    : [];
+  const upgradeCta = String((props.doc as any).upgrade_cta || '').trim();
+
   return (
     <div className="space-y-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -41,6 +46,22 @@ export function ReadinessView(props: { doc: ReadinessContent }) {
         />
         <Section title="Technical Development Areas" items={props.doc.technical_development_areas} />
       </div>
+
+      {resourceGuide.length > 0 && (
+        <section className="border border-black/10 bg-white p-6">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal mb-4">Resource Guide</div>
+          <ul className="space-y-2 text-sm text-gray-700 leading-relaxed">
+            {resourceGuide.map((entry) => (
+              <li key={entry}>• {entry}</li>
+            ))}
+          </ul>
+          {upgradeCta && (
+            <div className="mt-5 border border-brand-teal/30 bg-brand-soft p-4 text-sm text-gray-700">
+              {upgradeCta}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

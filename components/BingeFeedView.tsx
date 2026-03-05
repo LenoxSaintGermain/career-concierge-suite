@@ -9,7 +9,24 @@ import {
 
 type Scene = 'hook' | 'swipe1' | 'swipe2' | 'swipe3' | 'challenge' | 'reward';
 
-export function BingeFeedView(props: { onOpenPlan: () => void }) {
+const FREE_TIER_EPISODE: BingeEpisode = {
+  episode_id: 'free-foundation-01',
+  title: 'Foundations: Signal Before Speed',
+  hook_card: 'Start with one clear professional signal before you chase volume.',
+  lesson_swipes: [
+    'Name one outcome you can prove this week.',
+    'Pick one AI workflow you can repeat in under 15 minutes.',
+    'Convert that workflow into a visible artifact.',
+  ],
+  challenge_terminal: {
+    prompt: 'Write one sentence: what will you ship in the next 72 hours?',
+    placeholder: 'I will ship...',
+  },
+  reward_asset: 'Starter Resource Guide unlocked.',
+  cliffhanger: 'Upgrade path opens personalized Brief, Plan, and concierge execution support.',
+};
+
+export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: boolean }) {
   const [episode, setEpisode] = useState<BingeEpisode | null>(null);
   const [loading, setLoading] = useState(false);
   const [scene, setScene] = useState<Scene>('hook');
@@ -33,6 +50,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   const queueSectionRef = useRef<HTMLElement | null>(null);
   const storySectionRef = useRef<HTMLDivElement | null>(null);
   const mediaStageRef = useRef<HTMLDivElement | null>(null);
+  const isFreeTier = Boolean(props.isFreeTier);
 
   const swipes = useMemo(() => episode?.lesson_swipes ?? [], [episode?.lesson_swipes]);
   const recommendedModels = useMemo(() => episode?.art_direction?.recommended_models ?? [], [episode?.art_direction]);
@@ -81,6 +99,14 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   ];
 
   const load = async () => {
+    if (isFreeTier) {
+      setEpisode(FREE_TIER_EPISODE);
+      setScene('hook');
+      setTerminalInput('');
+      setLoadError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setLoadError(null);
     setMediaPack(null);
@@ -163,7 +189,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
   useEffect(() => {
     load();
     loadCuratedLibrary();
-  }, []);
+  }, [isFreeTier]);
 
   useEffect(() => {
     if (!activeMedia?.embed_url) {
@@ -503,6 +529,24 @@ export function BingeFeedView(props: { onOpenPlan: () => void }) {
           )}
         </div>
       </section>
+
+      {isFreeTier && (
+        <section className="border border-brand-teal/30 bg-brand-soft p-5 md:p-6">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Upgrade Path</div>
+          <div className="text-3xl md:text-4xl font-editorial italic mt-2">Unlock your personalized suite.</div>
+          <p className="text-sm text-gray-700 leading-relaxed mt-3 max-w-2xl">
+            You completed the free foundation experience. Upgrade to unlock The Brief, Your Plan, Profile/Gaps, and
+            ConciergeJobSearch execution support.
+          </p>
+          <button
+            type="button"
+            onClick={props.onOpenPlan}
+            className="mt-5 px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em]"
+          >
+            View Upgrade Guide
+          </button>
+        </section>
+      )}
 
       <section
         ref={queueSectionRef}

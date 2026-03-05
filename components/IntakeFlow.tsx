@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CLIENT_INTENTS, FOCUS_PREFS, PACE_PREFS, SMART_START_FIELDS, SmartStartField } from '../constants';
+import {
+  CLIENT_INTENTS,
+  FOCUS_PREFS,
+  FREE_TIER_SMART_START_FIELD_IDS,
+  PACE_PREFS,
+  SMART_START_FIELDS,
+  SmartStartField,
+} from '../constants';
 import { ClientIntent, ClientPreferences, FocusPreference, IntakeAnswers, PacePreference } from '../types';
 import { saveIntake } from '../services/clientService';
 import { upsertArtifact } from '../services/artifactService';
@@ -29,8 +36,10 @@ const base64ToBytes = (base64: string) => {
 
 export function IntakeFlow(props: {
   uid: string;
+  tier?: string;
   onComplete: () => void;
 }) {
+  const isFreeTier = props.tier === 'free_foundation_access';
   const [step, setStep] = useState<Step>('intent');
   const [intent, setIntent] = useState<ClientIntent>('current_role');
   const [answers, setAnswers] = useState<IntakeAnswers>({});
@@ -110,14 +119,21 @@ export function IntakeFlow(props: {
   };
 
   const prefs: ClientPreferences = useMemo(() => ({ pace, focus }), [pace, focus]);
+  const intakeFields = useMemo(
+    () =>
+      isFreeTier
+        ? SMART_START_FIELDS.filter((field) => FREE_TIER_SMART_START_FIELD_IDS.includes(field.id))
+        : SMART_START_FIELDS,
+    [isFreeTier]
+  );
   const fieldsBySection = useMemo(() => {
     const grouped: Record<string, SmartStartField[]> = {};
-    for (const field of SMART_START_FIELDS) {
+    for (const field of intakeFields) {
       if (!grouped[field.section]) grouped[field.section] = [];
       grouped[field.section].push(field);
     }
     return Object.entries(grouped);
-  }, []);
+  }, [intakeFields]);
 
   const readText = (id: string) => (typeof answers[id] === 'string' ? (answers[id] as string) : '');
   const readList = (id: string) => (Array.isArray(answers[id]) ? (answers[id] as string[]) : []);
@@ -288,6 +304,25 @@ export function IntakeFlow(props: {
       // Generate artifacts (stubbed for now; LLM swap is Phase 1).
       setStep('plating');
 
+      if (isFreeTier) {
+        const readiness = generateReadinessDoc(answers);
+        const resourceGuide = {
+          resource_guide: [
+            'Intro path: AI essentials for career acceleration.',
+            'Workflow starter: one prompt template + one execution loop.',
+            'Upgrade unlock: personalized Brief, Plan, and concierge support.',
+          ],
+          upgrade_cta: 'Upgrade to unlock full personalized suite artifacts and ConciergeJobSearch.',
+        };
+        await upsertArtifact(props.uid, 'readiness', 'AI Readiness Assessment', {
+          ...readiness,
+          ...resourceGuide,
+        } as any);
+        setStep('done');
+        props.onComplete();
+        return;
+      }
+
       // Preferred path: Cloud Run API (stub now, LLM later).
       // Fallback: local stub generator if API isn't configured yet.
       let brief: any, plan: any, profile: any, aiProfile: any, gaps: any;
@@ -397,7 +432,7 @@ export function IntakeFlow(props: {
           </div>
           <div className="pt-3">
             <button
-              onClick={() => setStep('concierge')}
+              onClick={() => setStep(isFreeTier ? 'questions' : 'concierge')}
               className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
             >
               Continue
@@ -475,6 +510,11 @@ export function IntakeFlow(props: {
       {step === 'questions' && (
         <div className="space-y-6">
           <div className="text-[10px] uppercase tracking-widest text-gray-500">Smart Start intake blueprint</div>
+          {isFreeTier && (
+            <div className="border border-brand-teal/25 bg-brand-soft p-4 text-sm text-gray-700">
+              Free foundation intake: short path focused on foundational interests and readiness routing.
+            </div>
+          )}
           <div className="space-y-8">
             {fieldsBySection.map(([section, fields]) => (
               <section key={section} className="border border-black/10 p-5 space-y-4 bg-gray-50">
@@ -495,7 +535,7 @@ export function IntakeFlow(props: {
           </div>
           <div className="flex items-center gap-3 pt-2">
             <button
-              onClick={() => setStep('concierge')}
+              onClick={() => setStep(isFreeTier ? 'intent' : 'concierge')}
               className="text-xs uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity"
             >
               Back

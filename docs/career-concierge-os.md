@@ -76,6 +76,9 @@ The Express API under `api/` handles:
 - Firebase token verification
 - admin config reads and writes
 - suite artifact generation
+- CJS execution rail endpoints (resume upload/review/strategy)
+- interaction ledger + approval endpoints
+- agent registry endpoint
 - binge episode generation
 - live token generation
 - voice synthesis routing
@@ -102,8 +105,11 @@ The Express API under `api/` handles:
 Primary collections:
 
 - `system/career-concierge-config`
+- `system/agent-registry`
 - `clients/{clientId}`
 - `clients/{clientId}/artifacts/{artifactType}`
+- `clients/{clientId}/assets/{assetId}`
+- `clients/{clientId}/interactions/{interactionId}`
 
 ## Relationship To Signal Atlas
 

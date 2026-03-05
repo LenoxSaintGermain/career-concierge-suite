@@ -11,6 +11,7 @@
 - `docs/progress-log.md`: implementation progress against MVP backlog
 - `docs/backlog-ledger.md`: story-level backlog status and execution ledger
 - `docs/mvp/demo_master_tasklist.md`: demo-readiness tasks mapped to test-user specs
+- `docs/mvp/demo_validation_checklist.md`: persona-by-persona QA execution script
 - `docs/documentation-map.md`: update matrix for future work
 
 ## Update Matrix
@@ -80,6 +81,12 @@
 - roadmap-to-test-spec mapping changes
 - in-app roadmap task cards are added, removed, or reordered
 
+### Update `docs/mvp/demo_validation_checklist.md` when
+
+- persona acceptance checks are added/removed
+- module flow changes impact demo QA sequencing
+- new backlog stories need explicit test steps
+
 ## Code-to-Docs Mapping
 
 - `api/` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`
@@ -90,6 +97,8 @@
 - `scripts/deploy_*` -> `README.md`, `docs/operations-runbook.md`, `docs/ssai-production-migration.md`
 - `api/scripts/seed_persona_fixtures.mjs` -> `README.md`, `docs/operations-runbook.md`, `docs/progress-log.md`
 - `config/demo/persona-fixtures.json` -> `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
+- `services/cjsApi.ts` / `components/CjsExecutionView.tsx` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/backlog-ledger.md`
+- `components/AssetsView.tsx` -> `docs/career-concierge-os.md`, `docs/backlog-ledger.md`, `docs/progress-log.md`
 - `firestore*.rules` / `firebase.json` -> `docs/operations-runbook.md`, `docs/ssai-production-migration.md`
 - durable product/platform choices -> `docs/decision-log.md`
 - backlog progress and roadmap node state -> `docs/progress-log.md`

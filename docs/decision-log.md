@@ -116,3 +116,30 @@ Implication:
 - use `config/demo/persona-fixtures.json` as the canonical persona payload source
 - use `api/scripts/seed_persona_fixtures.mjs` for dry-run and write runs
 - avoid ad-hoc manual client document creation for demo personas
+
+### CJS execution rail is now API-backed, not placeholder-only UI
+
+ConciergeJobSearch now ships with real backend routes for resume upload, resume review, and strategy generation.
+
+Implication:
+
+- TU2 path can be validated end-to-end in product
+- CJS data now persists under `clients/{uid}/assets` and `clients/{uid}/artifacts`
+
+### Chief of Staff summary log uses interaction ledger as canonical trail
+
+Chief of Staff outputs are persisted in `clients/{uid}/interactions` with optional `pending_approval` status.
+
+Implication:
+
+- investor/demo audit trail is now directly queryable
+- approval state can be surfaced in-product
+
+### Free-tier users are constrained by module visibility and intake scope
+
+Free-tier (`free_foundation_access`) now uses a constrained module graph and a shortened intake path.
+
+Implication:
+
+- TU4 journey now matches spec intent (limited artifacts + upgrade pathway)
+- paid-tier-only modules are hidden for free users at suite-home level

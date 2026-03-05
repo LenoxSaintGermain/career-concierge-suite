@@ -35,6 +35,8 @@ export interface ClientPreferences {
 
 export interface ClientDoc {
   uid: string;
+  email?: string;
+  display_name?: string;
   created_at: any; // Firestore Timestamp
   updated_at: any; // Firestore Timestamp
 
@@ -46,6 +48,21 @@ export interface ClientDoc {
     answers: IntakeAnswers;
     completed_at?: any; // Firestore Timestamp
   };
+  demo_profile?: {
+    id?: string;
+    name?: string;
+    archetype?: string;
+    tier?: string;
+    hydrated?: boolean;
+    hydrated_at?: string;
+    source?: string;
+  };
+  account?: {
+    tier?: string;
+    status?: string;
+    hydrated?: boolean;
+    hydrated_at?: string;
+  };
 }
 
 export type ArtifactType =
@@ -56,7 +73,9 @@ export type ArtifactType =
   | 'gaps'
   | 'readiness'
   | 'cjs_execution'
-  | 'plan';
+  | 'plan'
+  | 'resume_review'
+  | 'search_strategy';
 
 export interface BriefContent {
   learned: string[]; // 3 bullets
@@ -104,6 +123,60 @@ export interface CjsExecutionContent {
     status: 'ready' | 'planned' | 'blocked';
     description: string;
   }[];
+}
+
+export interface CjsAsset {
+  id: string;
+  type: 'resume' | 'strategy' | 'cover_letter' | 'other';
+  label: string;
+  status: 'draft' | 'active' | 'archived';
+  filename?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  source_url?: string;
+  storage_path?: string;
+  storage_provider?: 'gcs' | 'external_url' | 'none';
+  target_role?: string;
+  notes?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ResumeReviewContent {
+  summary: string;
+  role_alignment_score: number;
+  strengths: string[];
+  gaps: string[];
+  rewrite_focus: string[];
+}
+
+export interface SearchStrategyContent {
+  headline: string;
+  channels: string[];
+  weekly_actions: string[];
+  proof_points: string[];
+}
+
+export type InteractionStatus = 'logged' | 'pending_approval' | 'approved' | 'rejected';
+
+export interface InteractionLog {
+  id: string;
+  type: string;
+  title: string;
+  summary: string;
+  status: InteractionStatus;
+  requires_approval: boolean;
+  next_actions: string[];
+  decision_note?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AgentDefinition {
+  role_id: string;
+  title: string;
+  objective: string;
+  reads: string[];
 }
 
 export interface PlanContent {

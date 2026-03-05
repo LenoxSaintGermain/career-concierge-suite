@@ -17,10 +17,10 @@ Source of truth backlog: `docs/mvp/Career_Concierge_V1_MVP_Spec_Complete.md`.
 | E01-S01 New User Intake | E01 | P0 | Done | Intake flow and Firestore persistence are live. |
 | E01-S02 Returning User Intake | E01 | P0 | Done | Intake routing is in place for returning users. |
 | E01-S03 Suite Artifact Generation Trigger | E01 | P0 | Done | `/v1/suite/generate` flow is wired and artifacts are generated. |
-| E02-S01 Agent Role Definition | E02 | P0 | Queued | `agents` collection and typed agent docs not implemented yet. |
-| E02-S02 Agent DNA Access | E02 | P0 | Queued | Chief of Staff read-path and explicit policy layer not implemented yet. |
-| E02-S03 Agent Summary and Logging | E02 | P0 | Queued | Interaction logging flow (`clients/{id}/interactions`) not implemented yet. |
-| E02-S04 Human-in-the-Loop Validation | E02 | P0 | Queued | Pending-approval queue and approve/reject flow not implemented yet. |
+| E02-S01 Agent Role Definition | E02 | P0 | Done | Agent registry endpoint now serves typed role definitions and persists to `system/agent-registry`. |
+| E02-S02 Agent DNA Access | E02 | P0 | In Progress | Chief of Staff and CJS routes hydrate from `clients/{uid}` + artifacts; explicit policy layer still pending. |
+| E02-S03 Agent Summary and Logging | E02 | P0 | Done | Chief of Staff summary logging now writes to `clients/{uid}/interactions`. |
+| E02-S04 Human-in-the-Loop Validation | E02 | P0 | In Progress | Pending-approval queue + admin approve/reject endpoint are live; cross-user queue UX remains open. |
 | E03-S01 Pilot Episode Generation | E03 | P0 | In Progress | Episode generation ships; full demo orchestration still being refined. |
 | E03-S02 Episode Template Engine | E03 | P0 | In Progress | Structured prompt/schema exists; ongoing quality/polish work remains. |
 | E03-S03 Model Cost Control | E03 | P0 | In Progress | Admin model routing exists; final cost guardrails still evolving. |
@@ -30,9 +30,9 @@ Source of truth backlog: `docs/mvp/Career_Concierge_V1_MVP_Spec_Complete.md`.
 | E05-S01 Secure Admin Access | E05 | P1 | In Progress | Email allowlist and admin API gating active; claims strategy still open. |
 | E05-S02 Prompt Management | E05 | P1 | Done | Prompt overlays editable from admin console. |
 | E05-S03 Feature Flags | E05 | P1 | Done | Module toggles are active via public/admin config. |
-| E06-S01 Resume Upload | E06 | P2 | Queued | Upload UI + storage path integration not implemented yet. |
-| E06-S02 Resume Review Agent | E06 | P2 | Queued | Resume analysis artifact pipeline not implemented yet. |
-| E06-S03 Search Strategy Generation | E06 | P2 | Queued | Search strategist artifact pipeline not implemented yet. |
+| E06-S01 Resume Upload | E06 | P2 | Done | CJS resume upload endpoint + UI are live with asset persistence. |
+| E06-S02 Resume Review Agent | E06 | P2 | Done | Resume review generation now writes `resume_review` artifact and approval interaction. |
+| E06-S03 Search Strategy Generation | E06 | P2 | Done | Search strategy generation now writes `search_strategy` artifact and approval interaction. |
 
 ## Demo-Critical Sequence
 
@@ -44,7 +44,7 @@ Investor-critical sequence:
 4. Binge episode generated
 5. Chief of Staff summary logged
 
-Current blocker in this sequence: Step 5 (`E02-S03`) is not implemented yet.
+Current blocker in this sequence: approval workflow hardening (`E02-S04`) still needs cross-user admin queue UX.
 
 ## Demo Master Tasklist Snapshot
 
@@ -56,14 +56,14 @@ Current task pulse:
 
 | Task | Status | Primary Persona Target |
 | :--- | :--- | :--- |
-| MTL-01 Persona fixture seed + deterministic intake payloads | In Progress | TU1/TU2/TU3/TU4 (full account hydration seeded by script; blocked on local ADC refresh for write run) |
-| MTL-02 Intent-based journey routing + unlock order | In Progress | TU1/TU2/TU3 |
-| MTL-03 Chief of Staff interaction ledger | Queued | TU1/TU2/TU3 |
+| MTL-01 Persona fixture seed + deterministic intake payloads | Done | TU1/TU2/TU3/TU4 (full account hydration seeded to `ssai-f6191/career-concierge`) |
+| MTL-02 Intent-based journey routing + unlock order | Done | TU1/TU2/TU3 |
+| MTL-03 Chief of Staff interaction ledger | In Progress | TU1/TU2/TU3 |
 | MTL-04 Episode personalization + modality routing | In Progress | TU1/TU3/TU4 |
-| MTL-05 CJS execution rail (upload/review/strategy) | Queued | TU2 |
-| MTL-06 Free-tier constrained surface + upgrade conversion CTA | Blocked | TU4 |
+| MTL-05 CJS execution rail (upload/review/strategy) | Done | TU2 |
+| MTL-06 Free-tier constrained surface + upgrade conversion CTA | In Progress | TU4 |
 | MTL-07 Mobile completion pass | In Progress | TU1/TU2/TU3/TU4 |
-| MTL-08 Manual QA script + acceptance proof capture | Queued | TU1/TU2/TU3/TU4 |
+| MTL-08 Manual QA script + acceptance proof capture | In Progress | TU1/TU2/TU3/TU4 |
 
 ## Execution Ledger
 
@@ -75,6 +75,7 @@ Current task pulse:
 | 2026-03-05 16:49:21Z | Demo readiness planning | Added test-user-based master tasklist and surfaced persona/task mapping in Roadmap module. | Done | `docs/mvp/demo_master_tasklist.md`, `components/RoadmapView.tsx`, `docs/progress-log.md` |
 | 2026-03-05 19:15:47Z | MTL-01 persona fixtures | Added deterministic persona fixture source and seed utility (dry-run verified). | Done | `config/demo/persona-fixtures.json`, `api/scripts/seed_persona_fixtures.mjs`, `.context/persona-seed-report.dry-run.json` |
 | 2026-03-05 19:28:05Z | MTL-01 hydration upgrade | Extended persona seeding to full account hydration (auth reconcile by email, artifacts, assets, interactions). Write run blocked by stale ADC (`invalid_rapt`). | Done | `api/scripts/seed_persona_fixtures.mjs`, `README.md`, `docs/operations-runbook.md` |
+| 2026-03-05 22:00:00Z | E02/E06/MTL-06/MTL-08 | Shipped CJS execution rail APIs + UI, added Chief of Staff ledger + approval flow, applied free-tier gating and upgrade CTA, added persona demo validation checklist. | Done | `api/index.js`, `services/cjsApi.ts`, `components/CjsExecutionView.tsx`, `components/AssetsView.tsx`, `App.tsx`, `docs/mvp/demo_validation_checklist.md` |
 
 ## Update Protocol
 

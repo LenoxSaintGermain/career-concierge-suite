@@ -67,6 +67,35 @@ Admin controls expose:
 - prompt appendices
 - speaker / temperature / max length
 
+## Backlog Completion Pass (E2E Demo Surfaces)
+
+Current pass shipped these backlog-critical features:
+
+- CJS execution rail API + UI
+  - resume upload
+  - resume review generation
+  - search strategy generation
+- Chief of Staff interaction ledger in `Assets`
+  - summary generation
+  - pending approval queue
+  - admin approve/reject actions
+- Free-tier journey gating
+  - simplified intake field set
+  - limited module visibility
+  - readiness resource guide + upgrade CTA
+- Intent-based module ordering on suite home
+
+New API routes:
+
+- `GET /v1/agents/registry`
+- `GET /v1/cjs/assets`
+- `POST /v1/cjs/resume/upload`
+- `POST /v1/cjs/resume/review`
+- `POST /v1/cjs/search/strategy`
+- `GET /v1/interactions`
+- `POST /v1/interactions/chief-of-staff`
+- `POST /v1/interactions/:interactionId/decision`
+
 ## Deployment
 
 Deploy API:

@@ -25,6 +25,11 @@ if (!admin.apps.length) {
 }
 const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'career-concierge';
 const db = getFirestore(admin.app(), firestoreDatabaseId);
+const storageBucketName =
+  process.env.CCS_STORAGE_BUCKET ||
+  process.env.STORAGE_BUCKET ||
+  process.env.FIREBASE_STORAGE_BUCKET ||
+  (process.env.GOOGLE_CLOUD_PROJECT ? `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com` : '');
 
 const requireAuth = async (req, res, next) => {
   const authHeader = req.header('authorization') ?? '';
@@ -757,6 +762,198 @@ const defaultArtPrompts = {
     'Subtle atmospheric underscore: low pulse, soft ticking motif, restrained tension, premium finish.',
 };
 
+const AGENT_REGISTRY = [
+  {
+    role_id: 'chief_of_staff',
+    title: 'Chief of Staff',
+    objective: 'Synthesize strategic direction and maintain investor-facing execution continuity.',
+    reads: ['clients/{uid}', 'clients/{uid}/artifacts/*', 'clients/{uid}/interactions/*'],
+  },
+  {
+    role_id: 'resume_reviewer',
+    title: 'Resume Reviewer',
+    objective: 'Evaluate role alignment and produce specific rewrite priorities.',
+    reads: ['clients/{uid}', 'clients/{uid}/assets/*', 'clients/{uid}/artifacts/cjs_execution'],
+  },
+  {
+    role_id: 'search_strategist',
+    title: 'Search Strategist',
+    objective: 'Build targeted promotion/job-search plans from intake context and role intent.',
+    reads: ['clients/{uid}', 'clients/{uid}/assets/*', 'clients/{uid}/artifacts/*'],
+  },
+];
+
+const toIso = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === 'function') return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+};
+
+const toSafeFileName = (name) =>
+  String(name ?? 'resume')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .slice(0, 120);
+
+const clientRef = (uid) => db.collection('clients').doc(uid);
+const clientAssetsRef = (uid) => clientRef(uid).collection('assets');
+const clientArtifactsRef = (uid) => clientRef(uid).collection('artifacts');
+const clientInteractionsRef = (uid) => clientRef(uid).collection('interactions');
+
+const parseDataUrl = (input) => {
+  const raw = nonEmpty(input);
+  if (!raw) return '';
+  const m = raw.match(/^data:.*;base64,(.+)$/);
+  return m ? m[1] : raw;
+};
+
+const readClientProfile = async (uid) => {
+  const snap = await clientRef(uid).get();
+  return snap.exists ? snap.data() ?? {} : {};
+};
+
+const listResumeAssets = async (uid) => {
+  const snap = await clientAssetsRef(uid).where('type', '==', 'resume').get();
+  return snap.docs
+    .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() ?? {}) }))
+    .sort((a, b) => (toIso(b.updated_at) || '').localeCompare(toIso(a.updated_at) || ''));
+};
+
+const writeArtifactDoc = async (uid, type, title, content) => {
+  const ref = clientArtifactsRef(uid).doc(type);
+  const snap = await ref.get();
+  const version = Number(snap.data()?.version || 0) + 1;
+  await ref.set(
+    {
+      type,
+      title,
+      version,
+      content,
+      created_at: snap.exists ? snap.data()?.created_at || new Date() : new Date(),
+      updated_at: new Date(),
+    },
+    { merge: true }
+  );
+  return { type, version };
+};
+
+const createInteraction = async ({
+  uid,
+  type,
+  title,
+  summary,
+  nextActions = [],
+  status = 'logged',
+  requiresApproval = false,
+  source = '',
+}) => {
+  const ref = clientInteractionsRef(uid).doc(`int-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
+  await ref.set({
+    type,
+    title,
+    summary,
+    next_actions: nextActions,
+    status,
+    requires_approval: requiresApproval,
+    source,
+    created_at: new Date(),
+    updated_at: new Date(),
+  });
+  const snap = await ref.get();
+  return { id: ref.id, ...(snap.data() ?? {}) };
+};
+
+const serializeInteraction = (docSnap) => {
+  const data = docSnap.data() ?? {};
+  return {
+    id: docSnap.id,
+    type: String(data.type || 'note'),
+    title: String(data.title || 'Interaction'),
+    summary: String(data.summary || ''),
+    status: String(data.status || 'logged'),
+    requires_approval: Boolean(data.requires_approval),
+    next_actions: Array.isArray(data.next_actions) ? data.next_actions.map((entry) => String(entry)) : [],
+    decision_note: nonEmpty(data.decision_note),
+    created_at: toIso(data.created_at),
+    updated_at: toIso(data.updated_at),
+  };
+};
+
+const buildResumeReview = ({ profile, resumeAsset }) => {
+  const answers = profile?.intake?.answers || {};
+  const targetRole = nonEmpty(resumeAsset?.target_role) || nonEmpty(answers.target) || nonEmpty(answers.current_or_target_job_title) || 'target role';
+  const currentRole = nonEmpty(answers.current_title) || nonEmpty(answers.current_or_target_job_title) || 'current role';
+  const constraints = nonEmpty(answers.constraints) || 'time and competing priorities';
+  const alignmentScore = currentRole.toLowerCase() === targetRole.toLowerCase() ? 76 : 64;
+
+  return {
+    summary: `Narrative can be tightened to bridge ${currentRole} to ${targetRole} with stronger ROI framing.`,
+    role_alignment_score: alignmentScore,
+    strengths: [
+      'Role scope and ownership are clearly present.',
+      'Cross-functional leadership signal is visible.',
+      'Trajectory toward larger scope can be articulated with evidence.',
+    ],
+    gaps: [
+      'Outcome metrics are not consistently quantified.',
+      'Executive-language framing is uneven across sections.',
+      `Constraint handling (${constraints}) needs explicit mitigation narrative.`,
+    ],
+    rewrite_focus: [
+      'Lead with measurable business outcomes in first three bullets.',
+      `Translate daily execution into role-level strategy language for ${targetRole}.`,
+      'Add one concise “proof of leverage” section tied to stakeholder impact.',
+    ],
+  };
+};
+
+const buildSearchStrategy = ({ profile, resumeReview }) => {
+  const answers = profile?.intake?.answers || {};
+  const targetRole = nonEmpty(answers.target) || nonEmpty(answers.current_or_target_job_title) || 'target role';
+  const intent = nonEmpty(profile?.intent) || 'current_role';
+  const internalTrack = intent === 'target_role';
+
+  return {
+    headline: internalTrack
+      ? `Promotion-first strategy for ${targetRole} with KPI-backed positioning.`
+      : `Readiness strategy for ${targetRole} without active external search pressure.`,
+    channels: internalTrack
+      ? ['Internal sponsors', 'Manager syncs', 'Cross-functional project visibility']
+      : ['Portfolio artifacts', 'Skill proofs', 'Strategic networking'],
+    weekly_actions: [
+      'Ship one role-aligned artifact with measurable impact.',
+      'Run two high-signal conversations with explicit asks.',
+      'Update positioning narrative using latest evidence from execution.',
+    ],
+    proof_points: [
+      'Recent outcomes mapped to role-level expectations.',
+      `Current alignment score baseline: ${resumeReview?.role_alignment_score ?? 0}%.`,
+      'One quantified KPI movement narrative per week.',
+    ],
+  };
+};
+
+const buildChiefOfStaffSummary = ({ profile, briefDoc, planDoc, latestEpisode }) => {
+  const answers = profile?.intake?.answers || {};
+  const role = nonEmpty(answers.current_title) || nonEmpty(answers.current_or_target_job_title) || 'client role';
+  const target = nonEmpty(answers.target) || nonEmpty(answers.current_or_target_job_title) || 'next role';
+  const firstNeedle = Array.isArray(briefDoc?.needle) ? String(briefDoc.needle[0] || '') : '';
+  const firstPlanStep = Array.isArray(planDoc?.next_72_hours) ? String(planDoc.next_72_hours[0]?.label || '') : '';
+  const episodeTitle = nonEmpty(latestEpisode?.title);
+
+  return {
+    title: 'Chief of Staff Executive Summary',
+    summary: `${role} trajectory is pointed toward ${target}. ${firstNeedle || 'Primary strategic need is narrative precision and execution consistency.'}`,
+    next_actions: [
+      firstPlanStep || 'Execute first 72-hour action and capture evidence.',
+      episodeTitle ? `Use episode "${episodeTitle}" as this week’s behavior rehearsal.` : 'Run one focused episode rehearsal and capture lessons.',
+      'Return with one measurable output for approval queue review.',
+    ],
+  };
+};
+
 const withEpisodeMediaHints = (episode, runtimeConfig) => {
   const baseEpisode = episode && typeof episode === 'object' ? episode : {};
   const artDirection =
@@ -1440,6 +1637,311 @@ app.get('/v1/media/library', requireAuth, async (req, res) => {
     },
     items: visible,
   });
+});
+
+app.get('/v1/agents/registry', requireAuth, async (_req, res) => {
+  try {
+    await db.collection('system').doc('agent-registry').set(
+      {
+        agents: AGENT_REGISTRY,
+        updated_at: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('agent_registry_write_error', error);
+  }
+  return res.json({
+    generated_at: new Date().toISOString(),
+    agents: AGENT_REGISTRY,
+  });
+});
+
+app.get('/v1/cjs/assets', requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const snap = await clientAssetsRef(uid).get();
+    const items = snap.docs
+      .map((docSnap) => {
+        const data = docSnap.data() ?? {};
+        return {
+          id: docSnap.id,
+          type: String(data.type || 'other'),
+          label: String(data.label || data.filename || docSnap.id),
+          status: String(data.status || 'active'),
+          filename: nonEmpty(data.filename),
+          mime_type: nonEmpty(data.mime_type),
+          size_bytes: Number(data.size_bytes || 0),
+          source_url: nonEmpty(data.source_url),
+          storage_path: nonEmpty(data.storage_path),
+          storage_provider: nonEmpty(data.storage_provider) || 'none',
+          target_role: nonEmpty(data.target_role),
+          notes: nonEmpty(data.notes),
+          created_at: toIso(data.created_at),
+          updated_at: toIso(data.updated_at),
+        };
+      })
+      .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+    return res.json({ items });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'assets_list_failed',
+      detail: sanitizeError(error, 'assets_list_failed'),
+    });
+  }
+});
+
+app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
+  const uid = req.user.uid;
+  const filename = toSafeFileName(req.body?.filename || 'resume');
+  const mimeType = nonEmpty(req.body?.mime_type) || 'application/octet-stream';
+  const sourceUrl = nonEmpty(req.body?.source_url);
+  const targetRole = nonEmpty(req.body?.target_role);
+  const notes = nonEmpty(req.body?.notes);
+  const label = nonEmpty(req.body?.label) || filename;
+  const base64Raw = parseDataUrl(req.body?.content_base64);
+
+  if (!sourceUrl && !base64Raw) {
+    return res.status(400).json({ error: 'resume_source_required' });
+  }
+
+  try {
+    const itemId = `resume-${Date.now().toString(36)}`;
+    const now = new Date();
+    let sizeBytes = 0;
+    let storagePath = '';
+    let storageProvider = 'none';
+
+    if (sourceUrl) {
+      storageProvider = 'external_url';
+    } else if (base64Raw) {
+      const buffer = Buffer.from(base64Raw, 'base64');
+      sizeBytes = buffer.byteLength;
+      if (sizeBytes > 6 * 1024 * 1024) {
+        return res.status(413).json({ error: 'resume_too_large', max_bytes: 6 * 1024 * 1024 });
+      }
+      const bucket = storageBucketName ? admin.storage().bucket(storageBucketName) : null;
+      if (bucket) {
+        storagePath = `clients/${uid}/resumes/${itemId}-${filename}`;
+        await bucket.file(storagePath).save(buffer, {
+          resumable: false,
+          metadata: { contentType: mimeType, cacheControl: 'private, max-age=0, no-store' },
+        });
+        storageProvider = 'gcs';
+      }
+    }
+
+    const ref = clientAssetsRef(uid).doc(itemId);
+    await ref.set({
+      type: 'resume',
+      label,
+      status: 'active',
+      filename,
+      mime_type: mimeType,
+      size_bytes: sizeBytes,
+      source_url: sourceUrl,
+      storage_path: storagePath,
+      storage_provider: storageProvider,
+      target_role: targetRole,
+      notes,
+      created_at: now,
+      updated_at: now,
+    });
+
+    const saved = await ref.get();
+    const data = saved.data() ?? {};
+    return res.json({
+      ok: true,
+      item: {
+        id: saved.id,
+        type: data.type,
+        label: data.label,
+        status: data.status,
+        filename: data.filename,
+        mime_type: data.mime_type,
+        size_bytes: data.size_bytes,
+        source_url: data.source_url || '',
+        storage_path: data.storage_path || '',
+        storage_provider: data.storage_provider || 'none',
+        target_role: data.target_role || '',
+        notes: data.notes || '',
+        created_at: toIso(data.created_at),
+        updated_at: toIso(data.updated_at),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'resume_upload_failed',
+      detail: sanitizeError(error, 'resume_upload_failed'),
+    });
+  }
+});
+
+app.post('/v1/cjs/resume/review', requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const [profile, resumeAssets] = await Promise.all([readClientProfile(uid), listResumeAssets(uid)]);
+    const latestResume = resumeAssets[0];
+    if (!latestResume) return res.status(400).json({ error: 'resume_required' });
+
+    const review = buildResumeReview({ profile, resumeAsset: latestResume });
+    await writeArtifactDoc(uid, 'resume_review', 'Resume Review', review);
+    const interaction = await createInteraction({
+      uid,
+      type: 'human_validation',
+      title: 'Resume review approval queue',
+      summary: review.summary,
+      nextActions: review.rewrite_focus,
+      status: 'pending_approval',
+      requiresApproval: true,
+      source: 'resume_review',
+    });
+
+    return res.json({
+      review,
+      interaction_id: interaction.id,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'resume_review_failed',
+      detail: sanitizeError(error, 'resume_review_failed'),
+    });
+  }
+});
+
+app.post('/v1/cjs/search/strategy', requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const [profile, reviewSnap] = await Promise.all([
+      readClientProfile(uid),
+      clientArtifactsRef(uid).doc('resume_review').get(),
+    ]);
+    const strategy = buildSearchStrategy({
+      profile,
+      resumeReview: reviewSnap.exists ? reviewSnap.data()?.content : null,
+    });
+    await writeArtifactDoc(uid, 'search_strategy', 'Search Strategy', strategy);
+    const interaction = await createInteraction({
+      uid,
+      type: 'human_validation',
+      title: 'Search strategy approval queue',
+      summary: strategy.headline,
+      nextActions: strategy.weekly_actions,
+      status: 'pending_approval',
+      requiresApproval: true,
+      source: 'search_strategy',
+    });
+
+    return res.json({
+      strategy,
+      interaction_id: interaction.id,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'search_strategy_failed',
+      detail: sanitizeError(error, 'search_strategy_failed'),
+    });
+  }
+});
+
+app.get('/v1/interactions', requireAuth, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query?.limit || 40), 1), 120);
+    const snap = await clientInteractionsRef(req.user.uid)
+      .orderBy('updated_at', 'desc')
+      .limit(limit)
+      .get();
+    return res.json({
+      items: snap.docs.map(serializeInteraction),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'interactions_list_failed',
+      detail: sanitizeError(error, 'interactions_list_failed'),
+    });
+  }
+});
+
+app.post('/v1/interactions/chief-of-staff', requireAuth, async (req, res) => {
+  const mode = nonEmpty(req.body?.mode) === 'logged' ? 'logged' : 'pending_approval';
+  try {
+    const uid = req.user.uid;
+    const [profile, briefSnap, planSnap, episodeSnap] = await Promise.all([
+      readClientProfile(uid),
+      clientArtifactsRef(uid).doc('brief').get(),
+      clientArtifactsRef(uid).doc('plan').get(),
+      clientArtifactsRef(uid).doc('episodes_summary').get(),
+    ]);
+    const summary = buildChiefOfStaffSummary({
+      profile,
+      briefDoc: briefSnap.data()?.content,
+      planDoc: planSnap.data()?.content,
+      latestEpisode: episodeSnap.data()?.content,
+    });
+    const item = await createInteraction({
+      uid,
+      type: 'chief_of_staff_summary',
+      title: summary.title,
+      summary: summary.summary,
+      nextActions: summary.next_actions,
+      status: mode,
+      requiresApproval: mode === 'pending_approval',
+      source: 'chief_of_staff',
+    });
+    return res.json({
+      ok: true,
+      item: {
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        summary: item.summary,
+        status: item.status,
+        requires_approval: Boolean(item.requires_approval),
+        next_actions: Array.isArray(item.next_actions) ? item.next_actions : [],
+        decision_note: nonEmpty(item.decision_note),
+        created_at: toIso(item.created_at),
+        updated_at: toIso(item.updated_at),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'chief_of_staff_failed',
+      detail: sanitizeError(error, 'chief_of_staff_failed'),
+    });
+  }
+});
+
+app.post('/v1/interactions/:interactionId/decision', requireAuth, requireAdmin, async (req, res) => {
+  const interactionId = nonEmpty(req.params?.interactionId);
+  const decision = nonEmpty(req.body?.decision);
+  const note = nonEmpty(req.body?.note) || '';
+  if (!interactionId) return res.status(400).json({ error: 'interaction_id_required' });
+  if (!['approved', 'rejected'].includes(decision)) return res.status(400).json({ error: 'invalid_decision' });
+
+  try {
+    const ref = clientInteractionsRef(req.user.uid).doc(interactionId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ error: 'interaction_not_found' });
+    await ref.set(
+      {
+        status: decision,
+        decision_note: note,
+        decided_by: req.user.email ?? req.user.uid,
+        updated_at: new Date(),
+      },
+      { merge: true }
+    );
+    const updated = await ref.get();
+    return res.json({
+      ok: true,
+      item: serializeInteraction(updated),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'interaction_decision_failed',
+      detail: sanitizeError(error, 'interaction_decision_failed'),
+    });
+  }
 });
 
 // B.I.N.G.E: Generate one episode (fast).

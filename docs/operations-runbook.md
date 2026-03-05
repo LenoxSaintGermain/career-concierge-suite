@@ -116,6 +116,24 @@ Current default admin list in the deploy template includes:
 - `lenox@thirdsignal.ai`
 - `iamjimbutler@gmail.com`
 
+## CJS Rail + Ledger API Checks
+
+After API deploy, validate these authenticated routes:
+
+- `GET /v1/cjs/assets`
+- `POST /v1/cjs/resume/upload`
+- `POST /v1/cjs/resume/review`
+- `POST /v1/cjs/search/strategy`
+- `GET /v1/interactions`
+- `POST /v1/interactions/chief-of-staff`
+- `POST /v1/interactions/:interactionId/decision` (admin only)
+
+If resume upload is enabled for binary upload, set one of:
+
+- `CCS_STORAGE_BUCKET`
+- `STORAGE_BUCKET`
+- `FIREBASE_STORAGE_BUCKET`
+
 ## High-Risk Failure Modes
 
 ### Wrong Source Path During Deploy
@@ -154,6 +172,8 @@ Use the reset workflow instead of repeating blind imports.
 - episode generation
 - suite generation
 - live token generation
+- CJS upload/review/strategy flow
+- Assets ledger summary + decision flow
 
 ## Recommended Release Sequence
 

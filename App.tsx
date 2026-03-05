@@ -19,6 +19,7 @@ import { CjsExecutionView } from './components/CjsExecutionView';
 import { BingeFeedView } from './components/BingeFeedView';
 import { AdminConsole } from './components/AdminConsole';
 import { RoadmapView } from './components/RoadmapView';
+import { AssetsView } from './components/AssetsView';
 import { canAccessAdminConfig, fetchPublicConfig } from './services/adminApi';
 import { PublicConfig } from './types';
 
@@ -32,6 +33,12 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   operations: {
     cjs_enabled: true,
   },
+};
+
+const priorityByIntent: Record<string, SuiteModuleId[]> = {
+  current_role: ['intake', 'episodes', 'ai_profile', 'profile', 'gaps', 'readiness', 'plan', 'brief', 'suite_distilled', 'cjs_execution', 'assets', 'roadmap'],
+  target_role: ['intake', 'cjs_execution', 'assets', 'plan', 'brief', 'suite_distilled', 'episodes', 'profile', 'ai_profile', 'gaps', 'readiness', 'roadmap'],
+  not_sure: ['intake', 'profile', 'gaps', 'episodes', 'plan', 'brief', 'suite_distilled', 'readiness', 'ai_profile', 'assets', 'cjs_execution', 'roadmap'],
 };
 
 const App: React.FC = () => {
@@ -110,14 +117,25 @@ const App: React.FC = () => {
     return Boolean(client?.intake?.completed_at);
   }, [client?.intake?.completed_at]);
 
+  const clientTier = useMemo(
+    () => String(client?.demo_profile?.tier || client?.account?.tier || '').toLowerCase(),
+    [client]
+  );
+  const isFreeTier = clientTier === 'free_foundation_access';
+
   const visibleModules = useMemo(
     () =>
       SUITE_MODULES.filter((m) => {
         if (!publicConfig.ui.episodes_enabled && m.id === 'episodes') return false;
         if (!publicConfig.operations.cjs_enabled && m.id === 'cjs_execution') return false;
+        if (isFreeTier && !['intake', 'episodes', 'readiness', 'roadmap'].includes(m.id)) return false;
         return true;
+      }).sort((a, b) => {
+        const intent = String(client?.intent || 'current_role');
+        const ordered = priorityByIntent[intent] || priorityByIntent.current_role;
+        return ordered.indexOf(a.id) - ordered.indexOf(b.id);
       }),
-    [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled]
+    [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled, isFreeTier, client?.intent]
   );
 
   const openModule = useMemo(
@@ -127,6 +145,7 @@ const App: React.FC = () => {
 
   const isLocked = (m: SuiteModule) => {
     if (m.id === 'intake' || m.id === 'roadmap') return false;
+    if (isFreeTier && m.id === 'readiness') return !intakeComplete;
     return !intakeComplete;
   };
 
@@ -274,7 +293,9 @@ const App: React.FC = () => {
           <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{user.email ?? user.uid}</span>
           <button
             onClick={() => setAdminOpen(true)}
-            className="text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors bg-white/60"
+            className={`text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors bg-white/60 ${
+              isAdminUser ? '' : 'hidden'
+            }`}
           >
             Admin
           </button>
@@ -311,6 +332,12 @@ const App: React.FC = () => {
               <span className="text-brand-teal">Boot Sequence</span>
               <span className="text-black/45">Smart Start Intake unlocks the suite graph</span>
             </div>
+            {isFreeTier && (
+              <div className="mt-4 border border-brand-teal/25 bg-brand-soft px-4 py-3 text-xs text-black/70 max-w-2xl">
+                Free foundation mode: curated episodes + AI readiness are unlocked first. Upgrade unlocks full artifacts
+                and ConciergeJobSearch execution.
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-[#dfe4e3] border border-[#dfe4e3] shadow-[0_24px_48px_-34px_rgba(0,0,0,0.22)]">
@@ -400,6 +427,7 @@ const App: React.FC = () => {
               {openModule.id === 'intake' ? (
                 <IntakeFlow
                   uid={user.uid}
+                  tier={clientTier}
                   onComplete={() => {
                     // Update local client state so tiles unlock immediately.
                     setClient((prev) =>
@@ -408,11 +436,14 @@ const App: React.FC = () => {
                         : prev
                     );
                     // Close intake and open brief next.
-                    openModuleById('brief');
+                    openModuleById(isFreeTier ? 'readiness' : 'brief');
                   }}
                 />
               ) : openModule.id === 'episodes' ? (
-                <BingeFeedView onOpenPlan={() => openModuleById('plan')} />
+                <BingeFeedView
+                  isFreeTier={isFreeTier}
+                  onOpenPlan={() => openModuleById(isFreeTier ? 'readiness' : 'plan')}
+                />
               ) : openModule.id === 'roadmap' ? (
                 <RoadmapView />
               ) : (
@@ -471,18 +502,14 @@ const App: React.FC = () => {
                     artifact.type === 'cjs_execution' &&
                     openModule.id === 'cjs_execution' &&
                     artifact.content && <CjsExecutionView doc={artifact.content} />}
+                  {openModule.id === 'assets' && !artifactLoading && !artifactError && (
+                    <AssetsView isAdminUser={isAdminUser} />
+                  )}
                   {artifact === null &&
                     !isLocked(openModule) &&
-                    [
-                      'brief',
-                      'suite_distilled',
-                      'plan',
-                      'profile',
-                      'ai_profile',
-                      'gaps',
-                      'readiness',
-                      'cjs_execution',
-                    ].includes(openModule.id) &&
+                    ['brief', 'suite_distilled', 'plan', 'profile', 'ai_profile', 'gaps', 'readiness', 'cjs_execution'].includes(
+                      openModule.id
+                    ) &&
                     !artifactLoading &&
                     !artifactError && (
                       <div className="border border-black/5 bg-gray-50 p-6">
@@ -501,15 +528,6 @@ const App: React.FC = () => {
                         </div>
                       </div>
                     )}
-                  {openModule.id === 'assets' && !artifactLoading && !artifactError && (
-                    <div className="border border-black/5 bg-gray-50 p-6">
-                      <div className="text-[10px] uppercase tracking-widest opacity-50 mb-4">Assets</div>
-                      <div className="text-2xl font-editorial italic">Your workspace will live here.</div>
-                      <p className="text-sm text-gray-600 leading-relaxed mt-4 max-w-xl">
-                        Resume versions, outreach drafts, scripts, and links. In Phase 1 we’ll connect this to real generation and versioning.
-                      </p>
-                    </div>
-                  )}
                 </>
               )}
             </div>

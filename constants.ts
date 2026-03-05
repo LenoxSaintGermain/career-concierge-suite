@@ -181,3 +181,15 @@ export const SMART_START_FIELDS: SmartStartField[] = [
     placeholder: 'Time, location, salary, caregiving, etc.',
   },
 ];
+
+// Simplified intake for free-tier onboarding.
+export const FREE_TIER_SMART_START_FIELD_IDS: string[] = [
+  'outcomes_goals',
+  'current_or_target_job_title',
+  'ai_usage_frequency',
+  'foundational_interests',
+  'learning_modalities',
+  'current_title',
+  'target',
+  'constraints',
+];

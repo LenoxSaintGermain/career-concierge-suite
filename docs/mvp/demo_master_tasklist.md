@@ -16,22 +16,22 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 | Persona | Track ID | Intent | Current Delivery State | Critical Dependency |
 | :--- | :--- | :--- | :--- | :--- |
 | Donell Woodson | `TU1` | Stay sharp in current role | In Progress | Episode modality routing + profile precision |
-| Garry Francois | `TU2` | Move into a specific next role | Queued | CJS execution rail (upload/review/strategy) |
+| Garry Francois | `TU2` | Move into a specific next role | In Progress | Validation/tuning pass on new CJS rail outputs |
 | Taylor Fulton | `TU3` | Help design a direction | In Progress | MyConcierge direction-guidance flow |
-| Derrick Gervin | `TU4` | Free foundational learning | Blocked | Free-tier module gating + upgrade CTA |
+| Derrick Gervin | `TU4` | Free foundational learning | In Progress | Free-tier playlist targeting + upgrade copy tuning |
 
 ## Master Task Board
 
 | Task | Status | Why It Exists | Linked Stories | Personas |
 | :--- | :--- | :--- | :--- | :--- |
-| `MTL-01` Persona fixture seed + deterministic intake payloads | In Progress | Stable E2E test users and repeatable demo data | `E01-S01`, `E01-S02` | `TU1`, `TU2`, `TU3`, `TU4` |
-| `MTL-02` Intent-based journey routing in suite home + unlock order | In Progress | Match dashboard priority to user intent | `E04-S01`, `E05-S03` | `TU1`, `TU2`, `TU3` |
-| `MTL-03` Chief of Staff interaction ledger | Queued | Persist summary + next actions for investor proof | `E02-S03` | `TU1`, `TU2`, `TU3` |
+| `MTL-01` Persona fixture seed + deterministic intake payloads | Done | Stable E2E test users and repeatable demo data | `E01-S01`, `E01-S02` | `TU1`, `TU2`, `TU3`, `TU4` |
+| `MTL-02` Intent-based journey routing in suite home + unlock order | Done | Match dashboard priority to user intent | `E04-S01`, `E05-S03` | `TU1`, `TU2`, `TU3` |
+| `MTL-03` Chief of Staff interaction ledger | In Progress | Persist summary + next actions for investor proof | `E02-S03` | `TU1`, `TU2`, `TU3` |
 | `MTL-04` Episode personalization and modality routing | In Progress | Ensure first episode matches focus + learning modality | `E03-S01`, `E03-S02`, `E03-S03` | `TU1`, `TU3`, `TU4` |
-| `MTL-05` CJS execution rail (upload, review, strategy) | Queued | Deliver promotion/job-search operating flow | `E06-S01`, `E06-S02`, `E06-S03` | `TU2` |
-| `MTL-06` Free-tier constrained surface + upgrade conversion CTA | Blocked | Enforce free-tier limits and upgrade path | `E05-S03`, `E04-S01` | `TU4` |
+| `MTL-05` CJS execution rail (upload, review, strategy) | Done | Deliver promotion/job-search operating flow | `E06-S01`, `E06-S02`, `E06-S03` | `TU2` |
+| `MTL-06` Free-tier constrained surface + upgrade conversion CTA | In Progress | Enforce free-tier limits and upgrade path | `E05-S03`, `E04-S01` | `TU4` |
 | `MTL-07` Mobile completion pass for intake, episodes, roadmap | In Progress | Eliminate mobile rendering and interaction regressions | `E04-S03` | `TU1`, `TU2`, `TU3`, `TU4` |
-| `MTL-08` Manual QA script and acceptance proof capture | Queued | Produce proof package for each persona demo run | `E02-S04`, `E04-S02` | `TU1`, `TU2`, `TU3`, `TU4` |
+| `MTL-08` Manual QA script and acceptance proof capture | In Progress | Produce proof package for each persona demo run | `E02-S04`, `E04-S02` | `TU1`, `TU2`, `TU3`, `TU4` |
 
 ## Acceptance Mapping (Test Spec -> Backlog)
 
@@ -72,15 +72,17 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 1. Complete `MTL-01` fixtures to lock repeatable test runs.
 2. Close `MTL-02` routing so each persona sees the correct primary journey.
 3. Close `MTL-04` episode routing to match content and modality to persona.
-4. Ship `MTL-05` for Garry's promotion/CJS path.
-5. Ship `MTL-06` for Derrick's constrained free-tier experience.
-6. Ship `MTL-03` and `MTL-08` for final investor-proof audit trail.
+4. Validate shipped `MTL-05` on TU2 and tune output quality.
+5. Finish `MTL-06` for Derrick's constrained free-tier experience.
+6. Finish `MTL-03` and `MTL-08` for final investor-proof audit trail.
 7. Re-run `MTL-07` mobile pass before production demo freeze.
 
 ## Current Implementation Notes
 
 - `MTL-01`: fixture model is now checked in at `config/demo/persona-fixtures.json`.
 - `MTL-01`: seed workflow is now available at `api/scripts/seed_persona_fixtures.mjs` (dry-run + optional Auth upsert + full account hydration).
+- `MTL-03`: initial Chief of Staff interaction ledger shipped in `Assets` module with admin approval actions.
+- `MTL-05`: CJS rail now supports resume upload + resume review + search strategy generation.
 
 ## Definition of Done
 

@@ -39,19 +39,42 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Added operator flags for partial seeding (`--no-artifacts`, `--no-assets`, `--no-interactions`, `--no-intro-seen`).
 - Current execution blocker: local ADC token expired (`invalid_rapt`) during write run; requires `gcloud auth application-default login`.
 
+### Delivery: CJS Execution Rail + Chief of Staff Ledger + Free-Tier Gating
+
+- Added new API routes for backlog-critical E2E flows:
+  - CJS assets, resume upload, resume review, search strategy
+  - interaction ledger list, Chief of Staff summary logging, admin approve/reject decisions
+  - agent registry endpoint for orchestration role definitions
+- Replaced placeholder CJS module with an operational UI:
+  - resume upload input
+  - persisted resume version list
+  - resume review generation output
+  - search strategy generation output
+- Added `Assets` module execution ledger surface:
+  - Chief of Staff summary creation
+  - pending-approval queue view
+  - admin approve/reject actions
+  - in-product agent registry cards
+- Implemented free-tier path constraints:
+  - simplified Smart Start Intake field set
+  - module visibility gating to Intake/Episodes/Readiness/Roadmap
+  - readiness resource guide + upgrade CTA
+  - episodes upgrade CTA surface
+- Added persona QA runbook: `docs/mvp/demo_validation_checklist.md`.
+
 ### Backlog Status Snapshot
 
 | Epic | Status | Notes |
 | :--- | :--- | :--- |
 | E01 Smart Start Intake & Professional DNA | Done | Intake + suite generation flow is operational. |
-| E02 Agentic Framework & Orchestration | Not Started | Agent registry, Chief of Staff interaction logging, and approval queue remain open. |
+| E02 Agentic Framework & Orchestration | In Progress | Registry and interaction logging shipped; approval model needs hardening. |
 | E03 Binge Learning Episode Generation | In Progress | Episode generation works; continued polish and orchestration integration remain. |
 | E04 Core Suite Artifacts & UI | In Progress | Core views ship; mobile polish and remaining UX refinements still active. |
 | E05 Admin Console & System Ops | In Progress | Core config controls ship; roadmap/admin experience now extended. |
-| E06 ConciergeJobSearch Execution Rail | Not Started | Resume upload, resume review agent, and search strategy agent are pending. |
+| E06 ConciergeJobSearch Execution Rail | Done | Upload, resume review, and strategy generation are shipped in API + UI. |
 
 ### Next Implementation Priority
 
-1. Refresh ADC and execute non-dry-run `MTL-01` seed in production.
-2. `MTL-05` / `E06-S01/E06-S02/E06-S03`: CJS execution rail (upload, review, strategy).
-3. `MTL-06`: free-tier constraints and upgrade CTA for TU4 flow.
+1. Run persona QA checklist in `docs/mvp/demo_validation_checklist.md` and capture evidence.
+2. Complete `E02-S04` by expanding approval flow beyond self-context to cross-user admin queue.
+3. Finish `MTL-07` mobile regression pass for new CJS and Assets ledger surfaces.
