@@ -79,7 +79,7 @@ The Express API under `api/` handles:
 - binge episode generation
 - live token generation
 - voice synthesis routing
-- deterministic persona fixture seeding for demo/test (`api/scripts/seed_persona_fixtures.mjs`)
+- deterministic persona fixture seeding for demo/test (`api/scripts/seed_persona_fixtures.mjs`) with full account hydration
 
 ## Architecture Summary
 

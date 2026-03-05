@@ -80,7 +80,7 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 ## Current Implementation Notes
 
 - `MTL-01`: fixture model is now checked in at `config/demo/persona-fixtures.json`.
-- `MTL-01`: seed workflow is now available at `api/scripts/seed_persona_fixtures.mjs` (dry-run + optional Auth upsert).
+- `MTL-01`: seed workflow is now available at `api/scripts/seed_persona_fixtures.mjs` (dry-run + optional Auth upsert + full account hydration).
 
 ## Definition of Done
 

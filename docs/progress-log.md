@@ -29,6 +29,16 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Added npm entrypoint: `npm run demo:fixtures:seed`.
 - Dry-run validated against `ssai-f6191` target with report output to `.context/persona-seed-report.dry-run.json`.
 
+### Delivery: MTL-01 Full Persona Account Hydration
+
+- Upgraded seed workflow to hydrate full persona accounts from email identity:
+  - Auth reconciliation by email/uid
+  - `clients/{uid}` identity + intake + state
+  - complete artifact set in `clients/{uid}/artifacts/*`
+  - seeded `assets` and `interactions` subcollections
+- Added operator flags for partial seeding (`--no-artifacts`, `--no-assets`, `--no-interactions`, `--no-intro-seen`).
+- Current execution blocker: local ADC token expired (`invalid_rapt`) during write run; requires `gcloud auth application-default login`.
+
 ### Backlog Status Snapshot
 
 | Epic | Status | Notes |
@@ -42,6 +52,6 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 
 ### Next Implementation Priority
 
-1. Execute non-dry-run `MTL-01` seed in production (`clients` docs + Auth users with temp credentials).
+1. Refresh ADC and execute non-dry-run `MTL-01` seed in production.
 2. `MTL-05` / `E06-S01/E06-S02/E06-S03`: CJS execution rail (upload, review, strategy).
 3. `MTL-06`: free-tier constraints and upgrade CTA for TU4 flow.

@@ -56,7 +56,7 @@ Current task pulse:
 
 | Task | Status | Primary Persona Target |
 | :--- | :--- | :--- |
-| MTL-01 Persona fixture seed + deterministic intake payloads | In Progress | TU1/TU2/TU3/TU4 (seed script + fixture model landed; prod write pass pending) |
+| MTL-01 Persona fixture seed + deterministic intake payloads | In Progress | TU1/TU2/TU3/TU4 (full account hydration seeded by script; blocked on local ADC refresh for write run) |
 | MTL-02 Intent-based journey routing + unlock order | In Progress | TU1/TU2/TU3 |
 | MTL-03 Chief of Staff interaction ledger | Queued | TU1/TU2/TU3 |
 | MTL-04 Episode personalization + modality routing | In Progress | TU1/TU3/TU4 |
@@ -74,6 +74,7 @@ Current task pulse:
 | 2026-03-05 10:45:00Z | E04/E05 UX reliability | Exposed roadmap to signed-in users and added epic/story validation grid; removed fragile frontend admin lockout behavior. | Done | `components/RoadmapView.tsx`, `App.tsx`, `docs/progress-log.md` |
 | 2026-03-05 16:49:21Z | Demo readiness planning | Added test-user-based master tasklist and surfaced persona/task mapping in Roadmap module. | Done | `docs/mvp/demo_master_tasklist.md`, `components/RoadmapView.tsx`, `docs/progress-log.md` |
 | 2026-03-05 19:15:47Z | MTL-01 persona fixtures | Added deterministic persona fixture source and seed utility (dry-run verified). | Done | `config/demo/persona-fixtures.json`, `api/scripts/seed_persona_fixtures.mjs`, `.context/persona-seed-report.dry-run.json` |
+| 2026-03-05 19:28:05Z | MTL-01 hydration upgrade | Extended persona seeding to full account hydration (auth reconcile by email, artifacts, assets, interactions). Write run blocked by stale ADC (`invalid_rapt`). | Done | `api/scripts/seed_persona_fixtures.mjs`, `README.md`, `docs/operations-runbook.md` |
 
 ## Update Protocol
 

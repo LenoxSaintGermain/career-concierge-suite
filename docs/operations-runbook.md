@@ -62,6 +62,7 @@ node scripts/send_password_reset_emails.mjs \
 ## Demo Persona Fixture Seeding (MTL-01)
 
 Use deterministic persona fixtures for repeatable E2E and demo runs.
+Seeder writes a full hydrated account surface (identity + intake + artifacts + assets + interaction seed).
 
 Sources:
 
@@ -86,9 +87,22 @@ Seed Firestore + Firebase Auth users:
 npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge --auth --password '<temporary-password>'
 ```
 
+Optional reduction flags:
+
+```bash
+--no-artifacts --no-assets --no-interactions --no-intro-seen
+```
+
 Output report (default):
 
 - `.context/persona-seed-report.json`
+
+If auth/Firestore calls fail with `invalid_rapt`, refresh local Google auth first:
+
+```bash
+gcloud auth login
+gcloud auth application-default login
+```
 
 ## Admin Access
 

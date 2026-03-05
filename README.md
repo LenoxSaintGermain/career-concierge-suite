@@ -86,7 +86,14 @@ Important:
 
 ## Demo Persona Fixtures (MTL-01)
 
-Seed deterministic test personas from `docs/mvp/test_user_specs.md` mappings:
+Seed deterministic test personas from `docs/mvp/test_user_specs.md` mappings.
+The seeder now hydrates full demo accounts:
+
+- Auth identity (optional)
+- client identity + intake profile
+- all artifact modules (`brief`, `suite_distilled`, `plan`, `profile`, `ai_profile`, `gaps`, `readiness`, `cjs_execution`)
+- `assets` seed records
+- `interactions` seed summary
 
 - fixture source: `config/demo/persona-fixtures.json`
 - seed script: `api/scripts/seed_persona_fixtures.mjs`
@@ -95,13 +102,25 @@ Dry run:
 
 - `npm run demo:fixtures:seed -- --dry-run --project ssai-f6191 --database-id career-concierge`
 
-Write Firestore client docs only:
+Write full hydrated Firestore records:
 
 - `npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge`
 
-Write Firestore + create/update Auth users (shared temporary password):
+Write hydrated Firestore + create/update Auth users (shared temporary password):
 
 - `npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge --auth --password '<temporary-password>'`
+
+Optional flags:
+
+- `--no-artifacts`
+- `--no-assets`
+- `--no-interactions`
+- `--no-intro-seen`
+
+If ADC is stale before running:
+
+- `gcloud auth login`
+- `gcloud auth application-default login`
 
 ## Documentation Set
 
