@@ -143,3 +143,13 @@ Implication:
 
 - TU4 journey now matches spec intent (limited artifacts + upgrade pathway)
 - paid-tier-only modules are hidden for free users at suite-home level
+
+### Admin approvals must be cross-user, not self-scoped
+
+Approval queue actions are operational controls, not personal client actions.
+They must work across clients from an admin-wide surface.
+
+Implication:
+
+- admin approval endpoints cannot be keyed off `req.user.uid`
+- interaction ledger items must carry client identity metadata for queue handling

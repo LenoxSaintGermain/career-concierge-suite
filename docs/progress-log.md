@@ -62,12 +62,25 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - episodes upgrade CTA surface
 - Added persona QA runbook: `docs/mvp/demo_validation_checklist.md`.
 
+### Delivery: Agent Policy Enforcement + Global Admin Queue
+
+- Added explicit scoped policy metadata for core agents:
+  - `chief_of_staff`
+  - `resume_reviewer`
+  - `search_strategist`
+- Enforced scoped read/write access inside API before agent-backed routes execute.
+- Added global admin approval queue:
+  - cross-user pending approval listing
+  - cross-user approve/reject actions
+  - richer interaction metadata (`client_uid`, `client_email`, `client_name`, `source`, `decided_by`)
+- Tightened mobile layout on `Assets` and `ConciergeJobSearch` surfaces so core actions stack cleanly on narrow viewports.
+
 ### Backlog Status Snapshot
 
 | Epic | Status | Notes |
 | :--- | :--- | :--- |
 | E01 Smart Start Intake & Professional DNA | Done | Intake + suite generation flow is operational. |
-| E02 Agentic Framework & Orchestration | In Progress | Registry and interaction logging shipped; approval model needs hardening. |
+| E02 Agentic Framework & Orchestration | In Progress | Scoped policy enforcement and global queue shipped; outbound-action approval coverage still incomplete. |
 | E03 Binge Learning Episode Generation | In Progress | Episode generation works; continued polish and orchestration integration remain. |
 | E04 Core Suite Artifacts & UI | In Progress | Core views ship; mobile polish and remaining UX refinements still active. |
 | E05 Admin Console & System Ops | In Progress | Core config controls ship; roadmap/admin experience now extended. |
@@ -76,5 +89,5 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 ### Next Implementation Priority
 
 1. Run persona QA checklist in `docs/mvp/demo_validation_checklist.md` and capture evidence.
-2. Complete `E02-S04` by expanding approval flow beyond self-context to cross-user admin queue.
-3. Finish `MTL-07` mobile regression pass for new CJS and Assets ledger surfaces.
+2. Finish `MTL-07` with real device regression checks on new CJS and Assets mobile surfaces.
+3. Extend `E02-S04` beyond ledger approvals into broader operator actions if those actions are introduced.

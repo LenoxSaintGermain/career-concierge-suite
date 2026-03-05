@@ -79,6 +79,7 @@ The Express API under `api/` handles:
 - CJS execution rail endpoints (resume upload/review/strategy)
 - interaction ledger + approval endpoints
 - agent registry endpoint
+- explicit agent scope enforcement for core orchestration roles
 - binge episode generation
 - live token generation
 - voice synthesis routing
@@ -110,6 +111,8 @@ Primary collections:
 - `clients/{clientId}/artifacts/{artifactType}`
 - `clients/{clientId}/assets/{assetId}`
 - `clients/{clientId}/interactions/{interactionId}`
+
+Interaction ledger documents now carry client identity metadata so admin operators can work a global queue without losing ownership context.
 
 ## Relationship To Signal Atlas
 

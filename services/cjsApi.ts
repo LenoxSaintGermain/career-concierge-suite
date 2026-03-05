@@ -136,3 +136,34 @@ export const fetchAgentRegistry = async (): Promise<AgentDefinition[]> => {
   const body = await resp.json();
   return Array.isArray(body?.agents) ? (body.agents as AgentDefinition[]) : [];
 };
+
+export const listAdminApprovalQueue = async (): Promise<InteractionLog[]> => {
+  const origin = resolveBaseUrl();
+  const resp = await fetch(`${origin}/v1/admin/approval-queue`, {
+    method: 'GET',
+    headers: await authHeaders(),
+  });
+  if (!resp.ok) return readError(resp, 'Approval queue error');
+  const body = await resp.json();
+  return Array.isArray(body?.items) ? (body.items as InteractionLog[]) : [];
+};
+
+export const decideAdminApproval = async (
+  clientUid: string,
+  interactionId: string,
+  decision: 'approved' | 'rejected',
+  note: string
+): Promise<InteractionLog> => {
+  const origin = resolveBaseUrl();
+  const resp = await fetch(
+    `${origin}/v1/admin/approval-queue/${encodeURIComponent(clientUid)}/${encodeURIComponent(interactionId)}/decision`,
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ decision, note }),
+    }
+  );
+  if (!resp.ok) return readError(resp, 'Admin approval decision error');
+  const body = await resp.json();
+  return body?.item as InteractionLog;
+};

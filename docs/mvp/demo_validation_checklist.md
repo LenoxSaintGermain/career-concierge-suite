@@ -38,6 +38,6 @@ Use this checklist for in-product validation before production demos.
 
 1. Login as admin user.
 2. Open `Assets` module.
-3. Find `pending_approval` interaction entries.
+3. Find `pending_approval` entries in the global approval queue.
 4. Approve one and reject one.
 5. Confirm status transitions to `approved` / `rejected`.

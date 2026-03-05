@@ -768,18 +768,30 @@ const AGENT_REGISTRY = [
     title: 'Chief of Staff',
     objective: 'Synthesize strategic direction and maintain investor-facing execution continuity.',
     reads: ['clients/{uid}', 'clients/{uid}/artifacts/*', 'clients/{uid}/interactions/*'],
+    writes: ['clients/{uid}/interactions/*'],
+    approval_required: true,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-05.1',
   },
   {
     role_id: 'resume_reviewer',
     title: 'Resume Reviewer',
     objective: 'Evaluate role alignment and produce specific rewrite priorities.',
     reads: ['clients/{uid}', 'clients/{uid}/assets/*', 'clients/{uid}/artifacts/cjs_execution'],
+    writes: ['clients/{uid}/artifacts/resume_review', 'clients/{uid}/interactions/*'],
+    approval_required: true,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-05.1',
   },
   {
     role_id: 'search_strategist',
     title: 'Search Strategist',
     objective: 'Build targeted promotion/job-search plans from intake context and role intent.',
     reads: ['clients/{uid}', 'clients/{uid}/assets/*', 'clients/{uid}/artifacts/*'],
+    writes: ['clients/{uid}/artifacts/search_strategy', 'clients/{uid}/interactions/*'],
+    approval_required: true,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-05.1',
   },
 ];
 
@@ -849,6 +861,7 @@ const createInteraction = async ({
   requiresApproval = false,
   source = '',
 }) => {
+  const profile = await readClientProfile(uid);
   const ref = clientInteractionsRef(uid).doc(`int-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
   await ref.set({
     type,
@@ -858,6 +871,9 @@ const createInteraction = async ({
     status,
     requires_approval: requiresApproval,
     source,
+    client_uid: uid,
+    client_email: nonEmpty(profile?.email),
+    client_name: nonEmpty(profile?.display_name || profile?.demo_profile?.name),
     created_at: new Date(),
     updated_at: new Date(),
   });
@@ -875,10 +891,33 @@ const serializeInteraction = (docSnap) => {
     status: String(data.status || 'logged'),
     requires_approval: Boolean(data.requires_approval),
     next_actions: Array.isArray(data.next_actions) ? data.next_actions.map((entry) => String(entry)) : [],
+    client_uid: nonEmpty(data.client_uid),
+    client_email: nonEmpty(data.client_email),
+    client_name: nonEmpty(data.client_name),
+    source: nonEmpty(data.source),
+    decided_by: nonEmpty(data.decided_by),
     decision_note: nonEmpty(data.decision_note),
     created_at: toIso(data.created_at),
     updated_at: toIso(data.updated_at),
   };
+};
+
+const getAgentDefinition = (roleId) => AGENT_REGISTRY.find((agent) => agent.role_id === roleId) || null;
+
+const assertAgentReadScope = (roleId, requiredScopes) => {
+  const agent = getAgentDefinition(roleId);
+  if (!agent) throw new Error(`agent_not_registered:${roleId}`);
+  const missing = requiredScopes.filter((scope) => !agent.reads.includes(scope));
+  if (missing.length) throw new Error(`agent_scope_denied:${roleId}:reads:${missing.join(',')}`);
+  return agent;
+};
+
+const assertAgentWriteScope = (roleId, requiredScopes) => {
+  const agent = getAgentDefinition(roleId);
+  if (!agent) throw new Error(`agent_not_registered:${roleId}`);
+  const missing = requiredScopes.filter((scope) => !agent.writes.includes(scope));
+  if (missing.length) throw new Error(`agent_scope_denied:${roleId}:writes:${missing.join(',')}`);
+  return agent;
 };
 
 const buildResumeReview = ({ profile, resumeAsset }) => {
@@ -1779,6 +1818,8 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
 
 app.post('/v1/cjs/resume/review', requireAuth, async (req, res) => {
   try {
+    assertAgentReadScope('resume_reviewer', ['clients/{uid}', 'clients/{uid}/assets/*', 'clients/{uid}/artifacts/cjs_execution']);
+    assertAgentWriteScope('resume_reviewer', ['clients/{uid}/artifacts/resume_review', 'clients/{uid}/interactions/*']);
     const uid = req.user.uid;
     const [profile, resumeAssets] = await Promise.all([readClientProfile(uid), listResumeAssets(uid)]);
     const latestResume = resumeAssets[0];
@@ -1811,6 +1852,8 @@ app.post('/v1/cjs/resume/review', requireAuth, async (req, res) => {
 
 app.post('/v1/cjs/search/strategy', requireAuth, async (req, res) => {
   try {
+    assertAgentReadScope('search_strategist', ['clients/{uid}', 'clients/{uid}/assets/*', 'clients/{uid}/artifacts/*']);
+    assertAgentWriteScope('search_strategist', ['clients/{uid}/artifacts/search_strategy', 'clients/{uid}/interactions/*']);
     const uid = req.user.uid;
     const [profile, reviewSnap] = await Promise.all([
       readClientProfile(uid),
@@ -1862,9 +1905,39 @@ app.get('/v1/interactions', requireAuth, async (req, res) => {
   }
 });
 
+app.get('/v1/admin/approval-queue', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query?.limit || 60), 1), 200);
+    const clientsSnap = await db.collection('clients').select('display_name', 'email').get();
+    const pendingRows = [];
+
+    for (const clientSnap of clientsSnap.docs) {
+      const interactionsSnap = await clientInteractionsRef(clientSnap.id)
+        .where('status', '==', 'pending_approval')
+        .limit(limit)
+        .get();
+      interactionsSnap.docs.forEach((interactionSnap) => {
+        pendingRows.push(serializeInteraction(interactionSnap));
+      });
+    }
+
+    pendingRows.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+    return res.json({
+      items: pendingRows.slice(0, limit),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'approval_queue_failed',
+      detail: sanitizeError(error, 'approval_queue_failed'),
+    });
+  }
+});
+
 app.post('/v1/interactions/chief-of-staff', requireAuth, async (req, res) => {
   const mode = nonEmpty(req.body?.mode) === 'logged' ? 'logged' : 'pending_approval';
   try {
+    assertAgentReadScope('chief_of_staff', ['clients/{uid}', 'clients/{uid}/artifacts/*', 'clients/{uid}/interactions/*']);
+    assertAgentWriteScope('chief_of_staff', ['clients/{uid}/interactions/*']);
     const uid = req.user.uid;
     const [profile, briefSnap, planSnap, episodeSnap] = await Promise.all([
       readClientProfile(uid),
@@ -1940,6 +2013,41 @@ app.post('/v1/interactions/:interactionId/decision', requireAuth, requireAdmin, 
     return res.status(500).json({
       error: 'interaction_decision_failed',
       detail: sanitizeError(error, 'interaction_decision_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/approval-queue/:clientUid/:interactionId/decision', requireAuth, requireAdmin, async (req, res) => {
+  const clientUid = nonEmpty(req.params?.clientUid);
+  const interactionId = nonEmpty(req.params?.interactionId);
+  const decision = nonEmpty(req.body?.decision);
+  const note = nonEmpty(req.body?.note) || '';
+  if (!clientUid) return res.status(400).json({ error: 'client_uid_required' });
+  if (!interactionId) return res.status(400).json({ error: 'interaction_id_required' });
+  if (!['approved', 'rejected'].includes(decision)) return res.status(400).json({ error: 'invalid_decision' });
+
+  try {
+    const ref = clientInteractionsRef(clientUid).doc(interactionId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ error: 'interaction_not_found' });
+    await ref.set(
+      {
+        status: decision,
+        decision_note: note,
+        decided_by: req.user.email ?? req.user.uid,
+        updated_at: new Date(),
+      },
+      { merge: true }
+    );
+    const updated = await ref.get();
+    return res.json({
+      ok: true,
+      item: serializeInteraction(updated),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_interaction_decision_failed',
+      detail: sanitizeError(error, 'admin_interaction_decision_failed'),
     });
   }
 });

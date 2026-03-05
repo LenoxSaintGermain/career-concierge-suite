@@ -167,6 +167,11 @@ export interface InteractionLog {
   status: InteractionStatus;
   requires_approval: boolean;
   next_actions: string[];
+  client_uid?: string;
+  client_email?: string;
+  client_name?: string;
+  source?: string;
+  decided_by?: string;
   decision_note?: string;
   created_at?: string | null;
   updated_at?: string | null;
@@ -177,6 +182,10 @@ export interface AgentDefinition {
   title: string;
   objective: string;
   reads: string[];
+  writes: string[];
+  approval_required: boolean;
+  access_model: 'read_scoped' | 'read_write_scoped';
+  policy_version: string;
 }
 
 export interface PlanContent {

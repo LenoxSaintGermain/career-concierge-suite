@@ -179,9 +179,9 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E02-S02',
     epic: 'E02',
     title: 'Agent DNA Access',
-    status: 'in_progress',
+    status: 'done',
     surface: 'Agent orchestration',
-    validation: 'Read DNA + artifacts via agent context without client write privilege.',
+    validation: 'Read DNA + artifacts through scoped agent policy definitions; writes limited to approved destinations only.',
   },
   {
     id: 'E02-S03',
@@ -197,7 +197,7 @@ const STORY_ROWS: StoryRow[] = [
     title: 'Human-in-the-Loop Validation',
     status: 'in_progress',
     surface: 'Admin queue',
-    validation: 'Outbound actions must queue as `pending_approval` before execution.',
+    validation: 'Approval items must appear in global admin queue and support cross-user approve/reject actions.',
   },
   {
     id: 'E03-S01',
@@ -326,7 +326,7 @@ const PERSONA_TRACKS: PersonaTrack[] = [
       'CJS rail drives resume review + internal promotion strategy.',
       'Assets supports multi-version resume and proposal iteration.',
     ],
-    nextGate: 'Run persona validation for TU2 and tune scoring + rewrite heuristics.',
+    nextGate: 'Run TU2 manual validation and tune scoring + strategy outputs from live resume inputs.',
   },
   {
     id: 'TU3',
@@ -382,7 +382,7 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-03',
     title: 'Chief of Staff interaction ledger',
-    status: 'in_progress',
+    status: 'done',
     goal: 'Persist conversation summary + next-action records for demo audit trail.',
     surfaces: 'Chief of Staff, Firestore interactions',
     stories: ['E02-S03'],

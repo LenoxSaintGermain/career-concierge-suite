@@ -127,6 +127,8 @@ After API deploy, validate these authenticated routes:
 - `GET /v1/interactions`
 - `POST /v1/interactions/chief-of-staff`
 - `POST /v1/interactions/:interactionId/decision` (admin only)
+- `GET /v1/admin/approval-queue`
+- `POST /v1/admin/approval-queue/:clientUid/:interactionId/decision`
 
 If resume upload is enabled for binary upload, set one of:
 

@@ -18,9 +18,9 @@ Source of truth backlog: `docs/mvp/Career_Concierge_V1_MVP_Spec_Complete.md`.
 | E01-S02 Returning User Intake | E01 | P0 | Done | Intake routing is in place for returning users. |
 | E01-S03 Suite Artifact Generation Trigger | E01 | P0 | Done | `/v1/suite/generate` flow is wired and artifacts are generated. |
 | E02-S01 Agent Role Definition | E02 | P0 | Done | Agent registry endpoint now serves typed role definitions and persists to `system/agent-registry`. |
-| E02-S02 Agent DNA Access | E02 | P0 | In Progress | Chief of Staff and CJS routes hydrate from `clients/{uid}` + artifacts; explicit policy layer still pending. |
+| E02-S02 Agent DNA Access | E02 | P0 | Done | Scoped agent read/write policy is now enforced in API for Chief of Staff, Resume Reviewer, and Search Strategist. |
 | E02-S03 Agent Summary and Logging | E02 | P0 | Done | Chief of Staff summary logging now writes to `clients/{uid}/interactions`. |
-| E02-S04 Human-in-the-Loop Validation | E02 | P0 | In Progress | Pending-approval queue + admin approve/reject endpoint are live; cross-user queue UX remains open. |
+| E02-S04 Human-in-the-Loop Validation | E02 | P0 | In Progress | Global admin approval queue and cross-user approve/reject are live; broader outbound-action workflow still open. |
 | E03-S01 Pilot Episode Generation | E03 | P0 | In Progress | Episode generation ships; full demo orchestration still being refined. |
 | E03-S02 Episode Template Engine | E03 | P0 | In Progress | Structured prompt/schema exists; ongoing quality/polish work remains. |
 | E03-S03 Model Cost Control | E03 | P0 | In Progress | Admin model routing exists; final cost guardrails still evolving. |
@@ -44,7 +44,7 @@ Investor-critical sequence:
 4. Binge episode generated
 5. Chief of Staff summary logged
 
-Current blocker in this sequence: approval workflow hardening (`E02-S04`) still needs cross-user admin queue UX.
+Current blocker in this sequence: approval workflow hardening (`E02-S04`) still needs broader outbound-action coverage beyond current ledger items.
 
 ## Demo Master Tasklist Snapshot
 
@@ -58,7 +58,7 @@ Current task pulse:
 | :--- | :--- | :--- |
 | MTL-01 Persona fixture seed + deterministic intake payloads | Done | TU1/TU2/TU3/TU4 (full account hydration seeded to `ssai-f6191/career-concierge`) |
 | MTL-02 Intent-based journey routing + unlock order | Done | TU1/TU2/TU3 |
-| MTL-03 Chief of Staff interaction ledger | In Progress | TU1/TU2/TU3 |
+| MTL-03 Chief of Staff interaction ledger | Done | TU1/TU2/TU3 |
 | MTL-04 Episode personalization + modality routing | In Progress | TU1/TU3/TU4 |
 | MTL-05 CJS execution rail (upload/review/strategy) | Done | TU2 |
 | MTL-06 Free-tier constrained surface + upgrade conversion CTA | In Progress | TU4 |
@@ -76,6 +76,7 @@ Current task pulse:
 | 2026-03-05 19:15:47Z | MTL-01 persona fixtures | Added deterministic persona fixture source and seed utility (dry-run verified). | Done | `config/demo/persona-fixtures.json`, `api/scripts/seed_persona_fixtures.mjs`, `.context/persona-seed-report.dry-run.json` |
 | 2026-03-05 19:28:05Z | MTL-01 hydration upgrade | Extended persona seeding to full account hydration (auth reconcile by email, artifacts, assets, interactions). Write run blocked by stale ADC (`invalid_rapt`). | Done | `api/scripts/seed_persona_fixtures.mjs`, `README.md`, `docs/operations-runbook.md` |
 | 2026-03-05 22:00:00Z | E02/E06/MTL-06/MTL-08 | Shipped CJS execution rail APIs + UI, added Chief of Staff ledger + approval flow, applied free-tier gating and upgrade CTA, added persona demo validation checklist. | Done | `api/index.js`, `services/cjsApi.ts`, `components/CjsExecutionView.tsx`, `components/AssetsView.tsx`, `App.tsx`, `docs/mvp/demo_validation_checklist.md` |
+| 2026-03-05 22:35:00Z | E02-S02/E02-S04/MTL-07 | Added explicit agent scope enforcement, shipped global admin approval queue, and tightened mobile layouts for Assets and CJS surfaces. | Done | `api/index.js`, `services/cjsApi.ts`, `components/AssetsView.tsx`, `components/CjsExecutionView.tsx`, `components/RoadmapView.tsx` |
 
 ## Update Protocol
 

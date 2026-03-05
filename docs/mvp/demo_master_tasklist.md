@@ -26,7 +26,7 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 | :--- | :--- | :--- | :--- | :--- |
 | `MTL-01` Persona fixture seed + deterministic intake payloads | Done | Stable E2E test users and repeatable demo data | `E01-S01`, `E01-S02` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-02` Intent-based journey routing in suite home + unlock order | Done | Match dashboard priority to user intent | `E04-S01`, `E05-S03` | `TU1`, `TU2`, `TU3` |
-| `MTL-03` Chief of Staff interaction ledger | In Progress | Persist summary + next actions for investor proof | `E02-S03` | `TU1`, `TU2`, `TU3` |
+| `MTL-03` Chief of Staff interaction ledger | Done | Persist summary + next actions for investor proof | `E02-S03` | `TU1`, `TU2`, `TU3` |
 | `MTL-04` Episode personalization and modality routing | In Progress | Ensure first episode matches focus + learning modality | `E03-S01`, `E03-S02`, `E03-S03` | `TU1`, `TU3`, `TU4` |
 | `MTL-05` CJS execution rail (upload, review, strategy) | Done | Deliver promotion/job-search operating flow | `E06-S01`, `E06-S02`, `E06-S03` | `TU2` |
 | `MTL-06` Free-tier constrained surface + upgrade conversion CTA | In Progress | Enforce free-tier limits and upgrade path | `E05-S03`, `E04-S01` | `TU4` |
@@ -81,7 +81,7 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 
 - `MTL-01`: fixture model is now checked in at `config/demo/persona-fixtures.json`.
 - `MTL-01`: seed workflow is now available at `api/scripts/seed_persona_fixtures.mjs` (dry-run + optional Auth upsert + full account hydration).
-- `MTL-03`: initial Chief of Staff interaction ledger shipped in `Assets` module with admin approval actions.
+- `MTL-03`: Chief of Staff interaction ledger shipped in `Assets` module with global admin approval queue.
 - `MTL-05`: CJS rail now supports resume upload + resume review + search strategy generation.
 
 ## Definition of Done
