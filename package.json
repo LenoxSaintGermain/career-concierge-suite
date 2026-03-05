@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "demo:fixtures:seed": "node api/scripts/seed_persona_fixtures.mjs",
     "auth:resets:dry-run": "node scripts/send_password_reset_emails.mjs --output .context/password-reset-report.json",
     "docs:impact": "node scripts/docs_impact.mjs",
     "firebase:rules": "npm run firebase:rules:concierge",

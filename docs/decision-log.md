@@ -106,3 +106,13 @@ Implication:
 
 - teams can confirm epic/story test focus directly in-product
 - backend admin authorization remains enforced only at protected API routes
+
+### Deterministic persona fixtures are the demo baseline
+
+The demo test users are now codified as fixtures and seeded through a repeatable script.
+
+Implication:
+
+- use `config/demo/persona-fixtures.json` as the canonical persona payload source
+- use `api/scripts/seed_persona_fixtures.mjs` for dry-run and write runs
+- avoid ad-hoc manual client document creation for demo personas

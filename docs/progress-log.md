@@ -22,6 +22,13 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - delivery pulse summary for active/queued/blocked demo tasks
 - Bound roadmap log guidance to include `docs/mvp/demo_master_tasklist.md` alongside backlog/progress logs.
 
+### Delivery: MTL-01 Deterministic Persona Fixture Seeding
+
+- Added canonical fixture source: `config/demo/persona-fixtures.json`.
+- Added seed workflow: `api/scripts/seed_persona_fixtures.mjs`.
+- Added npm entrypoint: `npm run demo:fixtures:seed`.
+- Dry-run validated against `ssai-f6191` target with report output to `.context/persona-seed-report.dry-run.json`.
+
 ### Backlog Status Snapshot
 
 | Epic | Status | Notes |
@@ -35,6 +42,6 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 
 ### Next Implementation Priority
 
-1. `MTL-05` / `E06-S01/E06-S02/E06-S03`: CJS execution rail (upload, review, strategy).
-2. `MTL-06`: free-tier constraints and upgrade CTA for TU4 flow.
-3. `MTL-03`: Chief of Staff summary + interaction ledger for investor-proof audit trail.
+1. Execute non-dry-run `MTL-01` seed in production (`clients` docs + Auth users with temp credentials).
+2. `MTL-05` / `E06-S01/E06-S02/E06-S03`: CJS execution rail (upload, review, strategy).
+3. `MTL-06`: free-tier constraints and upgrade CTA for TU4 flow.

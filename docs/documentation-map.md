@@ -88,6 +88,8 @@
 - `components/AdminConsole.tsx` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`
 - `components/GeminiLivePanel.tsx` -> `README.md`, `docs/career-concierge-os.md`
 - `scripts/deploy_*` -> `README.md`, `docs/operations-runbook.md`, `docs/ssai-production-migration.md`
+- `api/scripts/seed_persona_fixtures.mjs` -> `README.md`, `docs/operations-runbook.md`, `docs/progress-log.md`
+- `config/demo/persona-fixtures.json` -> `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
 - `firestore*.rules` / `firebase.json` -> `docs/operations-runbook.md`, `docs/ssai-production-migration.md`
 - durable product/platform choices -> `docs/decision-log.md`
 - backlog progress and roadmap node state -> `docs/progress-log.md`

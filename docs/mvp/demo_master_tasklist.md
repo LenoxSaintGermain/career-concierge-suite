@@ -77,6 +77,11 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 6. Ship `MTL-03` and `MTL-08` for final investor-proof audit trail.
 7. Re-run `MTL-07` mobile pass before production demo freeze.
 
+## Current Implementation Notes
+
+- `MTL-01`: fixture model is now checked in at `config/demo/persona-fixtures.json`.
+- `MTL-01`: seed workflow is now available at `api/scripts/seed_persona_fixtures.mjs` (dry-run + optional Auth upsert).
+
 ## Definition of Done
 
 A task is only `Done` when all of the following are true:

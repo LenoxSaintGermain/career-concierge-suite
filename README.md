@@ -84,6 +84,25 @@ Important:
 - this architecture expects public Cloud Run reachability, with app-level auth enforced inside the API and frontend
 - frontend Firebase defaults now target `ssai-f6191` if `VITE_FIREBASE_*` vars are missing at build time
 
+## Demo Persona Fixtures (MTL-01)
+
+Seed deterministic test personas from `docs/mvp/test_user_specs.md` mappings:
+
+- fixture source: `config/demo/persona-fixtures.json`
+- seed script: `api/scripts/seed_persona_fixtures.mjs`
+
+Dry run:
+
+- `npm run demo:fixtures:seed -- --dry-run --project ssai-f6191 --database-id career-concierge`
+
+Write Firestore client docs only:
+
+- `npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge`
+
+Write Firestore + create/update Auth users (shared temporary password):
+
+- `npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge --auth --password '<temporary-password>'`
+
 ## Documentation Set
 
 Core docs for this fork:

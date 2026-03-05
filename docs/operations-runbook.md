@@ -59,6 +59,37 @@ node scripts/send_password_reset_emails.mjs \
   --output .context/password-reset-report.sent.json
 ```
 
+## Demo Persona Fixture Seeding (MTL-01)
+
+Use deterministic persona fixtures for repeatable E2E and demo runs.
+
+Sources:
+
+- `config/demo/persona-fixtures.json`
+- `docs/mvp/test_user_specs.md`
+
+Dry run (no writes):
+
+```bash
+npm run demo:fixtures:seed -- --dry-run --project ssai-f6191 --database-id career-concierge
+```
+
+Seed Firestore client docs:
+
+```bash
+npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge
+```
+
+Seed Firestore + Firebase Auth users:
+
+```bash
+npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge --auth --password '<temporary-password>'
+```
+
+Output report (default):
+
+- `.context/persona-seed-report.json`
+
 ## Admin Access
 
 Production admin access depends on API-side `ADMIN_EMAILS` and any future claims strategy.

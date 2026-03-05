@@ -1,0 +1,194 @@
+{
+  "version": "2026-03-05",
+  "source": "docs/mvp/test_user_specs.md",
+  "project_id": "ssai-f6191",
+  "database_id": "career-concierge",
+  "personas": [
+    {
+      "id": "TU1",
+      "name": "Donell Woodson",
+      "email": "demo.tu1.donell@thirdsignal.ai",
+      "uid": "demo_tu1_donell_woodson",
+      "tier": "skillsync_ai_premier",
+      "archetype": "skill_sharpener",
+      "intent": "current_role",
+      "preferences": {
+        "pace": "standard",
+        "focus": "skills"
+      },
+      "answers": {
+        "outcomes_goals": [
+          "Professional Visibility",
+          "Increased Stability"
+        ],
+        "target_compensation_level": "$200k-$299k",
+        "current_or_target_job_title": "Senior Program Manager",
+        "current_or_target_salary": "$215,000",
+        "benefits_under_review": false,
+        "ai_usage_frequency": "Regularly",
+        "enterprise_context": [
+          "ChatGPT Enterprise",
+          "Copilot"
+        ],
+        "job_description": "Leads cross-functional teams to deliver complex software projects on time and within budget. Responsible for roadmap planning, stakeholder communication, and risk management.",
+        "resume_source": "resume_donell_woodson_2026.pdf",
+        "bio_alignment_requested": true,
+        "foundational_interests": [
+          "Building a personal Ai toolkit for daily professional use",
+          "Staying ahead of emerging Ai trends and innovations",
+          "Ai Strategy & Leadership"
+        ],
+        "advanced_interests": [
+          "Enterprise Ai Architecture",
+          "Automation Architecture & Workflow Design"
+        ],
+        "learning_modalities": [
+          "Auditory (podcasts, narrated lessons)",
+          "Hands-on applied exercises"
+        ],
+        "current_title": "Senior Program Manager",
+        "industry": "Enterprise SaaS",
+        "target": "Principal Program Manager or Director of AI Transformation",
+        "pressure_breaks": "Time",
+        "work_style": "A template",
+        "constraints": "Limited time for learning outside of work hours."
+      }
+    },
+    {
+      "id": "TU2",
+      "name": "Garry Francois",
+      "email": "demo.tu2.garry@thirdsignal.ai",
+      "uid": "demo_tu2_garry_francois",
+      "tier": "cjs_premier",
+      "archetype": "career_accelerator",
+      "intent": "target_role",
+      "preferences": {
+        "pace": "standard",
+        "focus": "job_search"
+      },
+      "answers": {
+        "outcomes_goals": [
+          "Professional Advancement",
+          "Increased Compensation"
+        ],
+        "target_compensation_level": "$150k-$199k",
+        "current_or_target_job_title": "Director of Marketing",
+        "current_or_target_salary": "$180,000",
+        "benefits_under_review": true,
+        "ai_usage_frequency": "Occasionally",
+        "enterprise_context": [
+          "No formal mandate"
+        ],
+        "job_description": "Seeking a Director of Marketing to lead brand strategy, manage a team of 5, and drive growth in key market segments.",
+        "resume_source": "Garry_Francois_Resume_Q1_2026.docx",
+        "bio_alignment_requested": true,
+        "foundational_interests": [
+          "Using Ai for career development and upskilling",
+          "Ai Strategy & Leadership"
+        ],
+        "advanced_interests": [
+          "Ai-Driven Customer Experience Optimization",
+          "Ai for Business Intelligence & Real-Time Insights"
+        ],
+        "learning_modalities": [
+          "Interactive coaching (live/async feedback loops)",
+          "Hands-on applied exercises"
+        ],
+        "current_title": "Marketing Manager",
+        "industry": "Consumer Packaged Goods (CPG)",
+        "target": "Director of Marketing",
+        "pressure_breaks": "Clarity",
+        "work_style": "A conversation",
+        "constraints": "Needs to show ROI for any new initiatives."
+      }
+    },
+    {
+      "id": "TU3",
+      "name": "Taylor Fulton",
+      "email": "demo.tu3.taylor@thirdsignal.ai",
+      "uid": "demo_tu3_taylor_fulton",
+      "tier": "skillsync_foundation",
+      "archetype": "direction_seeker",
+      "intent": "not_sure",
+      "preferences": {
+        "pace": "story",
+        "focus": "leadership"
+      },
+      "answers": {
+        "outcomes_goals": [
+          "Professional Advancement",
+          "Professional Visibility"
+        ],
+        "target_compensation_level": "$100k-$149k",
+        "current_or_target_job_title": "Technical Project Manager or Product Owner",
+        "current_or_target_salary": "$120,000",
+        "benefits_under_review": false,
+        "ai_usage_frequency": "Rarely or never",
+        "enterprise_context": [
+          "No formal mandate"
+        ],
+        "job_description": "",
+        "resume_source": "TaylorFulton_Resume_NonProfit.pdf",
+        "bio_alignment_requested": false,
+        "foundational_interests": [
+          "Start using Ai in career development and coaching activities",
+          "Process Automation / Workflow Optimization"
+        ],
+        "advanced_interests": [],
+        "learning_modalities": [
+          "Collaboration and group sessions",
+          "Interactive coaching (live/async feedback loops)"
+        ],
+        "current_title": "Project Manager",
+        "industry": "Non-Profit",
+        "target": "Not sure, maybe something in tech?",
+        "pressure_breaks": "Confidence",
+        "work_style": "A conversation",
+        "constraints": "Needs a clear, step-by-step plan."
+      }
+    },
+    {
+      "id": "TU4",
+      "name": "Derrick Gervin",
+      "email": "demo.tu4.derrick@thirdsignal.ai",
+      "uid": "demo_tu4_derrick_gervin",
+      "tier": "free_foundation_access",
+      "archetype": "free_course_user",
+      "intent": "current_role",
+      "preferences": {
+        "pace": "straight",
+        "focus": "skills"
+      },
+      "answers": {
+        "outcomes_goals": [
+          "Professional Visibility"
+        ],
+        "target_compensation_level": "Under $100k",
+        "current_or_target_job_title": "Business Analyst or Junior Project Manager",
+        "current_or_target_salary": "$75,000",
+        "benefits_under_review": false,
+        "ai_usage_frequency": "Rarely or never",
+        "enterprise_context": [
+          "No formal mandate"
+        ],
+        "job_description": "",
+        "resume_source": "",
+        "bio_alignment_requested": false,
+        "foundational_interests": [
+          "Start using Ai in career development and coaching activities",
+          "Building a personal Ai toolkit for daily professional use"
+        ],
+        "advanced_interests": [],
+        "learning_modalities": [
+          "Hands-on applied exercises"
+        ],
+        "current_title": "Recent Graduate",
+        "industry": "Open to any",
+        "target": "Entry-level business role",
+        "pressure_breaks": "Confidence",
+        "work_style": "A template",
+        "constraints": "On a tight budget."
+      }
+    }
+  ]
+}
