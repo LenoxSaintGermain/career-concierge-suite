@@ -1,7 +1,8 @@
 # Progress Log
 
 This log tracks implementation progress against the V1 MVP backlog in `docs/mvp/Career_Concierge_V1_MVP_Spec_Complete.md`.
-Update this file in each delivery pass so roadmap visuals and implementation status stay aligned.
+Detailed story-level status and pass-by-pass execution entries now live in `docs/backlog-ledger.md`.
+Update both files in each delivery pass so roadmap visuals and implementation status stay aligned.
 
 ## 2026-03-05
 

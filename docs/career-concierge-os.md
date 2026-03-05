@@ -65,6 +65,7 @@ It is not a temporary debug panel and should be documented and designed as a fir
 ### Progress Log Discipline
 
 Backlog-to-implementation status is tracked in `docs/progress-log.md`.
+Story-level status plus execution history is tracked in `docs/backlog-ledger.md`.
 The admin roadmap module mirrors this log, so the log must be updated in the same pass as product changes.
 
 ### API Layer

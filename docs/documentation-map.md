@@ -9,6 +9,7 @@
 - `docs/ssai-production-migration.md`: migration-specific history and cutover notes
 - `docs/decision-log.md`: durable product and platform decisions
 - `docs/progress-log.md`: implementation progress against MVP backlog
+- `docs/backlog-ledger.md`: story-level backlog status and execution ledger
 - `docs/documentation-map.md`: update matrix for future work
 
 ## Update Matrix
@@ -64,6 +65,13 @@
 - a backlog item moves from queued to active or shipped
 - a demo-readiness blocker is opened or closed
 
+### Update `docs/backlog-ledger.md` when
+
+- any story status changes
+- execution work is completed and needs an audit row
+- demo-critical sequence state changes
+- blockers are introduced or resolved
+
 ## Code-to-Docs Mapping
 
 - `api/` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`
@@ -75,6 +83,7 @@
 - `firestore*.rules` / `firebase.json` -> `docs/operations-runbook.md`, `docs/ssai-production-migration.md`
 - durable product/platform choices -> `docs/decision-log.md`
 - backlog progress and roadmap node state -> `docs/progress-log.md`
+- story board and execution history -> `docs/backlog-ledger.md`
 
 ## Documentation Standard
 

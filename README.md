@@ -94,6 +94,7 @@ Core docs for this fork:
 - `docs/ssai-production-migration.md`
 - `docs/decision-log.md`
 - `docs/progress-log.md`
+- `docs/backlog-ledger.md`
 - `docs/documentation-map.md`
 
 ## Documentation Workflow
@@ -111,6 +112,7 @@ Use it whenever architecture, deployment, Firebase/GCP, admin controls, modules,
 Roadmap discipline:
 
 - Keep `docs/progress-log.md` updated in the same pass as feature work.
+- Keep `docs/backlog-ledger.md` updated with story-level status and execution rows in the same pass.
 - The admin-only Roadmap module reflects this log and should not drift from implementation reality.
 
 ## Current Migration Status

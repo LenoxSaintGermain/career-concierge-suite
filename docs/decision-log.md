@@ -87,3 +87,12 @@ The roadmap module should mirror this log to avoid drift between visuals and act
 Implication:
 
 - each implementation pass must include a progress-log update
+
+### Backlog ledger is required for story status and execution audit trail
+
+`docs/backlog-ledger.md` is now the canonical tracker for end-to-end story status and pass-by-pass execution rows.
+
+Implication:
+
+- each implementation pass must include a backlog-ledger update
+- roadmap/status communication should align with backlog-ledger entries
