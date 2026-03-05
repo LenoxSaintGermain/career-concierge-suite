@@ -6,11 +6,11 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 
 ## 2026-03-05
 
-### Delivery: Admin Roadmap Module + Log Foundation
+### Delivery: Roadmap Validation Surface + Log Foundation
 
-- Added admin-only `Roadmap` module (`12`) at the end of the suite grid.
-- Added `RoadmapView` with node-based sprint visualization for the MVP path.
-- Wired admin gating in the frontend by probing `/v1/admin/config` access.
+- Added `Roadmap` module (`12`) as a shared validation surface for signed-in users.
+- Expanded `RoadmapView` with epic cards and story-level validation grid for manual QA guidance.
+- Removed frontend lockout pattern that could hide admin entry points during transient access-check failures.
 - Expanded shared module ID enums/lists to include `roadmap` for consistent routing and config validation.
 
 ### Backlog Status Snapshot

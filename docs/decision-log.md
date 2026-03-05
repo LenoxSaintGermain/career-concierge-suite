@@ -96,3 +96,13 @@ Implication:
 
 - each implementation pass must include a backlog-ledger update
 - roadmap/status communication should align with backlog-ledger entries
+
+### Roadmap validation surface is visible to signed-in users
+
+The roadmap module now serves as a shared in-app validation guide.
+It is no longer hidden behind frontend admin gating.
+
+Implication:
+
+- teams can confirm epic/story test focus directly in-product
+- backend admin authorization remains enforced only at protected API routes

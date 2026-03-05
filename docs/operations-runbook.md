@@ -105,7 +105,7 @@ Use the reset workflow instead of repeating blind imports.
 - login with a migrated user
 - intake persistence
 - admin config load
-- admin-only roadmap tile visibility (present for admins, hidden for non-admins)
+- roadmap + validation tile visibility for signed-in users
 - episode generation
 - suite generation
 - live token generation

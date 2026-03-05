@@ -115,10 +115,9 @@ const App: React.FC = () => {
       SUITE_MODULES.filter((m) => {
         if (!publicConfig.ui.episodes_enabled && m.id === 'episodes') return false;
         if (!publicConfig.operations.cjs_enabled && m.id === 'cjs_execution') return false;
-        if (m.id === 'roadmap' && !isAdminUser) return false;
         return true;
       }),
-    [isAdminUser, publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled]
+    [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled]
   );
 
   const openModule = useMemo(
@@ -275,8 +274,7 @@ const App: React.FC = () => {
           <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{user.email ?? user.uid}</span>
           <button
             onClick={() => setAdminOpen(true)}
-            disabled={!isAdminUser}
-            className="text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors bg-white/60 disabled:opacity-35 disabled:cursor-not-allowed"
+            className="text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors bg-white/60"
           >
             Admin
           </button>

@@ -50,8 +50,9 @@ Current blocker in this sequence: Step 5 (`E02-S03`) is not implemented yet.
 
 | UTC Timestamp | Scope | Change | Result | Evidence |
 | :--- | :--- | :--- | :--- | :--- |
-| 2026-03-05 04:59:53Z | E04/E05 docs+UX | Added admin-only roadmap module with node visualization. | Done | `components/RoadmapView.tsx`, `App.tsx`, `docs/progress-log.md` |
+| 2026-03-05 04:59:53Z | E04/E05 docs+UX | Added roadmap module with node visualization. | Done | `components/RoadmapView.tsx`, `App.tsx`, `docs/progress-log.md` |
 | 2026-03-05 05:00:00Z | Backlog governance | Added persistent backlog ledger + execution ledger process. | Done | `docs/backlog-ledger.md`, `docs/documentation-map.md`, `README.md` |
+| 2026-03-05 10:45:00Z | E04/E05 UX reliability | Exposed roadmap to signed-in users and added epic/story validation grid; removed fragile frontend admin lockout behavior. | Done | `components/RoadmapView.tsx`, `App.tsx`, `docs/progress-log.md` |
 
 ## Update Protocol
 

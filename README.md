@@ -113,7 +113,7 @@ Roadmap discipline:
 
 - Keep `docs/progress-log.md` updated in the same pass as feature work.
 - Keep `docs/backlog-ledger.md` updated with story-level status and execution rows in the same pass.
-- The admin-only Roadmap module reflects this log and should not drift from implementation reality.
+- The in-app Roadmap validation module reflects these logs and should not drift from implementation reality.
 
 ## Current Migration Status
 

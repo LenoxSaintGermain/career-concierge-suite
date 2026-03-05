@@ -42,7 +42,7 @@ The client-facing suite is a modular OS-style workspace built around:
 - Readiness
 - Plan
 - ConciergeJobSearch execution
-- Admin roadmap node map (admin-only endcap module)
+- Roadmap and validation module with epic/story testing grid
 
 The design target remains an editorial, cinematic workspace rather than a generic SaaS dashboard.
 Modules should feel like guided surfaces inside one OS, not isolated product pages.
@@ -66,7 +66,7 @@ It is not a temporary debug panel and should be documented and designed as a fir
 
 Backlog-to-implementation status is tracked in `docs/progress-log.md`.
 Story-level status plus execution history is tracked in `docs/backlog-ledger.md`.
-The admin roadmap module mirrors this log, so the log must be updated in the same pass as product changes.
+The roadmap validation module mirrors these logs, so both must be updated in the same pass as product changes.
 
 ### API Layer
 
