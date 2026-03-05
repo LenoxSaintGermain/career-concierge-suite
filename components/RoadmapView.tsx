@@ -84,10 +84,14 @@ export const RoadmapView: React.FC = () => {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="border border-black/10 bg-white p-5">
           <div className="text-[10px] uppercase tracking-[0.24em] text-black/40">Backlog Scope</div>
-          <div className="mt-2 text-2xl font-editorial">18 stories / 6 epics</div>
+          <div className="mt-2 text-2xl leading-tight font-editorial">
+            18 stories
+            <span className="mx-2 text-black/35">/</span>
+            6 epics
+          </div>
           <p className="mt-2 text-sm text-black/55">Source: Career Concierge V1 MVP Specification.</p>
         </div>
         <div className="border border-black/10 bg-[#eaf8f7] p-5">
@@ -106,10 +110,13 @@ export const RoadmapView: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative grid grid-cols-1 gap-4 lg:grid-cols-4">
-        <div className="pointer-events-none absolute left-6 right-6 top-[18px] hidden h-[1px] bg-gradient-to-r from-brand-teal/60 via-brand-teal/30 to-black/10 lg:block" />
+      <div className="relative grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
+        <div className="pointer-events-none absolute left-6 right-6 top-[18px] hidden h-[1px] bg-gradient-to-r from-brand-teal/60 via-brand-teal/30 to-black/10 2xl:block" />
         {ROADMAP_NODES.map((node) => (
-          <article key={node.id} className={`relative border p-5 ${statusTone[node.status]} ${nodeGlow[node.status]}`}>
+          <article
+            key={node.id}
+            className={`relative border p-5 md:p-6 min-h-[360px] ${statusTone[node.status]} ${nodeGlow[node.status]}`}
+          >
             <div className="mb-4 flex items-center justify-between gap-4">
               <div className="text-[10px] uppercase tracking-[0.24em]">{node.phase}</div>
               <div className="text-[10px] uppercase tracking-[0.24em] opacity-70">{node.window}</div>
@@ -128,9 +135,9 @@ export const RoadmapView: React.FC = () => {
               <div className="text-[10px] uppercase tracking-[0.24em]">{statusLabel[node.status]}</div>
             </div>
 
-            <h4 className="text-2xl leading-tight font-editorial italic">{node.headline}</h4>
+            <h4 className="text-[40px] leading-[1.08] font-editorial italic">{node.headline}</h4>
             <div className="mt-4 text-xs uppercase tracking-[0.22em] opacity-70">Epics: {node.epics.join(' · ')}</div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               {node.stories.map((story) => (
                 <span key={story} className="border border-current/25 px-2 py-1 text-[10px] uppercase tracking-[0.18em]">
                   {story}
