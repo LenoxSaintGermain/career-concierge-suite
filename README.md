@@ -93,6 +93,7 @@ Core docs for this fork:
 - `docs/operations-runbook.md`
 - `docs/ssai-production-migration.md`
 - `docs/decision-log.md`
+- `docs/progress-log.md`
 - `docs/documentation-map.md`
 
 ## Documentation Workflow
@@ -106,6 +107,11 @@ This repo also has a dedicated local Codex skill:
 - `career-concierge-docs`
 
 Use it whenever architecture, deployment, Firebase/GCP, admin controls, modules, live voice/media, or migration state changes.
+
+Roadmap discipline:
+
+- Keep `docs/progress-log.md` updated in the same pass as feature work.
+- The admin-only Roadmap module reflects this log and should not drift from implementation reality.
 
 ## Current Migration Status
 

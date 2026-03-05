@@ -42,6 +42,7 @@ The client-facing suite is a modular OS-style workspace built around:
 - Readiness
 - Plan
 - ConciergeJobSearch execution
+- Admin roadmap node map (admin-only endcap module)
 
 The design target remains an editorial, cinematic workspace rather than a generic SaaS dashboard.
 Modules should feel like guided surfaces inside one OS, not isolated product pages.
@@ -56,9 +57,15 @@ The admin console is the operational control plane for:
 - media library targeting
 - feature flags
 - external media configuration
+- roadmap/spec progress visibility
 
 This console is part of the product operating system.
 It is not a temporary debug panel and should be documented and designed as a first-class surface.
+
+### Progress Log Discipline
+
+Backlog-to-implementation status is tracked in `docs/progress-log.md`.
+The admin roadmap module mirrors this log, so the log must be updated in the same pass as product changes.
 
 ### API Layer
 

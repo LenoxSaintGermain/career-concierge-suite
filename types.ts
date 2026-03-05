@@ -9,8 +9,9 @@ export type SuiteModuleId =
   | 'readiness'
   | 'cjs_execution'
   | 'plan'
-  | 'assets';
-export type SuiteModuleKind = 'flow' | 'feed' | 'artifact' | 'collection';
+  | 'assets'
+  | 'roadmap';
+export type SuiteModuleKind = 'flow' | 'feed' | 'artifact' | 'collection' | 'admin';
 
 export interface SuiteModule {
   id: SuiteModuleId;

@@ -91,4 +91,12 @@ export const SUITE_MODULES: SuiteModule[] = [
     kind: 'collection',
     relatedIds: ['plan'],
   },
+  {
+    id: 'roadmap',
+    index: '12',
+    title: 'Roadmap',
+    subtitle: 'Execution map from POC to investor-ready MVP.',
+    kind: 'admin',
+    relatedIds: ['intake', 'brief', 'plan', 'episodes', 'cjs_execution', 'assets'],
+  },
 ];

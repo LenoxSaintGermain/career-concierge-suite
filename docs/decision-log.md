@@ -66,3 +66,24 @@ Implication:
 - `docs/documentation-map.md`
 
 must be treated as part of the product surface
+
+## 2026-03-05
+
+### Admin roadmap module is a first-class OS surface
+
+The suite now includes an admin-only `Roadmap` module as the final grid tile.
+It visualizes MVP delivery as node-based sprint phases rather than a static text checklist.
+
+Implication:
+
+- roadmap state must be maintained continuously
+- admin operators can validate delivery posture directly in-product
+
+### Progress log is the roadmap source of truth
+
+`docs/progress-log.md` is now required for delivery passes.
+The roadmap module should mirror this log to avoid drift between visuals and actual implementation.
+
+Implication:
+
+- each implementation pass must include a progress-log update

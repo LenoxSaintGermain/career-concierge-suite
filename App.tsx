@@ -18,7 +18,8 @@ import { ReadinessView } from './components/ReadinessView';
 import { CjsExecutionView } from './components/CjsExecutionView';
 import { BingeFeedView } from './components/BingeFeedView';
 import { AdminConsole } from './components/AdminConsole';
-import { fetchPublicConfig } from './services/adminApi';
+import { RoadmapView } from './components/RoadmapView';
+import { canAccessAdminConfig, fetchPublicConfig } from './services/adminApi';
 import { PublicConfig } from './types';
 
 type IntroPhase = 'prologue' | 'complete';
@@ -44,6 +45,7 @@ const App: React.FC = () => {
   const [openModuleId, setOpenModuleId] = useState<SuiteModuleId | null>(null);
   const [hoveredModuleId, setHoveredModuleId] = useState<SuiteModuleId | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_PUBLIC_CONFIG);
 
   const refreshPublicConfig = async () => {
@@ -91,12 +93,15 @@ const App: React.FC = () => {
         setClientLoaded(false);
         setClient(null);
         setIntroPhase('complete');
+        setIsAdminUser(false);
         return;
       }
       const client = await getOrCreateClient(user.uid);
       setClient(client);
       setClientLoaded(true);
       if (!client.intro_seen_at) setIntroPhase('prologue');
+      const adminAccess = await canAccessAdminConfig();
+      setIsAdminUser(adminAccess);
     };
     run();
   }, [user]);
@@ -110,9 +115,10 @@ const App: React.FC = () => {
       SUITE_MODULES.filter((m) => {
         if (!publicConfig.ui.episodes_enabled && m.id === 'episodes') return false;
         if (!publicConfig.operations.cjs_enabled && m.id === 'cjs_execution') return false;
+        if (m.id === 'roadmap' && !isAdminUser) return false;
         return true;
       }),
-    [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled]
+    [isAdminUser, publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled]
   );
 
   const openModule = useMemo(
@@ -121,7 +127,7 @@ const App: React.FC = () => {
   );
 
   const isLocked = (m: SuiteModule) => {
-    if (m.id === 'intake') return false;
+    if (m.id === 'intake' || m.id === 'roadmap') return false;
     return !intakeComplete;
   };
 
@@ -269,7 +275,8 @@ const App: React.FC = () => {
           <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{user.email ?? user.uid}</span>
           <button
             onClick={() => setAdminOpen(true)}
-            className="text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors bg-white/60"
+            disabled={!isAdminUser}
+            className="text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors bg-white/60 disabled:opacity-35 disabled:cursor-not-allowed"
           >
             Admin
           </button>
@@ -408,6 +415,8 @@ const App: React.FC = () => {
                 />
               ) : openModule.id === 'episodes' ? (
                 <BingeFeedView onOpenPlan={() => openModuleById('plan')} />
+              ) : openModule.id === 'roadmap' ? (
+                <RoadmapView />
               ) : (
                 <>
                   {/* Locked state (until we wire real intakeComplete/artifact checks) */}

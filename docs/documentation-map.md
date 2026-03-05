@@ -8,6 +8,7 @@
 - `docs/operations-runbook.md`: deployment and operational procedures
 - `docs/ssai-production-migration.md`: migration-specific history and cutover notes
 - `docs/decision-log.md`: durable product and platform decisions
+- `docs/progress-log.md`: implementation progress against MVP backlog
 - `docs/documentation-map.md`: update matrix for future work
 
 ## Update Matrix
@@ -56,6 +57,13 @@
 - architecture is intentionally kept or intentionally changed
 - an operational fallback becomes the new standard path
 
+### Update `docs/progress-log.md` when
+
+- sprint or epic status changes
+- roadmap module states are changed
+- a backlog item moves from queued to active or shipped
+- a demo-readiness blocker is opened or closed
+
 ## Code-to-Docs Mapping
 
 - `api/` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`
@@ -66,6 +74,7 @@
 - `scripts/deploy_*` -> `README.md`, `docs/operations-runbook.md`, `docs/ssai-production-migration.md`
 - `firestore*.rules` / `firebase.json` -> `docs/operations-runbook.md`, `docs/ssai-production-migration.md`
 - durable product/platform choices -> `docs/decision-log.md`
+- backlog progress and roadmap node state -> `docs/progress-log.md`
 
 ## Documentation Standard
 

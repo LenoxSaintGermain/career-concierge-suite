@@ -33,6 +33,7 @@ const MODULE_IDS: SuiteModuleId[] = [
   'cjs_execution',
   'plan',
   'assets',
+  'roadmap',
 ];
 const SURFACE_SET = new Set<MediaJourneySurface>([...MODULE_IDS, 'suite_home', 'pre_intake', 'post_intake']);
 const PLATFORM_SET = new Set<MediaPlatform>([
@@ -213,6 +214,20 @@ export const fetchAdminConfig = async (): Promise<AppConfig> => {
 
   const data = await resp.json();
   return normalizeAdminConfig(data.config);
+};
+
+export const canAccessAdminConfig = async (): Promise<boolean> => {
+  const origin = resolveBaseUrl();
+  try {
+    const resp = await fetch(`${origin}/v1/admin/config`, {
+      method: 'GET',
+      headers: await authHeaders(),
+    });
+    if (resp.status === 401 || resp.status === 403) return false;
+    return resp.ok;
+  } catch {
+    return false;
+  }
 };
 
 export const saveAdminConfig = async (config: AppConfig): Promise<AppConfig> => {

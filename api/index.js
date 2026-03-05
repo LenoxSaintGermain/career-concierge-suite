@@ -218,6 +218,7 @@ const MODULE_IDS = new Set([
   'cjs_execution',
   'plan',
   'assets',
+  'roadmap',
 ]);
 const JOURNEY_SURFACES = new Set(['suite_home', 'pre_intake', 'post_intake', ...MODULE_IDS]);
 const MEDIA_SOURCE_KINDS = new Set(['single', 'playlist']);
