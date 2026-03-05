@@ -34,6 +34,7 @@ Required roles are effectively:
 - Billing is attached
 - API service is deployed at `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
 - API service public invoker access is enabled and verified
+- UI service is deployed at `https://career-concierge-suite-tpcap5aa5a-ew.a.run.app`
 - Auth users import runs successfully
 - A reset workflow is prepared for the 15 email/password users whose source password hash settings were not recoverable through the source admin config API
 

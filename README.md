@@ -12,6 +12,7 @@ This fork carries that pattern into a dedicated concierge-led career acceleratio
 - API service: `career-concierge-api`
 - UI service: `career-concierge-suite`
 - Current API URL: `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
+- Current UI URL: `https://career-concierge-suite-tpcap5aa5a-ew.a.run.app`
 
 ## Local Development
 

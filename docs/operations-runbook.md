@@ -8,6 +8,7 @@
 - Firestore DB: `career-concierge`
 - Region: `europe-west1`
 - Public API URL: `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
+- Public UI URL: `https://career-concierge-suite-tpcap5aa5a-ew.a.run.app`
 
 ## Deploy API
 

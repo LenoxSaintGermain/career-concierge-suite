@@ -10,7 +10,7 @@ export type SuiteArtifacts = {
 };
 
 const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
-const defaultBaseUrl = 'https://career-concierge-api-pplaphmpxq-uw.a.run.app';
+const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
 
 export const generateSuiteArtifacts = async (payload: {
   intent: ClientIntent;

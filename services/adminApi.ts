@@ -14,7 +14,7 @@ import {
 } from '../types';
 
 const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
-const defaultBaseUrl = 'https://career-concierge-api-pplaphmpxq-uw.a.run.app';
+const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
 
 const resolveBaseUrl = () => {
   const value = (configuredBaseUrl || defaultBaseUrl).trim();

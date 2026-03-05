@@ -2,7 +2,7 @@ import { auth } from './firebase';
 import { BingeEpisode, CuratedMediaLibraryResponse, GeneratedMediaPack, MediaJourneySurface } from '../types';
 
 const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
-const defaultBaseUrl = 'https://career-concierge-api-pplaphmpxq-uw.a.run.app';
+const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
 
 export const generateBingeEpisode = async (): Promise<BingeEpisode> => {
   const source = (configuredBaseUrl || defaultBaseUrl).trim();
