@@ -5,13 +5,15 @@ import { getAuth } from "firebase/auth";
 const env = (import.meta as any).env ?? {};
 
 const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyBwnynX4I8IlUeIwBwuD3Es13qKZzXnPKM",
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "third-signal.firebaseapp.com",
-  projectId: env.VITE_FIREBASE_PROJECT_ID || "third-signal",
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "third-signal.firebasestorage.app",
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "414737114778",
-  appId: env.VITE_FIREBASE_APP_ID || "1:414737114778:web:f153265c99fc032d23e123",
-  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || "G-48VFJ7B95W"
+  // Default to the canonical Career Concierge production project.
+  // Env vars still override these values for local/staging variants.
+  apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyBy0X4uTY9fa1FDqzzc-AMCTownXAo_ljA",
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "ssai-f6191.firebaseapp.com",
+  projectId: env.VITE_FIREBASE_PROJECT_ID || "ssai-f6191",
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "ssai-f6191.firebasestorage.app",
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "480846059254",
+  appId: env.VITE_FIREBASE_APP_ID || "1:480846059254:web:6e62fc367e14d79acdbed7",
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || "G-966CRT4YNB"
 };
 
 // Initialize Firebase

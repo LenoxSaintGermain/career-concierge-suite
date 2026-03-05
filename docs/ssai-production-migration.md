@@ -35,6 +35,7 @@ Required roles are effectively:
 - API service is deployed at `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
 - API service public invoker access is enabled and verified
 - UI service is deployed at `https://career-concierge-suite-tpcap5aa5a-ew.a.run.app`
+- Frontend Firebase fallback defaults are now pinned to `ssai-f6191` (not `third-signal`) to avoid cross-project auth drift when `VITE_FIREBASE_*` build vars are missing.
 - Auth users import runs successfully
 - A reset workflow is prepared for the 15 email/password users whose source password hash settings were not recoverable through the source admin config API
 

@@ -82,6 +82,7 @@ Important:
 - API must deploy from `./api`
 - UI must deploy from repo root
 - this architecture expects public Cloud Run reachability, with app-level auth enforced inside the API and frontend
+- frontend Firebase defaults now target `ssai-f6191` if `VITE_FIREBASE_*` vars are missing at build time
 
 ## Documentation Set
 
