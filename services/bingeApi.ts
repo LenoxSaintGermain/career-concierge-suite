@@ -1,12 +1,9 @@
 import { auth } from './firebase';
 import { BingeEpisode, CuratedMediaLibraryResponse, GeneratedMediaPack, MediaJourneySurface } from '../types';
-
-const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
-const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
+import { resolveApiOrigin } from './apiOrigin';
 
 export const generateBingeEpisode = async (targetSkill?: string): Promise<BingeEpisode> => {
-  const source = (configuredBaseUrl || defaultBaseUrl).trim();
-  const origin = source.endsWith('/') ? source.slice(0, -1) : source;
+  const origin = resolveApiOrigin();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
   const token = await user.getIdToken();
@@ -36,8 +33,7 @@ export const generateBingeEpisode = async (targetSkill?: string): Promise<BingeE
 };
 
 export const generateEpisodeMediaPack = async (episode: BingeEpisode): Promise<GeneratedMediaPack> => {
-  const source = (configuredBaseUrl || defaultBaseUrl).trim();
-  const origin = source.endsWith('/') ? source.slice(0, -1) : source;
+  const origin = resolveApiOrigin();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
   const token = await user.getIdToken();
@@ -67,8 +63,7 @@ export const generateEpisodeMediaPack = async (episode: BingeEpisode): Promise<G
 };
 
 export const refreshVideoOperation = async (operationName: string): Promise<{ done: boolean; video_uri?: string | null }> => {
-  const source = (configuredBaseUrl || defaultBaseUrl).trim();
-  const origin = source.endsWith('/') ? source.slice(0, -1) : source;
+  const origin = resolveApiOrigin();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
   const token = await user.getIdToken();
@@ -104,8 +99,7 @@ export const refreshVideoOperation = async (operationName: string): Promise<{ do
 export const fetchCuratedMediaLibrary = async (
   surface: MediaJourneySurface = 'episodes'
 ): Promise<CuratedMediaLibraryResponse> => {
-  const source = (configuredBaseUrl || defaultBaseUrl).trim();
-  const origin = source.endsWith('/') ? source.slice(0, -1) : source;
+  const origin = resolveApiOrigin();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
   const token = await user.getIdToken();

@@ -1,13 +1,6 @@
 import { auth } from './firebase';
 import { AgentDefinition, CjsAsset, InteractionLog, ResumeReviewContent, SearchStrategyContent } from '../types';
-
-const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
-const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
-
-const resolveBaseUrl = () => {
-  const source = (configuredBaseUrl || defaultBaseUrl).trim();
-  return source.endsWith('/') ? source.slice(0, -1) : source;
-};
+import { resolveApiOrigin } from './apiOrigin';
 
 const authHeaders = async (contentType = 'application/json') => {
   const user = auth.currentUser;
@@ -25,7 +18,7 @@ const readError = async (resp: Response, prefix: string) => {
 };
 
 export const listCjsAssets = async (): Promise<CjsAsset[]> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/cjs/assets`, {
     method: 'GET',
     headers: await authHeaders(),
@@ -44,7 +37,7 @@ export const uploadResumeAsset = async (payload: {
   target_role?: string;
   notes?: string;
 }): Promise<CjsAsset> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/cjs/resume/upload`, {
     method: 'POST',
     headers: await authHeaders(),
@@ -56,7 +49,7 @@ export const uploadResumeAsset = async (payload: {
 };
 
 export const generateResumeReview = async (): Promise<{ review: ResumeReviewContent; interaction_id: string | null }> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/cjs/resume/review`, {
     method: 'POST',
     headers: await authHeaders(),
@@ -71,7 +64,7 @@ export const generateResumeReview = async (): Promise<{ review: ResumeReviewCont
 };
 
 export const generateSearchStrategy = async (): Promise<{ strategy: SearchStrategyContent; interaction_id: string | null }> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/cjs/search/strategy`, {
     method: 'POST',
     headers: await authHeaders(),
@@ -86,7 +79,7 @@ export const generateSearchStrategy = async (): Promise<{ strategy: SearchStrate
 };
 
 export const listInteractionLogs = async (): Promise<InteractionLog[]> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/interactions`, {
     method: 'GET',
     headers: await authHeaders(),
@@ -99,7 +92,7 @@ export const listInteractionLogs = async (): Promise<InteractionLog[]> => {
 export const generateChiefOfStaffSummary = async (
   mode: 'logged' | 'pending_approval' = 'pending_approval'
 ): Promise<InteractionLog> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/interactions/chief-of-staff`, {
     method: 'POST',
     headers: await authHeaders(),
@@ -115,7 +108,7 @@ export const decideInteractionLog = async (
   decision: 'approved' | 'rejected',
   note: string
 ): Promise<InteractionLog> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/interactions/${encodeURIComponent(interactionId)}/decision`, {
     method: 'POST',
     headers: await authHeaders(),
@@ -127,7 +120,7 @@ export const decideInteractionLog = async (
 };
 
 export const fetchAgentRegistry = async (): Promise<AgentDefinition[]> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/agents/registry`, {
     method: 'GET',
     headers: await authHeaders(),
@@ -138,7 +131,7 @@ export const fetchAgentRegistry = async (): Promise<AgentDefinition[]> => {
 };
 
 export const listAdminApprovalQueue = async (): Promise<InteractionLog[]> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/admin/approval-queue`, {
     method: 'GET',
     headers: await authHeaders(),
@@ -154,7 +147,7 @@ export const decideAdminApproval = async (
   decision: 'approved' | 'rejected',
   note: string
 ): Promise<InteractionLog> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(
     `${origin}/v1/admin/approval-queue/${encodeURIComponent(clientUid)}/${encodeURIComponent(interactionId)}/decision`,
     {

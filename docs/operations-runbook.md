@@ -10,6 +10,19 @@
 - Public API URL: `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
 - Public UI URL: `https://career-concierge-suite-tpcap5aa5a-ew.a.run.app`
 
+## API Origin Resolution
+
+The frontend now resolves API origin in this order:
+
+1. `VITE_CONCIERGE_API_URL` if set
+2. sibling Cloud Run API host derived from the current UI host
+3. canonical fallback API URL
+
+Operational implication:
+
+- if UI and API are deployed as sibling `career-concierge-suite-*` and `career-concierge-api-*` services in the same Cloud Run environment, the UI should reach the matching API automatically
+- you only need to set `VITE_CONCIERGE_API_URL` when intentionally pointing the UI at a non-sibling API
+
 ## Deploy API
 
 ```bash

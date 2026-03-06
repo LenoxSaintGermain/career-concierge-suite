@@ -186,6 +186,15 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Replaced the silent hidden-admin state in the suite header with a visible `Admin Locked` state when the current user fails the admin check.
 - This makes auth failures obvious in the deployed product instead of looking like missing code.
 
+### Delivery: Environment-Safe API Origin Resolution
+
+- Added a shared frontend API-origin resolver used by admin, suite, CJS, Episodes, live, and voice services.
+- Resolution order is now:
+  - `VITE_CONCIERGE_API_URL`
+  - sibling Cloud Run API host inferred from the current UI host
+  - canonical fallback API URL
+- This fixes the case where a repo-connected UI deploy in a secondary Cloud Run environment was still calling the hard-coded canonical API service by default.
+
 ### Backlog Status Snapshot
 
 | Epic | Status | Notes |

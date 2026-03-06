@@ -139,6 +139,14 @@ The Express API under `api/` handles:
 - optional external voice routing
 - public HTTPS entrypoint expected for SPA and mobile clients
 
+The frontend now resolves its API origin in this order:
+
+1. explicit `VITE_CONCIERGE_API_URL`
+2. sibling Cloud Run API host derived from the current `career-concierge-suite-*` URL
+3. canonical fallback API URL
+
+This prevents repo-connected UI deployments in alternate Cloud Run environments from accidentally calling the wrong API service by default.
+
 ### Data Model
 
 Primary collections:

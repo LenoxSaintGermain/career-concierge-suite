@@ -1,5 +1,6 @@
 import { auth } from './firebase';
 import { BriefContent, ClientIntent, ClientPreferences, IntakeAnswers, PlanContent } from '../types';
+import { resolveApiOrigin } from './apiOrigin';
 
 export type SuiteArtifacts = {
   brief: BriefContent;
@@ -9,16 +10,12 @@ export type SuiteArtifacts = {
   gaps: unknown;
 };
 
-const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
-const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
-
 export const generateSuiteArtifacts = async (payload: {
   intent: ClientIntent;
   preferences: ClientPreferences;
   answers: IntakeAnswers;
 }): Promise<SuiteArtifacts> => {
-  const source = (configuredBaseUrl || defaultBaseUrl).trim();
-  const origin = source.endsWith('/') ? source.slice(0, -1) : source;
+  const origin = resolveApiOrigin();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
   const token = await user.getIdToken();

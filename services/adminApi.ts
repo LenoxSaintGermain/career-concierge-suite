@@ -29,16 +29,9 @@ import {
   BRAND_TILE_EMPHASES,
   DEFAULT_BRAND_CONFIG,
 } from '../config/brandSystem.js';
+import { resolveApiOrigin } from './apiOrigin';
 
-const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
-const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
-
-const resolveBaseUrl = () => {
-  const value = (configuredBaseUrl || defaultBaseUrl).trim();
-  return value.endsWith('/') ? value.slice(0, -1) : value;
-};
-
-export const getAdminApiOrigin = () => resolveBaseUrl();
+export const getAdminApiOrigin = () => resolveApiOrigin();
 
 const MODULE_IDS: SuiteModuleId[] = [
   ...BRAND_MODULE_IDS,
@@ -360,7 +353,7 @@ const normalizeAdminConfig = (input: any): AppConfig => {
 };
 
 export const fetchPublicConfig = async (): Promise<PublicConfig> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/public/config`);
   if (!resp.ok) {
     const txt = await resp.text().catch(() => '');
@@ -381,7 +374,7 @@ export const fetchPublicConfig = async (): Promise<PublicConfig> => {
 };
 
 export const fetchAdminConfig = async (): Promise<AppConfig> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/admin/config`, {
     method: 'GET',
     headers: await authHeaders(),
@@ -397,7 +390,7 @@ export const fetchAdminConfig = async (): Promise<AppConfig> => {
 };
 
 export const fetchAdminSystemOverview = async (): Promise<AdminSystemOverview> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/admin/system-overview`, {
     method: 'GET',
     headers: await authHeaders(),
@@ -412,7 +405,7 @@ export const fetchAdminSystemOverview = async (): Promise<AdminSystemOverview> =
 };
 
 export const canAccessAdminConfig = async (): Promise<boolean> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   try {
     const resp = await fetch(`${origin}/v1/admin/config`, {
       method: 'GET',
@@ -426,7 +419,7 @@ export const canAccessAdminConfig = async (): Promise<boolean> => {
 };
 
 export const saveAdminConfig = async (config: AppConfig): Promise<AppConfig> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/admin/config`, {
     method: 'PUT',
     headers: await authHeaders(),

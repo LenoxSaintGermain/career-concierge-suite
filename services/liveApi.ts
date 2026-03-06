@@ -1,16 +1,9 @@
 import { auth } from './firebase';
 import { GeminiLiveTokenResponse } from '../types';
-
-const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
-const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
-
-const resolveBaseUrl = () => {
-  const source = (configuredBaseUrl || defaultBaseUrl).trim();
-  return source.endsWith('/') ? source.slice(0, -1) : source;
-};
+import { resolveApiOrigin } from './apiOrigin';
 
 export const createGeminiLiveToken = async (): Promise<GeminiLiveTokenResponse> => {
-  const origin = resolveBaseUrl();
+  const origin = resolveApiOrigin();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
   const token = await user.getIdToken();
