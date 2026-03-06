@@ -34,12 +34,14 @@ For Cloud Run repository deployments, `career-concierge-api` must build from the
 
 - Dockerfile source location: `api/Dockerfile`
 - or buildpack context directory: `api`
+- any backend runtime dependency imported by `api/index.js` must also exist inside `api/`
 
 Failure signature:
 
 - `https://career-concierge-api-<env>.run.app/v1/public/config` returns SPA HTML
 - response banner shows `nginx`
 - browser calls from the suite fail with CORS because the service is actually serving the UI container
+- Cloud Run revision fails startup with `ERR_MODULE_NOT_FOUND` for files imported from outside the `api/` subtree
 
 ## Deploy UI
 

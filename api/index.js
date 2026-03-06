@@ -21,7 +21,7 @@ import {
   BRAND_SUBHEADER_SCALES,
   BRAND_TILE_EMPHASES,
   DEFAULT_BRAND_CONFIG,
-} from '../config/brandSystem.js';
+} from './config/brandSystem.js';
 
 const app = express();
 
