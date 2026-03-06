@@ -147,6 +147,8 @@ The frontend now resolves its API origin in this order:
 
 This prevents repo-connected UI deployments in alternate Cloud Run environments from accidentally calling the wrong API service by default. `.env.production` intentionally leaves `VITE_CONCIERGE_API_URL` unset so sibling auto-discovery can work across environments.
 
+For repo-connected Cloud Run deploys, the API service must build from `api/` using either `api/Dockerfile` or a buildpack context directory of `api`. If the deployed API URL returns the suite HTML shell, the service is misconfigured and browser admin checks will fail before auth logic is reached.
+
 ### Data Model
 
 Primary collections:

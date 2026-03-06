@@ -196,6 +196,11 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - `.env.production` now leaves `VITE_CONCIERGE_API_URL` unset so repo-based UI builds do not pin alternate Cloud Run environments to the canonical API host.
 - This fixes the case where a repo-connected UI deploy in a secondary Cloud Run environment was still calling the hard-coded canonical API service by default.
 
+### Delivery: Repo-Connected API Build Guardrail
+
+- Added `api/Dockerfile` so `career-concierge-api` can be pointed at a concrete API-specific build artifact in repository deployments.
+- Documented the operator check: if `/v1/public/config` returns HTML with an `nginx` banner, the API service is deploying the UI container rather than the Express backend.
+
 ### Backlog Status Snapshot
 
 | Epic | Status | Notes |

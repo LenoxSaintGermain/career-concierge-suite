@@ -105,6 +105,7 @@ New API routes:
 Deploy API:
 
 - `bash scripts/deploy_api_cloudrun.sh ssai-f6191 europe-west1 .context/deploy/ssai-f6191.api.yaml`
+- for Cloud Run repo-connected deploys, point `career-concierge-api` at `api/Dockerfile` or use `api` as the buildpack context directory
 
 Deploy UI:
 
@@ -114,6 +115,7 @@ Important:
 
 - API must deploy from `./api`
 - UI must deploy from repo root
+- if `https://<api-service>/v1/public/config` returns HTML, the API service is deploying the UI container instead of the Express backend
 - this architecture expects public Cloud Run reachability, with app-level auth enforced inside the API and frontend
 - frontend Firebase defaults now target `ssai-f6191` if `VITE_FIREBASE_*` vars are missing at build time
 

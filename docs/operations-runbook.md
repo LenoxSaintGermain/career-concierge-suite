@@ -30,6 +30,17 @@ Operational implication:
 bash scripts/deploy_api_cloudrun.sh ssai-f6191 europe-west1 .context/deploy/ssai-f6191.api.yaml
 ```
 
+For Cloud Run repository deployments, `career-concierge-api` must build from the `api/` subtree:
+
+- Dockerfile source location: `api/Dockerfile`
+- or buildpack context directory: `api`
+
+Failure signature:
+
+- `https://career-concierge-api-<env>.run.app/v1/public/config` returns SPA HTML
+- response banner shows `nginx`
+- browser calls from the suite fail with CORS because the service is actually serving the UI container
+
 ## Deploy UI
 
 ```bash
@@ -45,6 +56,7 @@ Current state:
 
 - API public access is working in `ssai-f6191`
 - UI public access must be validated after each deploy
+- if the API service is public but `/v1/public/config` returns HTML, fix the repo build target before debugging auth or CORS
 
 ## Firestore Rules
 
