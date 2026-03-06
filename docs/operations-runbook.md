@@ -131,6 +131,15 @@ After API deploy, validate these authenticated routes:
 - `GET /v1/admin/approval-queue`
 - `POST /v1/admin/approval-queue/:clientUid/:interactionId/decision`
 
+The admin console should now expose the following before any config edits are made:
+
+- API origin and Cloud Run deployment identity
+- Firestore DB and storage bucket wiring
+- admin access mode (`ADMIN_EMAILS` allowlist vs open mode)
+- approval queue pressure and hydrated-account count
+- agent registry policy with explicit read/write scopes
+- model routing and prompt overlay presence
+
 If resume upload is enabled for binary upload, set one of:
 
 - `CCS_STORAGE_BUCKET`

@@ -9,7 +9,12 @@ import {
   MediaPlatform,
   MediaSourceKind,
 } from '../types';
-import { fetchAdminConfig, fetchAdminSystemOverview, saveAdminConfig } from '../services/adminApi';
+import {
+  fetchAdminConfig,
+  fetchAdminSystemOverview,
+  getAdminApiOrigin,
+  saveAdminConfig,
+} from '../services/adminApi';
 
 type Props = {
   open: boolean;
@@ -136,6 +141,11 @@ const statusTone = (status: string) => {
   if (status === 'rejected') return 'border-red-500/25 bg-red-50 text-red-800';
   return 'border-black/10 bg-white text-black/65';
 };
+
+const signalTone = (active: boolean) =>
+  active
+    ? 'border-brand-teal/25 bg-brand-soft text-brand-teal'
+    : 'border-black/10 bg-white text-black/45';
 
 export function AdminConsole({ open, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
@@ -293,6 +303,28 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
       ]
     : [];
 
+  const apiOrigin = getAdminApiOrigin();
+  const serviceStates = overview
+    ? [
+        { label: 'Episodes rail', active: overview.config_summary.episodes_enabled },
+        { label: 'CJS execution', active: overview.config_summary.cjs_enabled },
+        { label: 'Voice rail', active: overview.config_summary.voice_enabled },
+        { label: 'External media', active: overview.config_summary.external_media_enabled },
+        { label: 'Episode autogen', active: overview.config_summary.auto_generate_on_episode },
+        { label: 'Tone guard', active: overview.config_summary.tone_guard_enabled },
+        { label: 'Onboarding email', active: overview.config_summary.onboarding_email_enabled },
+      ]
+    : [];
+  const promptStates = overview
+    ? [
+        { label: 'Suite overlay', active: overview.config_summary.suite_overlay_configured },
+        { label: 'Binge overlay', active: overview.config_summary.binge_overlay_configured },
+        { label: 'ROM overlay', active: overview.config_summary.rom_overlay_configured },
+        { label: 'Live overlay', active: overview.config_summary.live_overlay_configured },
+        { label: 'Art director', active: overview.config_summary.art_director_overlay_configured },
+      ]
+    : [];
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-8">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -342,8 +374,8 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                             Backend posture, agent policy, and routing in one view.
                           </h3>
                           <p className="text-sm leading-relaxed text-white/72">
-                            This console now reflects the actual production operating model: runtime target, approval load,
-                            registry policy, and the live configuration that shapes the suite.
+                            This console reflects the live operating model: runtime target, approval load, registry
+                            policy, prompt overlays, and the configuration that is actively shaping the suite.
                           </p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70 md:min-w-[18rem]">
@@ -373,6 +405,142 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                         ))}
                       </div>
                     </div>
+                  </section>
+
+                  <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr_0.95fr]">
+                    <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Runtime Stack</div>
+                          <h3 className="mt-2 text-3xl font-editorial italic leading-none">Deployment identity.</h3>
+                        </div>
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">
+                          ROM {overview.runtime.rom_version}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="border border-black/10 bg-[#f8fbfb] p-4">
+                          <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">API Origin</div>
+                          <div className="mt-2 break-all font-mono text-xs text-gray-700">{apiOrigin}</div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div className="border border-black/10 bg-[#f8fbfb] p-4">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Cloud Run</div>
+                            <div className="mt-2 text-sm leading-relaxed text-gray-700">
+                              <div>{overview.runtime.service_name}</div>
+                              <div>{overview.runtime.project_id}</div>
+                              <div>{overview.runtime.region}</div>
+                            </div>
+                          </div>
+                          <div className="border border-black/10 bg-[#f8fbfb] p-4">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">State</div>
+                            <div className="mt-2 text-sm leading-relaxed text-gray-700">
+                              <div>Firestore: {overview.runtime.firestore_database_id}</div>
+                              <div>Bucket: {overview.runtime.storage_bucket || 'not configured'}</div>
+                              <div>Revision: {overview.runtime.revision}</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="border border-black/10 bg-[#f8fbfb] p-4">
+                          <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Admin Access Policy</div>
+                          <div className="mt-2 text-sm leading-relaxed text-gray-700">
+                            {overview.runtime.admin_email_mode === 'allowlist'
+                              ? `${overview.runtime.admin_email_count} allowlisted admin emails control access.`
+                              : 'Open admin mode is active because no ADMIN_EMAILS allowlist is configured.'}
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Service Posture</div>
+                        <h3 className="mt-2 text-3xl font-editorial italic leading-none">Operational toggles.</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {serviceStates.map((item) => (
+                          <span
+                            key={item.label}
+                            className={`inline-flex border px-3 py-2 text-[10px] uppercase tracking-[0.18em] ${signalTone(
+                              item.active
+                            )}`}
+                          >
+                            {item.label}: {item.active ? 'on' : 'off'}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="border border-black/10 bg-[#f8fbfb] p-4">
+                          <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Model Routing</div>
+                          <div className="mt-3 space-y-2 text-sm text-gray-700">
+                            <div>Suite: {overview.config_summary.suite_model}</div>
+                            <div>Binge: {overview.config_summary.binge_model}</div>
+                            <div>Live voice: {overview.config_summary.live_model}</div>
+                            <div>Image: {overview.config_summary.image_model}</div>
+                            <div>Video: {overview.config_summary.video_model}</div>
+                          </div>
+                        </div>
+                        <div className="border border-black/10 bg-[#f8fbfb] p-4">
+                          <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Queue Pressure</div>
+                          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                            <div className="border border-black/10 bg-white px-3 py-3">
+                              <div className="text-lg font-editorial">{overview.queue.pending_count}</div>
+                              <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Pending</div>
+                            </div>
+                            <div className="border border-black/10 bg-white px-3 py-3">
+                              <div className="text-lg font-editorial">{overview.queue.client_count}</div>
+                              <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Clients</div>
+                            </div>
+                            <div className="border border-black/10 bg-white px-3 py-3">
+                              <div className="text-lg font-editorial">{overview.queue.hydrated_account_count}</div>
+                              <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Hydrated</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Prompt Layers</div>
+                        <h3 className="mt-2 text-3xl font-editorial italic leading-none">Overlay visibility.</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {promptStates.map((item) => (
+                          <span
+                            key={item.label}
+                            className={`inline-flex border px-3 py-2 text-[10px] uppercase tracking-[0.18em] ${signalTone(
+                              item.active
+                            )}`}
+                          >
+                            {item.label}: {item.active ? 'set' : 'empty'}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="border border-black/10 bg-[#f8fbfb] p-4">
+                          <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Media Inventory</div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+                            <div className="border border-black/10 bg-white px-3 py-3">
+                              <div className="text-lg font-editorial">{overview.config_summary.curated_library_count}</div>
+                              <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Total Routes</div>
+                            </div>
+                            <div className="border border-black/10 bg-white px-3 py-3">
+                              <div className="text-lg font-editorial">{overview.config_summary.curated_library_enabled_count}</div>
+                              <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Enabled</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="border border-black/10 bg-[#f8fbfb] p-4">
+                          <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Voice Route</div>
+                          <div className="mt-3 text-sm leading-relaxed text-gray-700">
+                            <div>Provider: {overview.config_summary.voice_provider}</div>
+                            <div>Live model: {overview.config_summary.live_model}</div>
+                            <div>{overview.config_summary.voice_enabled ? 'Voice rail is active.' : 'Voice rail is disabled.'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
                   </section>
 
                   <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -485,18 +653,28 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                         )}
                       </div>
                       <div className="border border-black/10 bg-[#f8fbfb] p-4 text-sm text-gray-700">
-                        <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Runtime wiring</div>
-                        <div className="mt-3 space-y-2 text-sm">
-                          <div>API service: {overview.runtime.service_name}</div>
-                          <div>Project: {overview.runtime.project_id}</div>
-                          <div>Firestore DB: {overview.runtime.firestore_database_id}</div>
-                          <div>Bucket: {overview.runtime.storage_bucket || 'not configured'}</div>
+                        <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Approval routing notes</div>
+                        <div className="mt-3 space-y-2 text-sm leading-relaxed">
+                          <div>Chief of Staff, Resume Reviewer, and Search Strategist all write into the approval rail.</div>
+                          <div>Admins review from a global queue before execution leaves the OS.</div>
+                          <div>The queue preview here is read-only; action remains in the Assets module for speed and safety.</div>
                         </div>
                       </div>
                     </section>
                   </section>
                 </>
               )}
+
+              <section className="flex flex-col gap-3 border-t border-black/10 pt-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Configuration Surfaces</div>
+                  <h3 className="mt-2 text-3xl font-editorial italic leading-none">Edit the active rails.</h3>
+                </div>
+                <div className="max-w-xl text-sm leading-relaxed text-gray-600">
+                  Runtime posture above is read-only. The sections below are the write surfaces that change model routing,
+                  prompt overlays, voice behavior, media targeting, and entitlements.
+                </div>
+              </section>
 
               <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Generation</div>

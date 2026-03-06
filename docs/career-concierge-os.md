@@ -52,6 +52,7 @@ Modules should feel like guided surfaces inside one OS, not isolated product pag
 The admin console is the operational control plane for:
 
 - runtime posture across Cloud Run, Firestore, and storage wiring
+- API origin, deployment identity, and admin access mode visibility
 - approval queue visibility across client ledgers
 - agent registry visibility with read/write scope policy
 - model routing
@@ -64,6 +65,7 @@ The admin console is the operational control plane for:
 
 This console is part of the product operating system.
 It is not a temporary debug panel and should be documented and designed as a first-class surface.
+The current layout is split into a read-only operating surface first, followed by the write surfaces for active config.
 
 ### Progress Log Discipline
 
