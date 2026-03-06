@@ -84,27 +84,34 @@ app.get('/v1/admin/config', requireAuth, requireAdmin, async (_req, res) => {
 app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res) => {
   try {
     const limit = 8;
-    const clientsSnap = await db
-      .collection('clients')
-      .select('display_name', 'email', 'account', 'demo_profile')
-      .get();
     const pendingRows = [];
     const queueClientIds = new Set();
     let hydratedAccountCount = 0;
+    let queueWarning = '';
 
-    for (const clientSnap of clientsSnap.docs) {
-      const clientData = clientSnap.data() ?? {};
-      if (clientData?.account?.hydrated === true || clientData?.demo_profile?.hydrated === true) {
-        hydratedAccountCount += 1;
-      }
-      const interactionsSnap = await clientInteractionsRef(clientSnap.id)
-        .where('status', '==', 'pending_approval')
-        .limit(limit)
+    try {
+      const clientsSnap = await db
+        .collection('clients')
+        .select('display_name', 'email', 'account', 'demo_profile')
         .get();
-      if (!interactionsSnap.empty) queueClientIds.add(clientSnap.id);
-      interactionsSnap.docs.forEach((interactionSnap) => {
-        pendingRows.push(serializeInteraction(interactionSnap));
-      });
+
+      for (const clientSnap of clientsSnap.docs) {
+        const clientData = clientSnap.data() ?? {};
+        if (clientData?.account?.hydrated === true || clientData?.demo_profile?.hydrated === true) {
+          hydratedAccountCount += 1;
+        }
+        const interactionsSnap = await clientInteractionsRef(clientSnap.id)
+          .where('status', '==', 'pending_approval')
+          .limit(limit)
+          .get();
+        if (!interactionsSnap.empty) queueClientIds.add(clientSnap.id);
+        interactionsSnap.docs.forEach((interactionSnap) => {
+          pendingRows.push(serializeInteraction(interactionSnap));
+        });
+      }
+    } catch (error) {
+      queueWarning = sanitizeError(error, 'admin_queue_unavailable');
+      console.warn('admin_system_overview_queue_unavailable', queueWarning);
     }
 
     pendingRows.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
@@ -134,6 +141,7 @@ app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res
         client_count: queueClientIds.size,
         hydrated_account_count: hydratedAccountCount,
         items: pendingRows.slice(0, limit),
+        warning: queueWarning,
       },
       agents: {
         count: AGENT_REGISTRY.length,

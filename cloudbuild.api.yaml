@@ -1,0 +1,36 @@
+substitutions:
+  _SERVICE_NAME: career-concierge-api
+  _REGION: europe-west1
+  _IMAGE_NAME: europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/career-concierge-api
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - api/Dockerfile
+      - -t
+      - ${_IMAGE_NAME}:$COMMIT_SHA
+      - ./api
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_IMAGE_NAME}:$COMMIT_SHA
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --project
+      - $PROJECT_ID
+      - --region
+      - ${_REGION}
+      - --image
+      - ${_IMAGE_NAME}:$COMMIT_SHA
+      - --allow-unauthenticated
+
+images:
+  - ${_IMAGE_NAME}:$COMMIT_SHA

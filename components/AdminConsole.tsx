@@ -618,6 +618,11 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                         </div>
                       </div>
                       <div className="grid grid-cols-1 gap-3">
+                        {overview.queue.warning && (
+                          <div className="border border-amber-500/30 bg-amber-500/8 p-4 text-sm text-amber-800">
+                            Queue visibility is partially unavailable: {overview.queue.warning}
+                          </div>
+                        )}
                         {overview.queue.items.length === 0 ? (
                           <div className="border border-black/10 bg-[#f8fbfb] p-4 text-sm text-gray-600">
                             No pending approvals across client ledgers.

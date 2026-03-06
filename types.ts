@@ -448,6 +448,7 @@ export interface AdminSystemOverview {
     client_count: number;
     hydrated_account_count: number;
     items: InteractionLog[];
+    warning?: string;
   };
   agents: {
     count: number;

@@ -106,6 +106,7 @@ Deploy API:
 
 - `bash scripts/deploy_api_cloudrun.sh ssai-f6191 europe-west1 .context/deploy/ssai-f6191.api.yaml`
 - for Cloud Run repo-connected deploys, point `career-concierge-api` at `api/Dockerfile` or use `api` as the buildpack context directory
+- for Cloud Build triggers, use [cloudbuild.api.yaml](/Users/lenoxparis/conductor/workspaces/Signal-Atlas/atlanta/cloudbuild.api.yaml) so the trigger builds, pushes, and deploys the API service instead of only building an image
 
 Deploy UI:
 

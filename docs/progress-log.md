@@ -201,6 +201,8 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Added `api/Dockerfile` so `career-concierge-api` can be pointed at a concrete API-specific build artifact in repository deployments.
 - Documented the operator check: if `/v1/public/config` returns HTML with an `nginx` banner, the API service is deploying the UI container rather than the Express backend.
 - Moved backend brand-config runtime imports under `api/` so the repo-based API build context can start successfully on Cloud Run.
+- Relaxed `/v1/admin/system-overview` so queue telemetry permission failures no longer block the full admin console.
+- Added `cloudbuild.api.yaml` so a repository trigger can build, push, and deploy the API service instead of stopping at image build.
 
 ### Backlog Status Snapshot
 

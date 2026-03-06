@@ -43,6 +43,13 @@ Failure signature:
 - browser calls from the suite fail with CORS because the service is actually serving the UI container
 - Cloud Run revision fails startup with `ERR_MODULE_NOT_FOUND` for files imported from outside the `api/` subtree
 
+Admin overview behavior:
+
+- `/v1/admin/system-overview` now degrades gracefully if queue telemetry reads are denied
+- config editing remains available, while the UI shows a queue visibility warning instead of failing the full modal
+
+If using a standalone Cloud Build trigger instead of Cloud Run's repo-connected deploy, use `cloudbuild.api.yaml`. A single raw `docker build` trigger is insufficient because it does not roll the new image onto the `career-concierge-api` service.
+
 ## Deploy UI
 
 ```bash
