@@ -91,6 +91,8 @@ It is not a temporary debug panel and should be documented and designed as a fir
 The current layout is split into a read-only operating surface first, followed by the write surfaces for active config.
 Brand Studio is now part of that write surface and is the canonical place to tune the editorial grid shell.
 The next planned admin expansion is a dedicated orchestration operating section for staff registry visibility, run monitoring, handoff-policy control, approvals, and evaluation state.
+For demo/operator continuity, admin access now accepts Firebase `admin` or `staff` claims, allowlisted `ADMIN_EMAILS`, and a baked-in operator fallback for `operator@thirdsignal.ai` plus `gws@conciergecareerservices.com`.
+The suite header now shows a visible `Admin Locked` state instead of silently hiding the control when the current account fails the admin check.
 
 ### Progress Log Discipline
 

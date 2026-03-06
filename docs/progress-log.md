@@ -178,6 +178,14 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - recommended staffing posture
   - compact sprint blocks and internal-scroll validation panes
 
+### Delivery: Admin Access Fallback + Visible Locked State
+
+- Added a backend operator-email fallback so the known operator accounts can still reach admin when environment allowlists drift:
+  - `operator@thirdsignal.ai`
+  - `gws@conciergecareerservices.com`
+- Replaced the silent hidden-admin state in the suite header with a visible `Admin Locked` state when the current user fails the admin check.
+- This makes auth failures obvious in the deployed product instead of looking like missing code.
+
 ### Backlog Status Snapshot
 
 | Epic | Status | Notes |

@@ -381,12 +381,23 @@ const App: React.FC = () => {
         <div className="flex items-center gap-4">
           <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{user.email ?? user.uid}</span>
           <button
-            onClick={() => setAdminOpen(true)}
-            className={`text-[10px] uppercase tracking-widest border border-black/15 px-3 py-2 hover-border-brand-teal hover-text-brand-teal transition-colors bg-white/60 ${
-              isAdminUser ? '' : 'hidden'
+            onClick={() => {
+              if (!isAdminUser) return;
+              setAdminOpen(true);
+            }}
+            disabled={!isAdminUser}
+            title={
+              isAdminUser
+                ? 'Open admin console'
+                : 'Admin access is locked for this account. Access requires admin/staff claims or an allowlisted email.'
+            }
+            className={`text-[10px] uppercase tracking-widest border px-3 py-2 transition-colors ${
+              isAdminUser
+                ? 'border-black/15 bg-white/60 hover-border-brand-teal hover-text-brand-teal'
+                : 'border-amber-500/35 bg-amber-50 text-amber-700 cursor-not-allowed'
             }`}
           >
-            Admin
+            {isAdminUser ? 'Admin' : 'Admin Locked'}
           </button>
           <button
             onClick={() => logout()}

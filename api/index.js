@@ -221,9 +221,10 @@ const toDisplayName = (user) => {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
 };
+const defaultAdminEmails = ['operator@thirdsignal.ai', 'gws@conciergecareerservices.com'];
+
 const adminEmailSet = new Set(
-  (process.env.ADMIN_EMAILS || '')
-    .split(',')
+  [...defaultAdminEmails, ...(process.env.ADMIN_EMAILS || '').split(',')]
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
 );

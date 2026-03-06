@@ -116,6 +116,22 @@ Current default admin list in the deploy template includes:
 - `lenox@thirdsignal.ai`
 - `iamjimbutler@gmail.com`
 
+The API now also includes a baked-in operator fallback so these accounts still pass admin checks when environment allowlists drift:
+
+- `operator@thirdsignal.ai`
+- `gws@conciergecareerservices.com`
+
+Authorization paths are now:
+
+- Firebase custom claims: `admin` or `staff`
+- `ADMIN_EMAILS` allowlist from the API environment
+- baked-in operator fallback emails above
+
+UI behavior:
+
+- allowed accounts see the `Admin` button normally
+- disallowed accounts now see `Admin Locked` in the header rather than no admin affordance at all
+
 ## CJS Rail + Ledger API Checks
 
 After API deploy, validate these authenticated routes:
