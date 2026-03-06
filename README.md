@@ -30,6 +30,7 @@ Setup:
    - `GEMINI_API_KEY`
    - `VITE_CONCIERGE_API_URL`
    - `VITE_FIREBASE_*`
+   - For production Cloud Run sibling deployments, leave `VITE_CONCIERGE_API_URL` unset unless the UI must call a non-sibling API.
 4. Start the app:
    - `npm run dev`
 

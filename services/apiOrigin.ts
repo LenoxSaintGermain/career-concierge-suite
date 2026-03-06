@@ -26,6 +26,21 @@ const deriveCloudRunSiblingOrigin = () => {
 };
 
 export const resolveApiOrigin = () => {
-  const value = (configuredBaseUrl || deriveCloudRunSiblingOrigin() || canonicalFallbackBaseUrl).trim();
+  const derivedSiblingOrigin = deriveCloudRunSiblingOrigin();
+  const normalizedConfiguredBaseUrl = configuredBaseUrl?.trim();
+
+  // Treat the canonical production URL as a fallback so alternate Cloud Run
+  // environments can still auto-target their sibling API when the repo env is stale.
+  const preferSiblingOrigin =
+    !!derivedSiblingOrigin &&
+    (!!normalizedConfiguredBaseUrl
+      ? normalizedConfiguredBaseUrl === canonicalFallbackBaseUrl
+      : true);
+
+  const value = (
+    (preferSiblingOrigin ? derivedSiblingOrigin : normalizedConfiguredBaseUrl) ||
+    derivedSiblingOrigin ||
+    canonicalFallbackBaseUrl
+  ).trim();
   return trimTrailingSlash(value);
 };

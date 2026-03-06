@@ -14,7 +14,7 @@
 
 The frontend now resolves API origin in this order:
 
-1. `VITE_CONCIERGE_API_URL` if set
+1. explicit `VITE_CONCIERGE_API_URL` when it points at a non-canonical target
 2. sibling Cloud Run API host derived from the current UI host
 3. canonical fallback API URL
 
@@ -22,6 +22,7 @@ Operational implication:
 
 - if UI and API are deployed as sibling `career-concierge-suite-*` and `career-concierge-api-*` services in the same Cloud Run environment, the UI should reach the matching API automatically
 - you only need to set `VITE_CONCIERGE_API_URL` when intentionally pointing the UI at a non-sibling API
+- `.env.production` should normally leave `VITE_CONCIERGE_API_URL` unset so repo-based Cloud Run builds do not pin alternate environments to the canonical `ssai-f6191` API host
 
 ## Deploy API
 

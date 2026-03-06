@@ -141,11 +141,11 @@ The Express API under `api/` handles:
 
 The frontend now resolves its API origin in this order:
 
-1. explicit `VITE_CONCIERGE_API_URL`
+1. explicit `VITE_CONCIERGE_API_URL` when it points at a non-canonical target
 2. sibling Cloud Run API host derived from the current `career-concierge-suite-*` URL
 3. canonical fallback API URL
 
-This prevents repo-connected UI deployments in alternate Cloud Run environments from accidentally calling the wrong API service by default.
+This prevents repo-connected UI deployments in alternate Cloud Run environments from accidentally calling the wrong API service by default. `.env.production` intentionally leaves `VITE_CONCIERGE_API_URL` unset so sibling auto-discovery can work across environments.
 
 ### Data Model
 

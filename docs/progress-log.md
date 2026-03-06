@@ -190,9 +190,10 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 
 - Added a shared frontend API-origin resolver used by admin, suite, CJS, Episodes, live, and voice services.
 - Resolution order is now:
-  - `VITE_CONCIERGE_API_URL`
+  - `VITE_CONCIERGE_API_URL` when it targets a non-canonical API
   - sibling Cloud Run API host inferred from the current UI host
   - canonical fallback API URL
+- `.env.production` now leaves `VITE_CONCIERGE_API_URL` unset so repo-based UI builds do not pin alternate Cloud Run environments to the canonical API host.
 - This fixes the case where a repo-connected UI deploy in a secondary Cloud Run environment was still calling the hard-coded canonical API service by default.
 
 ### Backlog Status Snapshot
