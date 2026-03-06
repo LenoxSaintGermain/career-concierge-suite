@@ -1,6 +1,6 @@
 # Progress Log
 
-This log tracks implementation progress against the V1 MVP backlog in `docs/mvp/Career_Concierge_V1_MVP_Spec_Complete.md`.
+This log tracks implementation progress against the V1 MVP backlog plus the queued enhancement specs under `docs/mvp/`.
 Detailed story-level status and pass-by-pass execution entries now live in `docs/backlog-ledger.md`.
 Update both files in each delivery pass so roadmap visuals and implementation status stay aligned.
 
@@ -75,19 +75,129 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - richer interaction metadata (`client_uid`, `client_email`, `client_name`, `source`, `decided_by`)
 - Tightened mobile layout on `Assets` and `ConciergeJobSearch` surfaces so core actions stack cleanly on narrow viewports.
 
+### Delivery: MyConcierge + Persona-Routed Episodes + Free-Tier Workflow Sync
+
+- Added `MyConcierge` as a first-class paid-suite module with conversational, intent-aware guidance and direct handoff into Profile, Gaps, Plan, and Episodes.
+- Updated suite routing and visibility to align more closely with the Lucidchart/user workflows:
+  - intent-based module order now elevates `MyConcierge` for direction-seekers
+  - roadmap is now treated as an operator/admin surface instead of a client-facing tile
+  - free-tier users now only see Intake, Episodes, and AI Readiness
+- Shipped episode behavior upgrades:
+  - persona-derived topic routing into `/v1/binge/episode`
+  - narrated delivery trigger on the Episodes surface for auditory-learning personas
+  - fixed 3-episode starter playlist for free-tier users
+- Tightened CJS behavior by intent so current-role users see passive/internal-mobility framing, target-role users see promotion-first strategy, and direction-seekers see exploratory positioning rather than a generic search rail.
+- Updated the roadmap/task docs and runbooks to match the shipped workflow model.
+
+### Delivery: Editorial Grid Brand Studio + Lucid Overlay Sync
+
+- Added a shared `brand` configuration surface spanning:
+  - identity
+  - color system
+  - editorial hierarchy
+  - shell copy
+  - module eyebrow/title/overlay copy
+  - display toggles
+- Exposed a new `Brand Studio` section inside Admin with ordered controls and a live preview of the header, overlay rail, and editorial grid.
+- Extended public config so the suite shell now consumes saved branding instead of relying on hard-coded POC shell copy.
+- Updated the shell to reflect the Lucidchart-style overlay treatment:
+  - light editorial grid on suite home
+  - dark left-rail overlay treatment in module modal
+  - official workflow labels as tile eyebrows
+  - optional URL-driven logo propagation into the header and prologue
+- Added a dedicated MVP spec for the brand studio and workflow-label mapping.
+
+### Planning: Client-Facing Cinematic Episodes Player
+
+- Defined the next Episodes enhancement as a queued design/product epic.
+- Captured the required separation between:
+  - client-facing cinematic learning player
+  - admin/operator/investor BTS surface
+- Added a dedicated spec covering:
+  - cinematic vertical player structure
+  - editorial desktop/mobile layouts
+  - context overlays and challenge cards
+  - brand-system compliance rules for future agent work
+
+### Planning: Content Director Media Orchestration Pipeline
+
+- Defined a queued media-orchestration epic for reusable versus bespoke episode media.
+- Locked the architecture direction:
+  - Content Director agent plans learning arcs and episode manifests
+  - library-first retrieval happens before new generation
+  - binary media should live in Cloud Storage
+  - metadata, lineage, tags, and job state should live in Firestore
+  - long-running generation should move through a dedicated media-pipeline service boundary
+  - Admin must expose an end-to-end operating section for pipeline monitoring, retries, approvals, library management, and configuration
+- Added a dedicated spec for:
+  - the planning trigger point after intake
+  - taxonomy/tagging rules
+  - reusable-kit vs bespoke thresholds
+  - operator lineage visibility versus client-final output
+
+### Planning: Agentic Staff Operating Model
+
+- Reviewed the newly added research notes and rejected a direct import of the alternate stack assumptions:
+  - no ClawWork runtime migration
+  - no Supabase re-platform
+  - no WhatsApp- or Slack-native client journey requirement for MVP
+  - no PWA install hard-gate as a launch dependency
+- Published a canonical staffing spec aligned to the live product direction:
+  - one Chief of Staff orchestrator
+  - a constrained specialist roster rather than many loosely defined agents
+  - Firestore-grounded memory and evidence before optional vector infrastructure
+  - explicit separation between agents, services, and human operators
+  - a dedicated Admin orchestration operating section distinct from Brand Studio
+- Mapped the staffing work into a new queued roadmap epic and task so future dev work has one source of truth for roles, handoffs, approvals, and stack boundaries.
+
+### Audit: Jim + Lucid Stakeholder Baseline Check
+
+- Ran a final baseline audit against:
+  - `docs/mvp/lucidchart_analysis.md`
+  - `docs/mvp/Jim's Notes - Key Requirements Extracted.md`
+- Published an operator-facing execution charter with:
+  - coverage confidence scoring
+  - gap analysis on roadmap versus live implementation
+  - recommended agent deployment count
+  - shared notebook / orchestration ledger protocol for cross-role coordination
+- Audit outcome:
+  - roadmap/spec coverage is strong
+  - live implementation is still gated by Episodes V2, media operations, staffing control plane, and onboarding/admin polish
+  - only two material baseline gaps remain under-modeled: public AI concierge onboarding and concierge scheduling/onboarding workflow
+
+### Delivery: Compact Roadmap Charter Surface
+
+- Refactored the roadmap modal away from one long backlog scroll into a denser operator layout with three modes:
+  - `Plan`
+  - `Charter`
+  - `Validation`
+- Added live confidence scoring derived from epic/task state so the admin/operator view updates as delivery progresses.
+- Brought the execution charter into the roadmap surface directly:
+  - lane-level baseline summaries
+  - highest-risk checkpoint callouts
+  - recommended staffing posture
+  - compact sprint blocks and internal-scroll validation panes
+
 ### Backlog Status Snapshot
 
 | Epic | Status | Notes |
 | :--- | :--- | :--- |
 | E01 Smart Start Intake & Professional DNA | Done | Intake + suite generation flow is operational. |
 | E02 Agentic Framework & Orchestration | In Progress | Scoped policy enforcement and global queue shipped; outbound-action approval coverage still incomplete. |
-| E03 Binge Learning Episode Generation | In Progress | Episode generation works; continued polish and orchestration integration remain. |
-| E04 Core Suite Artifacts & UI | In Progress | Core views ship; mobile polish and remaining UX refinements still active. |
+| E03 Binge Learning Episode Generation | In Progress | Persona routing and narrated delivery are shipped; persona QA and polish remain. |
+| E04 Core Suite Artifacts & UI | In Progress | Core views ship, including MyConcierge; mobile polish and persona QA remain active. |
 | E05 Admin Console & System Ops | In Progress | Core config controls ship; roadmap/admin experience now extended. |
 | E06 ConciergeJobSearch Execution Rail | Done | Upload, resume review, and strategy generation are shipped in API + UI. |
+| E07 Editorial Grid Brand OS | In Progress | Shared brand config and Brand Studio shipped; deeper artifact-body copy harmonization is still open. |
+| E08 Client-Facing Cinematic Episodes Player | Queued | Spec and backlog are now defined; implementation has not started. |
+| E09 Content Director Media Pipeline | Queued | Spec and backlog are now defined; implementation has not started. |
+| E10 Agentic Staff Operating Model | Queued | Canonical staffing spec and roadmap now exist; implementation has not started. |
 
 ### Next Implementation Priority
 
-1. Run persona QA checklist in `docs/mvp/demo_validation_checklist.md` and capture evidence.
-2. Finish `MTL-07` with real device regression checks on new CJS and Assets mobile surfaces.
-3. Extend `E02-S04` beyond ledger approvals into broader operator actions if those actions are introduced.
+1. Run persona QA checklist in `docs/mvp/demo_validation_checklist.md` and capture evidence for TU1/TU3/TU4 against the newly shipped flows.
+2. Validate `MTL-09` with brand edits, logo injection, and Lucid overlay parity checks across suite home and module overlays.
+3. Finish `MTL-07` with real device regression checks on MyConcierge, Episodes, and free-tier surfaces.
+4. Start `MTL-10` so Episodes moves from BTS/operator framing to the final client-facing cinematic player.
+5. Start `MTL-11` so episode media planning and generation move to a library-first pipeline with clear storage/service boundaries.
+6. Start `MTL-12` so the staff roster, handoff graph, admin operating section, and evidence model are explicit before orchestration scope expands.

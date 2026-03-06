@@ -2,6 +2,13 @@ import { auth } from './firebase';
 import {
   AdminSystemOverview,
   AppConfig,
+  BrandBodyDensity,
+  BrandConfig,
+  BrandHeaderScale,
+  BrandModuleCopy,
+  BrandOverlayStyle,
+  BrandSubheaderScale,
+  BrandTileEmphasis,
   ClientIntent,
   CuratedMediaItem,
   FocusPreference,
@@ -13,6 +20,15 @@ import {
   PublicConfig,
   SuiteModuleId,
 } from '../types';
+import {
+  BRAND_BODY_DENSITIES,
+  BRAND_HEADER_SCALES,
+  BRAND_MODULE_IDS,
+  BRAND_OVERLAY_STYLES,
+  BRAND_SUBHEADER_SCALES,
+  BRAND_TILE_EMPHASES,
+  DEFAULT_BRAND_CONFIG,
+} from '../config/brandSystem.js';
 
 const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
 const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
@@ -25,18 +41,7 @@ const resolveBaseUrl = () => {
 export const getAdminApiOrigin = () => resolveBaseUrl();
 
 const MODULE_IDS: SuiteModuleId[] = [
-  'intake',
-  'episodes',
-  'brief',
-  'suite_distilled',
-  'profile',
-  'ai_profile',
-  'gaps',
-  'readiness',
-  'cjs_execution',
-  'plan',
-  'assets',
-  'roadmap',
+  ...BRAND_MODULE_IDS,
 ];
 const SURFACE_SET = new Set<MediaJourneySurface>([...MODULE_IDS, 'suite_home', 'pre_intake', 'post_intake']);
 const PLATFORM_SET = new Set<MediaPlatform>([
@@ -56,6 +61,11 @@ const AUDIENCE_SET = new Set<MediaAudience>(['all', 'new_clients', 'active_clien
 const INTENT_SET = new Set<ClientIntent>(['current_role', 'target_role', 'not_sure']);
 const FOCUS_SET = new Set<FocusPreference>(['job_search', 'skills', 'leadership']);
 const PACE_SET = new Set<PacePreference>(['straight', 'standard', 'story']);
+const BRAND_HEADER_SCALE_SET = new Set<BrandHeaderScale>(BRAND_HEADER_SCALES as BrandHeaderScale[]);
+const BRAND_SUBHEADER_SCALE_SET = new Set<BrandSubheaderScale>(BRAND_SUBHEADER_SCALES as BrandSubheaderScale[]);
+const BRAND_BODY_DENSITY_SET = new Set<BrandBodyDensity>(BRAND_BODY_DENSITIES as BrandBodyDensity[]);
+const BRAND_TILE_EMPHASIS_SET = new Set<BrandTileEmphasis>(BRAND_TILE_EMPHASES as BrandTileEmphasis[]);
+const BRAND_OVERLAY_STYLE_SET = new Set<BrandOverlayStyle>(BRAND_OVERLAY_STYLES as BrandOverlayStyle[]);
 
 const cleanList = (input: unknown): string[] =>
   Array.isArray(input)
@@ -66,6 +76,171 @@ const toMediaId = (value: unknown, index: number) => {
   const raw = String(value ?? '').trim();
   if (raw) return raw;
   return `media-${index + 1}`;
+};
+
+const normalizeHexColor = (value: unknown, fallback: string) => {
+  const raw = String(value ?? '').trim();
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw.toUpperCase() : fallback;
+};
+
+const normalizeBrandModuleCopy = (moduleId: SuiteModuleId, input: unknown): BrandModuleCopy => {
+  const source = input && typeof input === 'object' ? (input as any) : {};
+  const fallback = DEFAULT_BRAND_CONFIG.modules[moduleId];
+  return {
+    eyebrow: String(source?.eyebrow ?? fallback.eyebrow).trim() || fallback.eyebrow,
+    title: String(source?.title ?? fallback.title).trim() || fallback.title,
+    description: String(source?.description ?? fallback.description).trim() || fallback.description,
+    detail_title: String(source?.detail_title ?? fallback.detail_title).trim() || fallback.detail_title,
+    detail_quote: String(source?.detail_quote ?? fallback.detail_quote).trim() || fallback.detail_quote,
+  };
+};
+
+const normalizeBrandConfig = (input: unknown): BrandConfig => {
+  const source = input && typeof input === 'object' ? (input as any) : {};
+  const identity = source?.identity && typeof source.identity === 'object' ? source.identity : {};
+  const colors = source?.colors && typeof source.colors === 'object' ? source.colors : {};
+  const hierarchy = source?.hierarchy && typeof source.hierarchy === 'object' ? source.hierarchy : {};
+  const toggles = source?.toggles && typeof source.toggles === 'object' ? source.toggles : {};
+  const copy = source?.copy && typeof source.copy === 'object' ? source.copy : {};
+  const modules = source?.modules && typeof source.modules === 'object' ? source.modules : {};
+
+  const normalizedModules = MODULE_IDS.reduce((acc, moduleId) => {
+    acc[moduleId] = normalizeBrandModuleCopy(moduleId, modules[moduleId]);
+    return acc;
+  }, {} as Record<SuiteModuleId, BrandModuleCopy>);
+
+  return {
+    identity: {
+      company_name:
+        String(identity?.company_name ?? DEFAULT_BRAND_CONFIG.identity.company_name).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.company_name,
+      suite_name:
+        String(identity?.suite_name ?? DEFAULT_BRAND_CONFIG.identity.suite_name).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.suite_name,
+      product_name:
+        String(identity?.product_name ?? DEFAULT_BRAND_CONFIG.identity.product_name).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.product_name,
+      logo_url: String(identity?.logo_url ?? DEFAULT_BRAND_CONFIG.identity.logo_url).trim(),
+      logo_alt:
+        String(identity?.logo_alt ?? DEFAULT_BRAND_CONFIG.identity.logo_alt).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.logo_alt,
+      header_context:
+        String(identity?.header_context ?? DEFAULT_BRAND_CONFIG.identity.header_context).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.header_context,
+    },
+    colors: {
+      accent: normalizeHexColor(colors?.accent, DEFAULT_BRAND_CONFIG.colors.accent),
+      accent_dark: normalizeHexColor(colors?.accent_dark, DEFAULT_BRAND_CONFIG.colors.accent_dark),
+      ink: normalizeHexColor(colors?.ink, DEFAULT_BRAND_CONFIG.colors.ink),
+      page_background: normalizeHexColor(colors?.page_background, DEFAULT_BRAND_CONFIG.colors.page_background),
+      surface_background: normalizeHexColor(
+        colors?.surface_background,
+        DEFAULT_BRAND_CONFIG.colors.surface_background
+      ),
+      grid_line: normalizeHexColor(colors?.grid_line, DEFAULT_BRAND_CONFIG.colors.grid_line),
+      overlay_background: normalizeHexColor(
+        colors?.overlay_background,
+        DEFAULT_BRAND_CONFIG.colors.overlay_background
+      ),
+      overlay_text: normalizeHexColor(colors?.overlay_text, DEFAULT_BRAND_CONFIG.colors.overlay_text),
+    },
+    hierarchy: {
+      header_scale: BRAND_HEADER_SCALE_SET.has(hierarchy?.header_scale as BrandHeaderScale)
+        ? (hierarchy.header_scale as BrandHeaderScale)
+        : DEFAULT_BRAND_CONFIG.hierarchy.header_scale,
+      subheader_scale: BRAND_SUBHEADER_SCALE_SET.has(hierarchy?.subheader_scale as BrandSubheaderScale)
+        ? (hierarchy.subheader_scale as BrandSubheaderScale)
+        : DEFAULT_BRAND_CONFIG.hierarchy.subheader_scale,
+      body_density: BRAND_BODY_DENSITY_SET.has(hierarchy?.body_density as BrandBodyDensity)
+        ? (hierarchy.body_density as BrandBodyDensity)
+        : DEFAULT_BRAND_CONFIG.hierarchy.body_density,
+      tile_emphasis: BRAND_TILE_EMPHASIS_SET.has(hierarchy?.tile_emphasis as BrandTileEmphasis)
+        ? (hierarchy.tile_emphasis as BrandTileEmphasis)
+        : DEFAULT_BRAND_CONFIG.hierarchy.tile_emphasis,
+      overlay_style: BRAND_OVERLAY_STYLE_SET.has(hierarchy?.overlay_style as BrandOverlayStyle)
+        ? (hierarchy.overlay_style as BrandOverlayStyle)
+        : DEFAULT_BRAND_CONFIG.hierarchy.overlay_style,
+    },
+    toggles: {
+      show_logo_mark:
+        typeof toggles?.show_logo_mark === 'boolean'
+          ? toggles.show_logo_mark
+          : DEFAULT_BRAND_CONFIG.toggles.show_logo_mark,
+      show_suite_kicker:
+        typeof toggles?.show_suite_kicker === 'boolean'
+          ? toggles.show_suite_kicker
+          : DEFAULT_BRAND_CONFIG.toggles.show_suite_kicker,
+      show_module_indices:
+        typeof toggles?.show_module_indices === 'boolean'
+          ? toggles.show_module_indices
+          : DEFAULT_BRAND_CONFIG.toggles.show_module_indices,
+      show_module_status:
+        typeof toggles?.show_module_status === 'boolean'
+          ? toggles.show_module_status
+          : DEFAULT_BRAND_CONFIG.toggles.show_module_status,
+      show_tile_descriptions:
+        typeof toggles?.show_tile_descriptions === 'boolean'
+          ? toggles.show_tile_descriptions
+          : DEFAULT_BRAND_CONFIG.toggles.show_tile_descriptions,
+      show_detail_quotes:
+        typeof toggles?.show_detail_quotes === 'boolean'
+          ? toggles.show_detail_quotes
+          : DEFAULT_BRAND_CONFIG.toggles.show_detail_quotes,
+      show_grid_glow:
+        typeof toggles?.show_grid_glow === 'boolean'
+          ? toggles.show_grid_glow
+          : DEFAULT_BRAND_CONFIG.toggles.show_grid_glow,
+      show_home_callout:
+        typeof toggles?.show_home_callout === 'boolean'
+          ? toggles.show_home_callout
+          : DEFAULT_BRAND_CONFIG.toggles.show_home_callout,
+    },
+    copy: {
+      prologue_quote:
+        String(copy?.prologue_quote ?? DEFAULT_BRAND_CONFIG.copy.prologue_quote).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.prologue_quote,
+      prologue_description:
+        String(copy?.prologue_description ?? DEFAULT_BRAND_CONFIG.copy.prologue_description).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.prologue_description,
+      prologue_enter_label:
+        String(copy?.prologue_enter_label ?? DEFAULT_BRAND_CONFIG.copy.prologue_enter_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.prologue_enter_label,
+      home_kicker:
+        String(copy?.home_kicker ?? DEFAULT_BRAND_CONFIG.copy.home_kicker).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_kicker,
+      home_title:
+        String(copy?.home_title ?? DEFAULT_BRAND_CONFIG.copy.home_title).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_title,
+      home_description:
+        String(copy?.home_description ?? DEFAULT_BRAND_CONFIG.copy.home_description).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_description,
+      home_callout_label:
+        String(copy?.home_callout_label ?? DEFAULT_BRAND_CONFIG.copy.home_callout_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_callout_label,
+      home_callout_value:
+        String(copy?.home_callout_value ?? DEFAULT_BRAND_CONFIG.copy.home_callout_value).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_callout_value,
+      free_tier_notice:
+        String(copy?.free_tier_notice ?? DEFAULT_BRAND_CONFIG.copy.free_tier_notice).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.free_tier_notice,
+      module_ready_label:
+        String(copy?.module_ready_label ?? DEFAULT_BRAND_CONFIG.copy.module_ready_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.module_ready_label,
+      module_locked_label:
+        String(copy?.module_locked_label ?? DEFAULT_BRAND_CONFIG.copy.module_locked_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.module_locked_label,
+      mobile_focus_hint:
+        String(copy?.mobile_focus_hint ?? DEFAULT_BRAND_CONFIG.copy.mobile_focus_hint).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.mobile_focus_hint,
+      modal_meta_label:
+        String(copy?.modal_meta_label ?? DEFAULT_BRAND_CONFIG.copy.modal_meta_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.modal_meta_label,
+      modal_account_label:
+        String(copy?.modal_account_label ?? DEFAULT_BRAND_CONFIG.copy.modal_account_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.modal_account_label,
+    },
+    modules: normalizedModules,
+  };
 };
 
 const normalizeCuratedMediaItem = (input: unknown, index: number): CuratedMediaItem => {
@@ -137,6 +312,7 @@ const normalizeAdminConfig = (input: any): AppConfig => {
       show_prologue: Boolean(source?.ui?.show_prologue ?? true),
       episodes_enabled: Boolean(source?.ui?.episodes_enabled ?? true),
     },
+    brand: normalizeBrandConfig(source?.brand),
     operations: {
       cjs_enabled: Boolean(source?.operations?.cjs_enabled ?? true),
       onboarding_email_enabled: Boolean(source?.operations?.onboarding_email_enabled ?? false),
@@ -197,6 +373,7 @@ export const fetchPublicConfig = async (): Promise<PublicConfig> => {
       show_prologue: Boolean(source?.ui?.show_prologue ?? true),
       episodes_enabled: Boolean(source?.ui?.episodes_enabled ?? true),
     },
+    brand: normalizeBrandConfig(source?.brand),
     operations: {
       cjs_enabled: Boolean(source?.operations?.cjs_enabled ?? true),
     },

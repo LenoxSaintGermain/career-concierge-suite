@@ -7,6 +7,7 @@ export type SuiteModuleId =
   | 'ai_profile'
   | 'gaps'
   | 'readiness'
+  | 'my_concierge'
   | 'cjs_execution'
   | 'plan'
   | 'assets'
@@ -293,6 +294,75 @@ export interface CuratedMediaLibraryResponse {
   items: ResolvedCuratedMediaItem[];
 }
 
+export type BrandHeaderScale = 'compact' | 'standard' | 'hero';
+export type BrandSubheaderScale = 'tight' | 'standard' | 'airy';
+export type BrandBodyDensity = 'tight' | 'standard' | 'relaxed';
+export type BrandTileEmphasis = 'index' | 'balanced' | 'title';
+export type BrandOverlayStyle = 'editorial' | 'minimal' | 'cinematic';
+
+export interface BrandModuleCopy {
+  eyebrow: string;
+  title: string;
+  description: string;
+  detail_title: string;
+  detail_quote: string;
+}
+
+export interface BrandConfig {
+  identity: {
+    company_name: string;
+    suite_name: string;
+    product_name: string;
+    logo_url: string;
+    logo_alt: string;
+    header_context: string;
+  };
+  colors: {
+    accent: string;
+    accent_dark: string;
+    ink: string;
+    page_background: string;
+    surface_background: string;
+    grid_line: string;
+    overlay_background: string;
+    overlay_text: string;
+  };
+  hierarchy: {
+    header_scale: BrandHeaderScale;
+    subheader_scale: BrandSubheaderScale;
+    body_density: BrandBodyDensity;
+    tile_emphasis: BrandTileEmphasis;
+    overlay_style: BrandOverlayStyle;
+  };
+  toggles: {
+    show_logo_mark: boolean;
+    show_suite_kicker: boolean;
+    show_module_indices: boolean;
+    show_module_status: boolean;
+    show_tile_descriptions: boolean;
+    show_detail_quotes: boolean;
+    show_grid_glow: boolean;
+    show_home_callout: boolean;
+  };
+  copy: {
+    prologue_quote: string;
+    prologue_description: string;
+    prologue_enter_label: string;
+    home_kicker: string;
+    home_title: string;
+    home_description: string;
+    home_callout_label: string;
+    home_callout_value: string;
+    free_tier_notice: string;
+    module_ready_label: string;
+    module_locked_label: string;
+    mobile_focus_hint: string;
+    modal_meta_label: string;
+    modal_account_label: string;
+  };
+  modules: Record<SuiteModuleId, BrandModuleCopy>;
+}
+
 export interface AppConfig {
   generation: {
     suite_model: string;
@@ -311,6 +381,7 @@ export interface AppConfig {
     show_prologue: boolean;
     episodes_enabled: boolean;
   };
+  brand: BrandConfig;
   operations: {
     cjs_enabled: boolean;
     onboarding_email_enabled: boolean;
@@ -354,6 +425,7 @@ export interface AppConfig {
 
 export interface PublicConfig {
   ui: AppConfig['ui'];
+  brand: AppConfig['brand'];
   operations: Pick<AppConfig['operations'], 'cjs_enabled'>;
 }
 

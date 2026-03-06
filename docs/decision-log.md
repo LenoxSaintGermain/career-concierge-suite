@@ -153,3 +153,28 @@ Implication:
 
 - admin approval endpoints cannot be keyed off `req.user.uid`
 - interaction ledger items must carry client identity metadata for queue handling
+
+## 2026-03-06
+
+### Agentic staff model stays on the current Firebase/GCP web stack
+
+Recent research introduced a larger agentic architecture proposal, but it assumes a different runtime, database, and channel model than the live product.
+Career Concierge OS will formalize its agentic staff model on the current stack rather than re-platforming the MVP.
+
+Implication:
+
+- continue with React + Express on Cloud Run + Firebase Auth + Firestore + Cloud Storage + Gemini
+- treat ClawWork, Supabase, WhatsApp-native delivery, Slack-native delivery, and PWA install hard-gates as deferred concepts
+- keep staffing governance additive to the current OS, not a parallel architecture
+
+### Agentic staff governance requires a dedicated control plane
+
+As the product adds more staff roles, hidden prompt logic is no longer sufficient.
+The admin console must grow into a true orchestration operating surface.
+
+Implication:
+
+- staff roles need explicit contracts
+- orchestration runs need auditability
+- approvals and escalations must remain linked to the originating role
+- the control plane is distinct from Brand Studio and from media-only controls

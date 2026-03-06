@@ -13,6 +13,15 @@ import {
   composeSuitePrompt,
   findToneViolations,
 } from './prompts/conciergeRom.js';
+import {
+  BRAND_BODY_DENSITIES,
+  BRAND_HEADER_SCALES,
+  BRAND_MODULE_IDS,
+  BRAND_OVERLAY_STYLES,
+  BRAND_SUBHEADER_SCALES,
+  BRAND_TILE_EMPHASES,
+  DEFAULT_BRAND_CONFIG,
+} from '../config/brandSystem.js';
 
 const app = express();
 
@@ -59,6 +68,7 @@ app.get('/v1/public/config', async (_req, res) => {
   return res.json({
     config: {
       ui: config.ui,
+      brand: config.brand,
       operations: {
         cjs_enabled: config.operations.cjs_enabled,
       },
@@ -238,6 +248,7 @@ const DEFAULT_APP_CONFIG = {
     show_prologue: true,
     episodes_enabled: true,
   },
+  brand: JSON.parse(JSON.stringify(DEFAULT_BRAND_CONFIG)),
   operations: {
     cjs_enabled: true,
     onboarding_email_enabled: false,
@@ -304,20 +315,7 @@ const normalizeSensitivity = (value, fallback) => {
   return fallback;
 };
 
-const MODULE_IDS = new Set([
-  'intake',
-  'episodes',
-  'brief',
-  'suite_distilled',
-  'profile',
-  'ai_profile',
-  'gaps',
-  'readiness',
-  'cjs_execution',
-  'plan',
-  'assets',
-  'roadmap',
-]);
+const MODULE_IDS = new Set(BRAND_MODULE_IDS);
 const JOURNEY_SURFACES = new Set(['suite_home', 'pre_intake', 'post_intake', ...MODULE_IDS]);
 const MEDIA_SOURCE_KINDS = new Set(['single', 'playlist']);
 const MEDIA_PLATFORMS = new Set([
@@ -336,6 +334,11 @@ const MEDIA_AUDIENCES = new Set(['all', 'new_clients', 'active_clients', 'admins
 const CLIENT_INTENT_SET = new Set(['current_role', 'target_role', 'not_sure']);
 const FOCUS_PREF_SET = new Set(['job_search', 'skills', 'leadership']);
 const PACE_PREF_SET = new Set(['straight', 'standard', 'story']);
+const BRAND_HEADER_SCALE_SET = new Set(BRAND_HEADER_SCALES);
+const BRAND_SUBHEADER_SCALE_SET = new Set(BRAND_SUBHEADER_SCALES);
+const BRAND_BODY_DENSITY_SET = new Set(BRAND_BODY_DENSITIES);
+const BRAND_TILE_EMPHASIS_SET = new Set(BRAND_TILE_EMPHASES);
+const BRAND_OVERLAY_STYLE_SET = new Set(BRAND_OVERLAY_STYLES);
 
 const toStringList = (value) =>
   Array.isArray(value)
@@ -343,6 +346,171 @@ const toStringList = (value) =>
         .map((entry) => String(entry ?? '').trim())
         .filter(Boolean)
     : [];
+
+const normalizeHexColor = (value, fallback) => {
+  const raw = String(value ?? '').trim();
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw.toUpperCase() : fallback;
+};
+
+const normalizeBrandModuleCopy = (moduleId, value) => {
+  const item = value && typeof value === 'object' ? value : {};
+  const fallback = DEFAULT_BRAND_CONFIG.modules[moduleId];
+  return {
+    eyebrow: String(item.eyebrow ?? fallback.eyebrow).trim() || fallback.eyebrow,
+    title: String(item.title ?? fallback.title).trim() || fallback.title,
+    description: String(item.description ?? fallback.description).trim() || fallback.description,
+    detail_title: String(item.detail_title ?? fallback.detail_title).trim() || fallback.detail_title,
+    detail_quote: String(item.detail_quote ?? fallback.detail_quote).trim() || fallback.detail_quote,
+  };
+};
+
+const normalizeBrandConfig = (value) => {
+  const source = value && typeof value === 'object' ? value : {};
+  const identity = source.identity && typeof source.identity === 'object' ? source.identity : {};
+  const colors = source.colors && typeof source.colors === 'object' ? source.colors : {};
+  const hierarchy = source.hierarchy && typeof source.hierarchy === 'object' ? source.hierarchy : {};
+  const toggles = source.toggles && typeof source.toggles === 'object' ? source.toggles : {};
+  const copy = source.copy && typeof source.copy === 'object' ? source.copy : {};
+  const modules = source.modules && typeof source.modules === 'object' ? source.modules : {};
+
+  const normalizedModules = {};
+  BRAND_MODULE_IDS.forEach((moduleId) => {
+    normalizedModules[moduleId] = normalizeBrandModuleCopy(moduleId, modules[moduleId]);
+  });
+
+  return {
+    identity: {
+      company_name:
+        String(identity.company_name ?? DEFAULT_BRAND_CONFIG.identity.company_name).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.company_name,
+      suite_name:
+        String(identity.suite_name ?? DEFAULT_BRAND_CONFIG.identity.suite_name).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.suite_name,
+      product_name:
+        String(identity.product_name ?? DEFAULT_BRAND_CONFIG.identity.product_name).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.product_name,
+      logo_url: String(identity.logo_url ?? DEFAULT_BRAND_CONFIG.identity.logo_url).trim(),
+      logo_alt:
+        String(identity.logo_alt ?? DEFAULT_BRAND_CONFIG.identity.logo_alt).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.logo_alt,
+      header_context:
+        String(identity.header_context ?? DEFAULT_BRAND_CONFIG.identity.header_context).trim() ||
+        DEFAULT_BRAND_CONFIG.identity.header_context,
+    },
+    colors: {
+      accent: normalizeHexColor(colors.accent, DEFAULT_BRAND_CONFIG.colors.accent),
+      accent_dark: normalizeHexColor(colors.accent_dark, DEFAULT_BRAND_CONFIG.colors.accent_dark),
+      ink: normalizeHexColor(colors.ink, DEFAULT_BRAND_CONFIG.colors.ink),
+      page_background: normalizeHexColor(colors.page_background, DEFAULT_BRAND_CONFIG.colors.page_background),
+      surface_background: normalizeHexColor(
+        colors.surface_background,
+        DEFAULT_BRAND_CONFIG.colors.surface_background
+      ),
+      grid_line: normalizeHexColor(colors.grid_line, DEFAULT_BRAND_CONFIG.colors.grid_line),
+      overlay_background: normalizeHexColor(
+        colors.overlay_background,
+        DEFAULT_BRAND_CONFIG.colors.overlay_background
+      ),
+      overlay_text: normalizeHexColor(colors.overlay_text, DEFAULT_BRAND_CONFIG.colors.overlay_text),
+    },
+    hierarchy: {
+      header_scale: BRAND_HEADER_SCALE_SET.has(hierarchy.header_scale)
+        ? hierarchy.header_scale
+        : DEFAULT_BRAND_CONFIG.hierarchy.header_scale,
+      subheader_scale: BRAND_SUBHEADER_SCALE_SET.has(hierarchy.subheader_scale)
+        ? hierarchy.subheader_scale
+        : DEFAULT_BRAND_CONFIG.hierarchy.subheader_scale,
+      body_density: BRAND_BODY_DENSITY_SET.has(hierarchy.body_density)
+        ? hierarchy.body_density
+        : DEFAULT_BRAND_CONFIG.hierarchy.body_density,
+      tile_emphasis: BRAND_TILE_EMPHASIS_SET.has(hierarchy.tile_emphasis)
+        ? hierarchy.tile_emphasis
+        : DEFAULT_BRAND_CONFIG.hierarchy.tile_emphasis,
+      overlay_style: BRAND_OVERLAY_STYLE_SET.has(hierarchy.overlay_style)
+        ? hierarchy.overlay_style
+        : DEFAULT_BRAND_CONFIG.hierarchy.overlay_style,
+    },
+    toggles: {
+      show_logo_mark:
+        typeof toggles.show_logo_mark === 'boolean'
+          ? toggles.show_logo_mark
+          : DEFAULT_BRAND_CONFIG.toggles.show_logo_mark,
+      show_suite_kicker:
+        typeof toggles.show_suite_kicker === 'boolean'
+          ? toggles.show_suite_kicker
+          : DEFAULT_BRAND_CONFIG.toggles.show_suite_kicker,
+      show_module_indices:
+        typeof toggles.show_module_indices === 'boolean'
+          ? toggles.show_module_indices
+          : DEFAULT_BRAND_CONFIG.toggles.show_module_indices,
+      show_module_status:
+        typeof toggles.show_module_status === 'boolean'
+          ? toggles.show_module_status
+          : DEFAULT_BRAND_CONFIG.toggles.show_module_status,
+      show_tile_descriptions:
+        typeof toggles.show_tile_descriptions === 'boolean'
+          ? toggles.show_tile_descriptions
+          : DEFAULT_BRAND_CONFIG.toggles.show_tile_descriptions,
+      show_detail_quotes:
+        typeof toggles.show_detail_quotes === 'boolean'
+          ? toggles.show_detail_quotes
+          : DEFAULT_BRAND_CONFIG.toggles.show_detail_quotes,
+      show_grid_glow:
+        typeof toggles.show_grid_glow === 'boolean'
+          ? toggles.show_grid_glow
+          : DEFAULT_BRAND_CONFIG.toggles.show_grid_glow,
+      show_home_callout:
+        typeof toggles.show_home_callout === 'boolean'
+          ? toggles.show_home_callout
+          : DEFAULT_BRAND_CONFIG.toggles.show_home_callout,
+    },
+    copy: {
+      prologue_quote:
+        String(copy.prologue_quote ?? DEFAULT_BRAND_CONFIG.copy.prologue_quote).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.prologue_quote,
+      prologue_description:
+        String(copy.prologue_description ?? DEFAULT_BRAND_CONFIG.copy.prologue_description).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.prologue_description,
+      prologue_enter_label:
+        String(copy.prologue_enter_label ?? DEFAULT_BRAND_CONFIG.copy.prologue_enter_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.prologue_enter_label,
+      home_kicker:
+        String(copy.home_kicker ?? DEFAULT_BRAND_CONFIG.copy.home_kicker).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_kicker,
+      home_title:
+        String(copy.home_title ?? DEFAULT_BRAND_CONFIG.copy.home_title).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_title,
+      home_description:
+        String(copy.home_description ?? DEFAULT_BRAND_CONFIG.copy.home_description).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_description,
+      home_callout_label:
+        String(copy.home_callout_label ?? DEFAULT_BRAND_CONFIG.copy.home_callout_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_callout_label,
+      home_callout_value:
+        String(copy.home_callout_value ?? DEFAULT_BRAND_CONFIG.copy.home_callout_value).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.home_callout_value,
+      free_tier_notice:
+        String(copy.free_tier_notice ?? DEFAULT_BRAND_CONFIG.copy.free_tier_notice).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.free_tier_notice,
+      module_ready_label:
+        String(copy.module_ready_label ?? DEFAULT_BRAND_CONFIG.copy.module_ready_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.module_ready_label,
+      module_locked_label:
+        String(copy.module_locked_label ?? DEFAULT_BRAND_CONFIG.copy.module_locked_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.module_locked_label,
+      mobile_focus_hint:
+        String(copy.mobile_focus_hint ?? DEFAULT_BRAND_CONFIG.copy.mobile_focus_hint).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.mobile_focus_hint,
+      modal_meta_label:
+        String(copy.modal_meta_label ?? DEFAULT_BRAND_CONFIG.copy.modal_meta_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.modal_meta_label,
+      modal_account_label:
+        String(copy.modal_account_label ?? DEFAULT_BRAND_CONFIG.copy.modal_account_label).trim() ||
+        DEFAULT_BRAND_CONFIG.copy.modal_account_label,
+    },
+    modules: normalizedModules,
+  };
+};
 
 const normalizeCuratedMediaItem = (value, index) => {
   const item = value && typeof value === 'object' ? value : {};
@@ -390,6 +558,7 @@ const normalizeConfig = (input = {}) => {
   const media = source.media && typeof source.media === 'object' ? source.media : {};
   const voice = source.voice && typeof source.voice === 'object' ? source.voice : {};
   const safety = source.safety && typeof source.safety === 'object' ? source.safety : {};
+  const brand = source.brand && typeof source.brand === 'object' ? source.brand : {};
 
   return {
     generation: {
@@ -411,6 +580,7 @@ const normalizeConfig = (input = {}) => {
       episodes_enabled:
         typeof ui.episodes_enabled === 'boolean' ? ui.episodes_enabled : DEFAULT_APP_CONFIG.ui.episodes_enabled,
     },
+    brand: normalizeBrandConfig(brand),
     operations: {
       cjs_enabled:
         typeof operations.cjs_enabled === 'boolean'
@@ -660,6 +830,35 @@ const buildSuiteFallback = (answers = {}) => {
   };
 };
 
+const deriveEpisodeTargetSkill = ({ dna = {}, explicitSkill = '' }) => {
+  const direct = nonEmpty(explicitSkill);
+  if (direct) return direct;
+
+  const advanced = toStringList(dna.advanced_interests);
+  const foundational = toStringList(dna.foundational_interests);
+  const intent = nonEmpty(dna.intent);
+  const industry = nonEmpty(dna.industry).toLowerCase();
+
+  if (
+    advanced.some((entry) => entry.includes('Ai-Driven Customer Experience Optimization')) ||
+    industry.includes('consumer packaged goods')
+  ) {
+    return 'AI-driven customer segmentation and marketing ROI';
+  }
+  if (
+    advanced.some((entry) => entry.includes('Enterprise Ai Architecture')) ||
+    foundational.some((entry) => entry.includes('Ai Strategy & Leadership'))
+  ) {
+    return 'AI Strategy & Leadership';
+  }
+  if (foundational.some((entry) => entry.includes('Process Automation / Workflow Optimization'))) {
+    return 'Process Automation / Workflow Optimization';
+  }
+  if (intent === 'target_role') return 'Internal promotion strategy and ROI storytelling';
+  if (intent === 'not_sure') return 'Process Automation / Workflow Optimization';
+  return 'AI Strategy & Leadership';
+};
+
 const withArtifactMeta = (artifacts, meta) =>
   Object.fromEntries(
     Object.entries(artifacts).map(([key, value]) => [key, { ...value, _meta: meta }])
@@ -687,6 +886,11 @@ const loadClientDna = async (uid) => {
       constraints: nonEmpty(answers.constraints),
       work_style: nonEmpty(answers.work_style),
       pressure_breaks: nonEmpty(answers.pressure_breaks),
+      ai_usage_frequency: nonEmpty(answers.ai_usage_frequency),
+      learning_modalities: toStringList(answers.learning_modalities),
+      foundational_interests: toStringList(answers.foundational_interests),
+      advanced_interests: toStringList(answers.advanced_interests),
+      intent: CLIENT_INTENT_SET.has(String(data?.intent ?? '')) ? String(data.intent) : '',
     };
   } catch (error) {
     console.error('dna_load_error', error);
@@ -1046,19 +1250,36 @@ const buildSearchStrategy = ({ profile, resumeReview }) => {
   const targetRole = nonEmpty(answers.target) || nonEmpty(answers.current_or_target_job_title) || 'target role';
   const intent = nonEmpty(profile?.intent) || 'current_role';
   const internalTrack = intent === 'target_role';
+  const exploratoryTrack = intent === 'not_sure';
 
   return {
     headline: internalTrack
       ? `Promotion-first strategy for ${targetRole} with KPI-backed positioning.`
-      : `Readiness strategy for ${targetRole} without active external search pressure.`,
+      : exploratoryTrack
+        ? `Exploration-first strategy for ${targetRole} focused on role fit and confidence-building.`
+        : `Readiness strategy for ${targetRole} without active external search pressure.`,
     channels: internalTrack
       ? ['Internal sponsors', 'Manager syncs', 'Cross-functional project visibility']
-      : ['Portfolio artifacts', 'Skill proofs', 'Strategic networking'],
-    weekly_actions: [
-      'Ship one role-aligned artifact with measurable impact.',
-      'Run two high-signal conversations with explicit asks.',
-      'Update positioning narrative using latest evidence from execution.',
-    ],
+      : exploratoryTrack
+        ? ['Informational interviews', 'Transferable-skills proof', 'Low-risk networking']
+        : ['Portfolio artifacts', 'Skill proofs', 'Strategic networking'],
+    weekly_actions: internalTrack
+      ? [
+          'Identify three KPI movements you can tie to an AI-driven proposal.',
+          'Run two internal sponsor or stakeholder conversations with explicit asks.',
+          'Convert one live initiative into a short promotion-ready proof pack.',
+        ]
+      : exploratoryTrack
+        ? [
+            'Research three adjacent roles and the proof each one requires.',
+            'Schedule two informational interviews with people already in those lanes.',
+            'Rewrite one resume section in transferable-skills language.',
+          ]
+        : [
+            'Ship one internal artifact that demonstrates AI leverage in your current role.',
+            'Run two high-signal conversations with explicit asks.',
+            'Update positioning narrative using latest evidence from execution.',
+          ],
     proof_points: [
       'Recent outcomes mapped to role-level expectations.',
       `Current alignment score baseline: ${resumeReview?.role_alignment_score ?? 0}%.`,
@@ -2156,7 +2377,7 @@ app.post('/v1/binge/episode', requireAuth, async (req, res) => {
   const toneGuardEnabled = runtimeConfig.safety.tone_guard_enabled;
   const persistedDna = await loadClientDna(uid);
   const hydratedDna = { ...persistedDna, ...(dna ?? {}) };
-  const skill = target_skill || 'prompt architecture under pressure';
+  const skill = deriveEpisodeTargetSkill({ dna: hydratedDna, explicitSkill: target_skill });
 
   if (!ai) {
     return res.json(

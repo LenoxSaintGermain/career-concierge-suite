@@ -4,7 +4,7 @@ import { BingeEpisode, CuratedMediaLibraryResponse, GeneratedMediaPack, MediaJou
 const configuredBaseUrl = (import.meta as any).env?.VITE_CONCIERGE_API_URL as string | undefined;
 const defaultBaseUrl = 'https://career-concierge-api-tpcap5aa5a-ew.a.run.app';
 
-export const generateBingeEpisode = async (): Promise<BingeEpisode> => {
+export const generateBingeEpisode = async (targetSkill?: string): Promise<BingeEpisode> => {
   const source = (configuredBaseUrl || defaultBaseUrl).trim();
   const origin = source.endsWith('/') ? source.slice(0, -1) : source;
   const user = auth.currentUser;
@@ -19,7 +19,7 @@ export const generateBingeEpisode = async (): Promise<BingeEpisode> => {
         'content-type': 'application/json',
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify(targetSkill ? { target_skill: targetSkill } : {}),
     });
   } catch {
     throw new Error(

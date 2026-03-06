@@ -7,7 +7,7 @@ import {
   SMART_START_FIELDS,
   SmartStartField,
 } from '../constants';
-import { ClientIntent, ClientPreferences, FocusPreference, IntakeAnswers, PacePreference } from '../types';
+import { ClientIntent, ClientPreferences, FocusPreference, IntakeAnswers, PacePreference, SuiteModuleId } from '../types';
 import { saveIntake } from '../services/clientService';
 import { upsertArtifact } from '../services/artifactService';
 import {
@@ -37,7 +37,10 @@ const base64ToBytes = (base64: string) => {
 export function IntakeFlow(props: {
   uid: string;
   tier?: string;
-  onComplete: () => void;
+  onComplete: (
+    nextModuleId: SuiteModuleId,
+    payload: { intent: ClientIntent; preferences: ClientPreferences; answers: IntakeAnswers }
+  ) => void;
 }) {
   const isFreeTier = props.tier === 'free_foundation_access';
   const [step, setStep] = useState<Step>('intent');
@@ -299,7 +302,8 @@ export function IntakeFlow(props: {
     setBusy(true);
     setError(null);
     try {
-      await saveIntake(props.uid, { intent, preferences: prefs, answers });
+      const intakePayload = { intent, preferences: prefs, answers };
+      await saveIntake(props.uid, intakePayload);
 
       // Generate artifacts (stubbed for now; LLM swap is Phase 1).
       setStep('plating');
@@ -319,7 +323,7 @@ export function IntakeFlow(props: {
           ...resourceGuide,
         } as any);
         setStep('done');
-        props.onComplete();
+        props.onComplete('readiness', intakePayload);
         return;
       }
 
@@ -349,11 +353,12 @@ export function IntakeFlow(props: {
         upsertArtifact(props.uid, 'ai_profile', 'Your AI Profile', aiProfile),
         upsertArtifact(props.uid, 'gaps', 'Your Gaps', gaps),
         upsertArtifact(props.uid, 'readiness', 'AI Readiness Assessment', generateReadinessDoc(answers)),
-        upsertArtifact(props.uid, 'cjs_execution', 'ConciergeJobSearch Execution', generateCjsExecutionDoc(answers)),
+        upsertArtifact(props.uid, 'cjs_execution', 'ConciergeJobSearch Execution', generateCjsExecutionDoc(answers, intent)),
       ]);
 
       setStep('done');
-      props.onComplete();
+      const nextModuleId: SuiteModuleId = intent === 'not_sure' ? 'my_concierge' : 'brief';
+      props.onComplete(nextModuleId, intakePayload);
     } catch (e: any) {
       setError(e?.message ?? 'Unable to complete intake.');
       setStep('prefs');

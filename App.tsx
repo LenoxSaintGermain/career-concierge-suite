@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { User } from 'firebase/auth';
 import { SUITE_MODULES } from './suite/modules';
-import { ClientDoc, SuiteModule, SuiteModuleId } from './types';
+import { BrandConfig, ClientDoc, PublicConfig, SuiteModule, SuiteModuleId } from './types';
 import { subscribeToAuth, logout } from './services/authService';
 import { getOrCreateClient, markIntroSeen } from './services/clientService';
 import { getArtifact } from './services/artifactService';
@@ -20,8 +20,9 @@ import { BingeFeedView } from './components/BingeFeedView';
 import { AdminConsole } from './components/AdminConsole';
 import { RoadmapView } from './components/RoadmapView';
 import { AssetsView } from './components/AssetsView';
+import { MyConciergeView } from './components/MyConciergeView';
 import { canAccessAdminConfig, fetchPublicConfig } from './services/adminApi';
-import { PublicConfig } from './types';
+import { cloneBrandConfig, getBrandModuleCopy, hexToRgba } from './config/brandSystem.js';
 
 type IntroPhase = 'prologue' | 'complete';
 
@@ -30,15 +31,66 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
     show_prologue: true,
     episodes_enabled: true,
   },
+  brand: cloneBrandConfig(),
   operations: {
     cjs_enabled: true,
   },
 };
 
 const priorityByIntent: Record<string, SuiteModuleId[]> = {
-  current_role: ['intake', 'episodes', 'ai_profile', 'profile', 'gaps', 'readiness', 'plan', 'brief', 'suite_distilled', 'cjs_execution', 'assets', 'roadmap'],
-  target_role: ['intake', 'cjs_execution', 'assets', 'plan', 'brief', 'suite_distilled', 'episodes', 'profile', 'ai_profile', 'gaps', 'readiness', 'roadmap'],
-  not_sure: ['intake', 'profile', 'gaps', 'episodes', 'plan', 'brief', 'suite_distilled', 'readiness', 'ai_profile', 'assets', 'cjs_execution', 'roadmap'],
+  current_role: ['intake', 'episodes', 'ai_profile', 'gaps', 'plan', 'brief', 'profile', 'my_concierge', 'readiness', 'cjs_execution', 'assets', 'suite_distilled', 'roadmap'],
+  target_role: ['intake', 'cjs_execution', 'assets', 'plan', 'brief', 'my_concierge', 'episodes', 'profile', 'ai_profile', 'gaps', 'readiness', 'suite_distilled', 'roadmap'],
+  not_sure: ['intake', 'profile', 'gaps', 'my_concierge', 'episodes', 'plan', 'brief', 'readiness', 'ai_profile', 'assets', 'cjs_execution', 'suite_distilled', 'roadmap'],
+};
+
+const headerScaleClass = {
+  compact: 'text-2xl md:text-3xl',
+  standard: 'text-3xl md:text-4xl',
+  hero: 'text-4xl md:text-5xl',
+};
+
+const subheaderScaleClass = {
+  tight: 'text-[9px] tracking-[0.18em]',
+  standard: 'text-[10px] tracking-[0.24em]',
+  airy: 'text-[10px] tracking-[0.32em]',
+};
+
+const bodyDensityClass = {
+  tight: 'text-xs leading-5',
+  standard: 'text-sm leading-6',
+  relaxed: 'text-base leading-7',
+};
+
+const tileTitleClass = {
+  index: 'text-lg md:text-xl font-editorial leading-tight',
+  balanced: 'text-xl font-editorial leading-tight',
+  title: 'text-2xl font-editorial leading-tight',
+};
+
+const tileIndexClass = {
+  index: 'text-sm opacity-55',
+  balanced: 'text-xs opacity-30',
+  title: 'text-[10px] opacity-20',
+};
+
+const overlayRailStyle = (brand: BrandConfig): React.CSSProperties => {
+  if (brand.hierarchy.overlay_style === 'minimal') {
+    return {
+      backgroundColor: brand.colors.surface_background,
+      color: brand.colors.ink,
+      borderRight: `1px solid ${brand.colors.grid_line}`,
+    };
+  }
+  if (brand.hierarchy.overlay_style === 'cinematic') {
+    return {
+      background: `linear-gradient(160deg, ${brand.colors.overlay_background} 0%, ${brand.colors.ink} 100%)`,
+      color: brand.colors.overlay_text,
+    };
+  }
+  return {
+    backgroundColor: brand.colors.overlay_background,
+    color: brand.colors.overlay_text,
+  };
 };
 
 const App: React.FC = () => {
@@ -54,6 +106,7 @@ const App: React.FC = () => {
   const [adminOpen, setAdminOpen] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_PUBLIC_CONFIG);
+  const brand = useMemo<BrandConfig>(() => publicConfig.brand || cloneBrandConfig(), [publicConfig.brand]);
 
   const refreshPublicConfig = async () => {
     try {
@@ -93,6 +146,19 @@ const App: React.FC = () => {
     refreshPublicConfig();
   }, []);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--brand-teal', brand.colors.accent);
+    root.style.setProperty('--brand-teal-dark', brand.colors.accent_dark);
+    root.style.setProperty('--brand-teal-soft', hexToRgba(brand.colors.accent, 0.14));
+    root.style.setProperty('--brand-ink', brand.colors.ink);
+    root.style.setProperty('--brand-page', brand.colors.page_background);
+    root.style.setProperty('--brand-surface', brand.colors.surface_background);
+    root.style.setProperty('--brand-grid', brand.colors.grid_line);
+    root.style.setProperty('--brand-overlay', brand.colors.overlay_background);
+    root.style.setProperty('--brand-overlay-text', brand.colors.overlay_text);
+  }, [brand]);
+
   // Load/Create client record and decide whether to play intro.
   useEffect(() => {
     const run = async () => {
@@ -128,19 +194,24 @@ const App: React.FC = () => {
       SUITE_MODULES.filter((m) => {
         if (!publicConfig.ui.episodes_enabled && m.id === 'episodes') return false;
         if (!publicConfig.operations.cjs_enabled && m.id === 'cjs_execution') return false;
-        if (isFreeTier && !['intake', 'episodes', 'readiness', 'roadmap'].includes(m.id)) return false;
+        if (m.id === 'roadmap' && !isAdminUser) return false;
+        if (isFreeTier && !['intake', 'episodes', 'readiness'].includes(m.id)) return false;
         return true;
       }).sort((a, b) => {
         const intent = String(client?.intent || 'current_role');
         const ordered = priorityByIntent[intent] || priorityByIntent.current_role;
         return ordered.indexOf(a.id) - ordered.indexOf(b.id);
       }),
-    [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled, isFreeTier, client?.intent]
+    [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled, isAdminUser, isFreeTier, client?.intent]
   );
 
   const openModule = useMemo(
     () => (openModuleId ? visibleModules.find((m) => m.id === openModuleId) ?? null : null),
     [openModuleId, visibleModules]
+  );
+  const displayedOpenModule = useMemo(
+    () => (openModule ? getBrandModuleCopy(brand, openModule.id) : null),
+    [brand, openModule]
   );
 
   const isLocked = (m: SuiteModule) => {
@@ -233,7 +304,10 @@ const App: React.FC = () => {
 
   if (!authReady) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
+      <div
+        className="min-h-screen text-white flex items-center justify-center"
+        style={{ backgroundColor: brand.colors.overlay_background, color: brand.colors.overlay_text }}
+      >
         <div className="text-[10px] uppercase tracking-[0.3em] opacity-50 animate-pulse">Initializing…</div>
       </div>
     );
@@ -250,31 +324,39 @@ const App: React.FC = () => {
   const hovered = hoveredModuleId ? visibleModules.find((m) => m.id === hoveredModuleId) ?? null : null;
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f4f5f4] text-[#1a1a1a]">
+    <div
+      className="min-h-screen overflow-hidden"
+      style={{ backgroundColor: brand.colors.page_background, color: brand.colors.ink }}
+    >
       {showPrologue && (
-        <div className="fixed inset-0 z-[60] bg-[#050505] text-white flex items-center justify-center p-6">
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-6"
+          style={{ backgroundColor: brand.colors.overlay_background, color: brand.colors.overlay_text }}
+        >
           <div className="max-w-3xl text-center space-y-10">
-            <h1 className="text-2xl md:text-4xl font-editorial italic leading-tight">
-              “Most careers don’t collapse.
-              <br />
-              They quietly stall.”
+            {brand.toggles.show_logo_mark && brand.identity.logo_url && (
+              <img src={brand.identity.logo_url} alt={brand.identity.logo_alt} className="mx-auto h-16 w-auto object-contain" />
+            )}
+            <h1 className={`font-editorial italic leading-tight ${headerScaleClass[brand.hierarchy.header_scale]}`}>
+              "{brand.copy.prologue_quote}"
             </h1>
-            <p className="text-white/70 text-sm md:text-base leading-relaxed">
-              This suite is designed to keep you moving with premium pacing and clear next actions.
-              <br />
-              No tests. No chaos. Just a plan shaped around your context.
+            <p className={`max-w-2xl mx-auto ${bodyDensityClass[brand.hierarchy.body_density]}`} style={{ color: hexToRgba(brand.colors.overlay_text, 0.74) }}>
+              {brand.copy.prologue_description}
             </p>
-            <div className="inline-block border-t border-b border-white/20 py-4 px-10">
-              <div className="text-white text-[10px] font-bold tracking-[0.3em] uppercase">SkillSync AI Concierge Suite</div>
+            <div className="inline-block border-t border-b py-4 px-10" style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.2) }}>
+              <div className={`font-bold uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.overlay_text }}>
+                {brand.identity.suite_name}
+              </div>
             </div>
           </div>
 
           <div className="fixed bottom-8 right-8">
             <button
               onClick={handleIntroSkip}
-              className="text-white/30 text-[10px] uppercase tracking-widest hover:text-white transition-colors flex items-center gap-2 group"
+              className="text-[10px] uppercase tracking-widest transition-colors flex items-center gap-2 group"
+              style={{ color: hexToRgba(brand.colors.overlay_text, 0.38) }}
             >
-              <span>Enter</span>
+              <span>{brand.copy.prologue_enter_label}</span>
               <span className="group-hover:translate-x-1 transition-transform duration-300">-&gt;</span>
             </button>
           </div>
@@ -284,10 +366,17 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 w-full z-10 px-6 py-6 flex justify-between items-center backdrop-blur-[2px]">
         <div className="flex items-center gap-6">
-          <h1 className="text-xs font-bold tracking-widest uppercase">
-            Third Signal <span className="opacity-40 ml-2 font-normal hidden sm:inline">Career Concierge</span>
-            <span className="ml-3 text-brand-teal opacity-80 hidden md:inline">SkillSync AI</span>
-          </h1>
+          <div className="flex items-center gap-3">
+            {brand.toggles.show_logo_mark && brand.identity.logo_url && (
+              <img src={brand.identity.logo_url} alt={brand.identity.logo_alt} className="h-10 w-auto object-contain" />
+            )}
+            <div>
+              <div className={`font-bold uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`}>
+                {brand.identity.suite_name}
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.18em] opacity-45">{brand.identity.header_context}</div>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{user.email ?? user.uid}</span>
@@ -317,65 +406,103 @@ const App: React.FC = () => {
         onMouseLeave={() => !isMobile && setHoveredModuleId(null)}
       >
         <div className="max-w-6xl mx-auto relative">
-          <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[radial-gradient(circle_at_center,rgba(14,159,150,0.14),transparent_62%)]" />
-          <div className="pointer-events-none absolute top-20 -left-24 h-48 w-48 rounded-full bg-[radial-gradient(circle_at_center,rgba(14,159,150,0.08),transparent_68%)]" />
+          {brand.toggles.show_grid_glow && (
+            <>
+              <div
+                className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full"
+                style={{ background: `radial-gradient(circle at center, ${hexToRgba(brand.colors.accent_dark, 0.16)}, transparent 62%)` }}
+              />
+              <div
+                className="pointer-events-none absolute top-20 -left-24 h-48 w-48 rounded-full"
+                style={{ background: `radial-gradient(circle at center, ${hexToRgba(brand.colors.accent_dark, 0.09)}, transparent 68%)` }}
+              />
+            </>
+          )}
           <div className="mb-10">
-            <div className="text-[10px] uppercase tracking-[0.3em] opacity-40">Suite Home</div>
-            <div className="text-3xl md:text-4xl font-editorial italic mt-3">Your modules.</div>
-            <p className="text-sm text-black/50 leading-relaxed mt-4 max-w-2xl">
-              Start with Intake. Everything else unlocks as soon as we shape your profile and generate your Brief.
-            </p>
-            <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal mt-4">
-              Semantic color: Teal = action and completion
-            </div>
-            <div className="mt-5 inline-flex items-center gap-4 border border-black/10 bg-white/80 px-4 py-2 text-[10px] uppercase tracking-[0.2em]">
-              <span className="text-brand-teal">Boot Sequence</span>
-              <span className="text-black/45">Smart Start Intake unlocks the suite graph</span>
-            </div>
+            {brand.toggles.show_suite_kicker && (
+              <div className={`uppercase opacity-80 ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent_dark }}>
+                {brand.copy.home_kicker}
+              </div>
+            )}
+            <div className={`font-editorial italic mt-3 ${headerScaleClass[brand.hierarchy.header_scale]}`}>{brand.copy.home_title}</div>
+            <p className={`text-black/55 mt-4 max-w-2xl ${bodyDensityClass[brand.hierarchy.body_density]}`}>{brand.copy.home_description}</p>
+            {brand.toggles.show_home_callout && (
+              <div
+                className="mt-5 inline-flex items-center gap-4 border px-4 py-2 text-[10px] uppercase tracking-[0.2em]"
+                style={{ borderColor: brand.colors.grid_line, backgroundColor: hexToRgba(brand.colors.accent, 0.12) }}
+              >
+                <span style={{ color: brand.colors.accent_dark }}>{brand.copy.home_callout_label}</span>
+                <span className="text-black/45">{brand.copy.home_callout_value}</span>
+              </div>
+            )}
             {isFreeTier && (
-              <div className="mt-4 border border-brand-teal/25 bg-brand-soft px-4 py-3 text-xs text-black/70 max-w-2xl">
-                Free foundation mode: curated episodes + AI readiness are unlocked first. Upgrade unlocks full artifacts
-                and ConciergeJobSearch execution.
+              <div
+                className="mt-4 px-4 py-3 text-xs text-black/70 max-w-2xl border"
+                style={{ borderColor: hexToRgba(brand.colors.accent_dark, 0.28), backgroundColor: hexToRgba(brand.colors.accent, 0.12) }}
+              >
+                {brand.copy.free_tier_notice}
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-[#dfe4e3] border border-[#dfe4e3] shadow-[0_24px_48px_-34px_rgba(0,0,0,0.22)]">
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px border"
+            style={{
+              backgroundColor: brand.colors.grid_line,
+              borderColor: brand.colors.grid_line,
+              boxShadow: brand.toggles.show_grid_glow
+                ? `0 24px 48px -34px ${hexToRgba(brand.colors.accent_dark, 0.35)}`
+                : '0 24px 48px -34px rgba(0,0,0,0.16)',
+            }}
+          >
             {visibleModules.map((m, idx) => {
               const isHovered = hoveredModuleId === m.id;
               const isRelated = hovered?.relatedIds?.includes(m.id) ?? false;
               const constellationDimmed = hovered && !isHovered && !isRelated;
               const locked = m.id !== 'intake' && !intakeComplete;
+              const display = getBrandModuleCopy(brand, m.id);
 
               const mobileFocused = isMobile && isHovered;
 
               return (
                 <div
                   key={m.id}
-                  className={`bg-[#f7f8f8] p-6 transition-all dur-md ease-exit cursor-pointer select-none ${
+                  className={`p-6 transition-all dur-md ease-exit cursor-pointer select-none ${
                     constellationDimmed ? 'opacity-20' : 'opacity-100'
                   } ${mobileFocused ? 'bg-white ring-1 ring-black/5 shadow-card-hover border-brand-teal' : 'hover:bg-white/95'} ${
                     !locked ? 'relative before:absolute before:left-0 before:top-0 before:h-[2px] before:w-14 before:bg-brand-teal/60' : ''
                   }`}
+                  style={{ backgroundColor: brand.colors.surface_background }}
                   onClick={(e) => handleModuleClick(e, m)}
                   onMouseEnter={() => !isMobile && setHoveredModuleId(m.id)}
                 >
                   <div className="flex justify-between items-start gap-4">
-                    <div className="text-xs font-mono opacity-30">{m.index}</div>
-                    <div className={`text-[9px] uppercase tracking-widest ${locked ? 'opacity-40' : 'text-brand-teal'}`}>
-                      {locked ? 'Locked' : 'Ready'}
-                    </div>
+                    {brand.toggles.show_module_indices ? (
+                      <div className={`font-mono ${tileIndexClass[brand.hierarchy.tile_emphasis]}`}>{m.index}</div>
+                    ) : (
+                      <span />
+                    )}
+                    {brand.toggles.show_module_status && (
+                      <div
+                        className={`uppercase tracking-widest ${locked ? 'opacity-40' : ''}`}
+                        style={{ fontSize: '9px', color: locked ? undefined : brand.colors.accent_dark }}
+                      >
+                        {locked ? brand.copy.module_locked_label : brand.copy.module_ready_label}
+                      </div>
+                    )}
                   </div>
                   <div className="mt-10">
-                    <div className="text-xl font-editorial leading-tight">{m.title}</div>
-                    <div className="text-xs uppercase tracking-widest opacity-30 mt-3">
-                      {m.kind.toUpperCase()}
+                    <div className={`uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent_dark }}>
+                      {display.eyebrow}
                     </div>
-                    <p className="text-sm text-black/50 leading-relaxed mt-4">{m.subtitle}</p>
+                    <div className={`mt-2 ${tileTitleClass[brand.hierarchy.tile_emphasis]}`}>{display.title}</div>
+                    {brand.toggles.show_tile_descriptions && (
+                      <p className={`text-black/50 mt-4 ${bodyDensityClass[brand.hierarchy.body_density]}`}>{display.description}</p>
+                    )}
                   </div>
                   {isMobile && isHovered && (
                     <div className="mt-6 text-[9px] uppercase tracking-widest opacity-40">
-                      Tap again to open
+                      {brand.copy.mobile_focus_hint}
                     </div>
                   )}
                 </div>
@@ -388,9 +515,16 @@ const App: React.FC = () => {
       {/* Module Modal */}
       {openModule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8">
-          <div className="absolute inset-0 bg-[#e5e5e5]/80 backdrop-blur-md" onClick={handleCloseModal} />
+          <div
+            className="absolute inset-0 backdrop-blur-md"
+            style={{ backgroundColor: hexToRgba(brand.colors.page_background, 0.8) }}
+            onClick={handleCloseModal}
+          />
 
-          <div className="bg-white w-full max-w-6xl h-full max-h-[90vh] shadow-2xl relative flex flex-col md:flex-row overflow-y-auto md:overflow-hidden ring-1 ring-black/5">
+          <div
+            className="w-full max-w-6xl h-full max-h-[90vh] shadow-2xl relative flex flex-col md:flex-row overflow-y-auto md:overflow-hidden ring-1 ring-black/5"
+            style={{ backgroundColor: brand.colors.surface_background }}
+          >
             <div className="absolute top-6 right-6 z-20 flex items-center gap-4">
               <button
                 onClick={handleCloseModal}
@@ -404,46 +538,71 @@ const App: React.FC = () => {
             </div>
 
             {/* Left column */}
-            <div className="w-full md:w-[31%] bg-[#0f1314] text-white p-8 md:p-12 flex flex-col justify-between shrink-0">
+            <div className="w-full md:w-[31%] p-8 md:p-12 flex flex-col justify-between shrink-0" style={overlayRailStyle(brand)}>
               <div>
                 <div className="text-xs font-mono opacity-50 mb-8 flex justify-between">
                   <span>{openModule.index} / {String(visibleModules.length).padStart(2, '0')}</span>
-                  <span className="opacity-50">MODULE</span>
+                  <span className="opacity-50">{brand.copy.modal_meta_label}</span>
                 </div>
-                <h2 className="text-4xl md:text-5xl font-editorial leading-none mb-8">{openModule.title}</h2>
-                <p className="text-sm md:text-base font-light opacity-80 leading-relaxed font-editorial italic border-l border-brand-teal pl-6 py-1">
-                  “{openModule.subtitle}”
-                </p>
+                <div className={`uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent }}>
+                  {displayedOpenModule?.eyebrow}
+                </div>
+                <h2 className={`font-editorial leading-none mb-8 mt-3 ${headerScaleClass[brand.hierarchy.header_scale]}`}>
+                  {displayedOpenModule?.detail_title || openModule.title}
+                </h2>
+                {brand.toggles.show_detail_quotes && (
+                  <p
+                    className={`font-light opacity-80 font-editorial italic border-l pl-6 py-1 ${bodyDensityClass[brand.hierarchy.body_density]}`}
+                    style={{ borderColor: brand.colors.accent }}
+                  >
+                    "{displayedOpenModule?.detail_quote || openModule.subtitle}"
+                  </p>
+                )}
               </div>
 
               <div className="mt-10 space-y-6">
-                <div className="text-[10px] uppercase tracking-widest opacity-40">Account</div>
+                <div className="text-[10px] uppercase tracking-widest opacity-40">{brand.copy.modal_account_label}</div>
                 <div className="text-xs opacity-70">{user.email ?? user.uid}</div>
               </div>
             </div>
 
             {/* Right column */}
-            <div ref={modalScrollRef} className="w-full md:w-[69%] p-8 md:p-14 bg-[#fbfcfb] md:overflow-y-auto">
+            <div
+              ref={modalScrollRef}
+              className="w-full md:w-[69%] p-8 md:p-14 md:overflow-y-auto"
+              style={{ backgroundColor: brand.colors.surface_background }}
+            >
               {openModule.id === 'intake' ? (
                 <IntakeFlow
                   uid={user.uid}
                   tier={clientTier}
-                  onComplete={() => {
+                  onComplete={(nextModuleId, payload) => {
                     // Update local client state so tiles unlock immediately.
                     setClient((prev) =>
                       prev
-                        ? { ...prev, intake: { ...(prev.intake ?? { answers: {} }), completed_at: new Date() } as any }
+                        ? {
+                            ...prev,
+                            intent: payload.intent,
+                            preferences: payload.preferences,
+                            intake: {
+                              ...(prev.intake ?? { answers: {} }),
+                              answers: payload.answers,
+                              completed_at: new Date(),
+                            } as any,
+                          }
                         : prev
                     );
-                    // Close intake and open brief next.
-                    openModuleById(isFreeTier ? 'readiness' : 'brief');
+                    openModuleById(nextModuleId);
                   }}
                 />
               ) : openModule.id === 'episodes' ? (
                 <BingeFeedView
+                  client={client}
                   isFreeTier={isFreeTier}
                   onOpenPlan={() => openModuleById(isFreeTier ? 'readiness' : 'plan')}
                 />
+              ) : openModule.id === 'my_concierge' ? (
+                <MyConciergeView client={client} onOpenModule={openModuleById} />
               ) : openModule.id === 'roadmap' ? (
                 <RoadmapView />
               ) : (
@@ -501,7 +660,7 @@ const App: React.FC = () => {
                   {artifact &&
                     artifact.type === 'cjs_execution' &&
                     openModule.id === 'cjs_execution' &&
-                    artifact.content && <CjsExecutionView doc={artifact.content} />}
+                    artifact.content && <CjsExecutionView client={client} doc={artifact.content} />}
                   {openModule.id === 'assets' && !artifactLoading && !artifactError && (
                     <AssetsView isAdminUser={isAdminUser} />
                   )}

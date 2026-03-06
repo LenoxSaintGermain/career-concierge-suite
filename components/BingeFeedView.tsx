@@ -1,32 +1,105 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BingeEpisode, CuratedMediaLibraryResponse, GeneratedMediaPack, ResolvedCuratedMediaItem } from '../types';
+import { BingeEpisode, ClientDoc, CuratedMediaLibraryResponse, GeneratedMediaPack, ResolvedCuratedMediaItem } from '../types';
 import {
   fetchCuratedMediaLibrary,
   generateBingeEpisode,
   generateEpisodeMediaPack,
   refreshVideoOperation,
 } from '../services/bingeApi';
+import { synthesizeConciergeVoice } from '../services/voiceApi';
 
 type Scene = 'hook' | 'swipe1' | 'swipe2' | 'swipe3' | 'challenge' | 'reward';
 
-const FREE_TIER_EPISODE: BingeEpisode = {
-  episode_id: 'free-foundation-01',
-  title: 'Foundations: Signal Before Speed',
-  hook_card: 'Start with one clear professional signal before you chase volume.',
-  lesson_swipes: [
-    'Name one outcome you can prove this week.',
-    'Pick one AI workflow you can repeat in under 15 minutes.',
-    'Convert that workflow into a visible artifact.',
-  ],
-  challenge_terminal: {
-    prompt: 'Write one sentence: what will you ship in the next 72 hours?',
-    placeholder: 'I will ship...',
+const FREE_TIER_PLAYLIST: BingeEpisode[] = [
+  {
+    episode_id: 'free-foundation-01',
+    title: 'What is AI? A No-Jargon Introduction',
+    hook_card: 'Start with one clear mental model before you chase tooling.',
+    lesson_swipes: [
+      'AI is useful when it reduces friction in a real workflow.',
+      'One repeatable use case beats ten vague experiments.',
+      'Clarity matters more than speed in the first week.',
+    ],
+    challenge_terminal: {
+      prompt: 'Write one sentence: where could AI save you time this week?',
+      placeholder: 'AI could help me...',
+    },
+    reward_asset: 'Starter Resource Guide unlocked.',
+    cliffhanger: 'Next up: the job-seeker toolkit that turns curiosity into signal.',
   },
-  reward_asset: 'Starter Resource Guide unlocked.',
-  cliffhanger: 'Upgrade path opens personalized Brief, Plan, and concierge execution support.',
+  {
+    episode_id: 'free-foundation-02',
+    title: '5 AI Tools Every Job Seeker Should Know',
+    hook_card: 'You do not need every tool. You need the right stack for signal.',
+    lesson_swipes: [
+      'Use one drafting tool, one research tool, and one scheduling or note tool.',
+      'Your stack should shorten prep time, not create a second job.',
+      'Pick tools you can explain confidently in an interview.',
+    ],
+    challenge_terminal: {
+      prompt: 'Which one tool will you test first, and for what job-search task?',
+      placeholder: 'I will test...',
+    },
+    reward_asset: 'Starter stack recommendations unlocked.',
+    cliffhanger: 'Next up: how to talk about AI without sounding inflated.',
+  },
+  {
+    episode_id: 'free-foundation-03',
+    title: 'How to Talk About AI in Your Next Interview',
+    hook_card: 'The wrong answer sounds trendy. The right answer sounds useful.',
+    lesson_swipes: [
+      'Describe the workflow you improved, not the jargon you learned.',
+      'Use AI as evidence of judgment and efficiency, not magic.',
+      'Tie every example back to a business or team outcome.',
+    ],
+    challenge_terminal: {
+      prompt: 'Draft one interview line that explains how you use AI responsibly.',
+      placeholder: 'I use AI to...',
+    },
+    reward_asset: 'Interview framing template unlocked.',
+    cliffhanger: 'Upgrade path opens your personalized Brief, Plan, and concierge support.',
+  },
+];
+
+const nonEmpty = (value: unknown) => String(value ?? '').trim();
+const asList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.map((entry) => String(entry).trim()).filter(Boolean) : [];
+
+const resolveTargetSkill = (client: ClientDoc | null): string | undefined => {
+  const answers = client?.intake?.answers ?? {};
+  const intent = client?.intent ?? 'current_role';
+  const advanced = asList(answers.advanced_interests);
+  const foundational = asList(answers.foundational_interests);
+  const industry = nonEmpty(answers.industry).toLowerCase();
+
+  if (advanced.some((entry) => entry.includes('Ai-Driven Customer Experience Optimization')) || industry.includes('consumer packaged goods')) {
+    return 'AI-driven customer segmentation and marketing ROI';
+  }
+  if (advanced.some((entry) => entry.includes('Enterprise Ai Architecture'))) {
+    return 'AI Strategy & Leadership';
+  }
+  if (foundational.some((entry) => entry.includes('Ai Strategy & Leadership'))) {
+    return 'AI Strategy & Leadership';
+  }
+  if (foundational.some((entry) => entry.includes('Process Automation / Workflow Optimization'))) {
+    return 'Process Automation / Workflow Optimization';
+  }
+  if (intent === 'target_role') return 'Internal promotion strategy and ROI storytelling';
+  if (intent === 'not_sure') return 'Process Automation / Workflow Optimization';
+  return 'AI Strategy & Leadership';
 };
 
-export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: boolean }) {
+const prefersNarration = (client: ClientDoc | null) =>
+  asList(client?.intake?.answers?.learning_modalities).some((entry) => entry.includes('Auditory'));
+
+const base64ToBytes = (base64: string) => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
+
+export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: boolean; client: ClientDoc | null }) {
   const [episode, setEpisode] = useState<BingeEpisode | null>(null);
   const [loading, setLoading] = useState(false);
   const [scene, setScene] = useState<Scene>('hook');
@@ -46,14 +119,36 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
   const [storyRevealed, setStoryRevealed] = useState(true);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [playlistEpisodeId, setPlaylistEpisodeId] = useState(FREE_TIER_PLAYLIST[0].episode_id);
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const queueSectionRef = useRef<HTMLElement | null>(null);
   const storySectionRef = useRef<HTMLDivElement | null>(null);
   const mediaStageRef = useRef<HTMLDivElement | null>(null);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewAudioContextRef = useRef<AudioContext | null>(null);
+  const previewAudioUnlockedRef = useRef(false);
   const isFreeTier = Boolean(props.isFreeTier);
+  const targetSkill = useMemo(() => resolveTargetSkill(props.client), [props.client]);
+  const wantsNarration = useMemo(() => prefersNarration(props.client), [props.client]);
+
+  useEffect(() => {
+    return () => {
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current = null;
+      }
+      if (previewAudioContextRef.current) {
+        void previewAudioContextRef.current.close().catch(() => undefined);
+        previewAudioContextRef.current = null;
+      }
+    };
+  }, []);
 
   const swipes = useMemo(() => episode?.lesson_swipes ?? [], [episode?.lesson_swipes]);
   const recommendedModels = useMemo(() => episode?.art_direction?.recommended_models ?? [], [episode?.art_direction]);
+  const freeTierQueue = useMemo(() => FREE_TIER_PLAYLIST, []);
   const imageAsset = useMemo(
     () => mediaPack?.assets.find((asset) => asset.kind === 'image'),
     [mediaPack]
@@ -100,7 +195,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
 
   const load = async () => {
     if (isFreeTier) {
-      setEpisode(FREE_TIER_EPISODE);
+      setEpisode(FREE_TIER_PLAYLIST[0]);
       setScene('hook');
       setTerminalInput('');
       setLoadError(null);
@@ -112,7 +207,7 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
     setMediaPack(null);
     setMediaError(null);
     try {
-      const e = await generateBingeEpisode();
+      const e = await generateBingeEpisode(targetSkill);
       setEpisode(e);
       setScene('hook');
       setTerminalInput('');
@@ -139,6 +234,12 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
   };
 
   const loadCuratedLibrary = async () => {
+    if (isFreeTier) {
+      setLibrary(null);
+      setLibraryError(null);
+      setLibraryLoading(false);
+      return;
+    }
     setLibraryLoading(true);
     setLibraryError(null);
     try {
@@ -188,8 +289,16 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
 
   useEffect(() => {
     load();
-    loadCuratedLibrary();
-  }, [isFreeTier]);
+    if (!isFreeTier) loadCuratedLibrary();
+  }, [isFreeTier, targetSkill]);
+
+  useEffect(() => {
+    if (!isFreeTier) return;
+    const selected = FREE_TIER_PLAYLIST.find((entry) => entry.episode_id === playlistEpisodeId) ?? FREE_TIER_PLAYLIST[0];
+    setEpisode(selected);
+    setScene('hook');
+    setTerminalInput('');
+  }, [isFreeTier, playlistEpisodeId]);
 
   useEffect(() => {
     if (!activeMedia?.embed_url) {
@@ -246,6 +355,83 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
 
   const jumpToMediaStage = () => {
     mediaStageRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  };
+
+  const ensurePreviewAudioUnlocked = async () => {
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) return;
+    if (!previewAudioContextRef.current) {
+      previewAudioContextRef.current = new AudioContextCtor();
+    }
+    const context = previewAudioContextRef.current;
+    if (context.state === 'suspended') {
+      await context.resume();
+    }
+    if (!previewAudioUnlockedRef.current) {
+      const unlockBuffer = context.createBuffer(1, 1, 22050);
+      const source = context.createBufferSource();
+      source.buffer = unlockBuffer;
+      source.connect(context.destination);
+      source.start(0);
+      previewAudioUnlockedRef.current = true;
+    }
+  };
+
+  const playVoiceResponse = async (mimeType: string, audioBase64: string) => {
+    const bytes = base64ToBytes(audioBase64);
+    const mime = String(mimeType || 'audio/wav');
+    const lowerMime = mime.toLowerCase();
+    const context = previewAudioContextRef.current;
+
+    if (context && !lowerMime.startsWith('audio/pcm')) {
+      try {
+        if (context.state === 'suspended') await context.resume();
+        const raw = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        const decoded = await context.decodeAudioData(raw as ArrayBuffer);
+        const source = context.createBufferSource();
+        source.buffer = decoded;
+        source.connect(context.destination);
+        source.start();
+        return;
+      } catch {
+        // Fallback to element playback.
+      }
+    }
+
+    const blob = new Blob([bytes], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.preload = 'auto';
+    activeAudioRef.current = audio;
+    audio.onended = () => URL.revokeObjectURL(url);
+    audio.onerror = () => URL.revokeObjectURL(url);
+    await audio.play();
+  };
+
+  const playNarration = async () => {
+    if (!episode) return;
+    setVoiceBusy(true);
+    setVoiceError(null);
+    try {
+      await ensurePreviewAudioUnlocked();
+      const narrationScript = [
+        episode.title,
+        episode.hook_card,
+        ...episode.lesson_swipes,
+        episode.challenge_terminal.prompt,
+        episode.cliffhanger,
+      ].join(' ');
+      const response = await synthesizeConciergeVoice(narrationScript);
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current = null;
+      }
+      await playVoiceResponse(response.mime_type || 'audio/wav', response.audio_base64);
+    } catch (error: any) {
+      setVoiceError(error?.message ?? 'Episode narration failed.');
+    } finally {
+      setVoiceBusy(false);
+    }
   };
 
   const next = () => {
@@ -308,15 +494,69 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
         <p className="text-sm text-gray-600 leading-relaxed mt-5 max-w-2xl">
           No lectures. No quizzes. You survive a micro-drama by executing the skill.
         </p>
+        <div className="flex flex-wrap items-center gap-3 mt-5">
+          {!isFreeTier && (wantsNarration || Boolean(episode.art_direction?.audio_prompt)) && (
+            <button
+              type="button"
+              onClick={playNarration}
+              disabled={voiceBusy}
+              className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-50"
+            >
+              {voiceBusy ? 'Scoring narration...' : 'Play Narrated Delivery'}
+            </button>
+          )}
+          {targetSkill && !isFreeTier && (
+            <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">
+              Routed topic: {targetSkill}
+            </div>
+          )}
+        </div>
+        {voiceError && (
+          <div className="mt-4 border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-700">
+            {voiceError}
+          </div>
+        )}
       </div>
 
-      <section
-        ref={heroSectionRef}
-        data-reveal="hero"
-        className={`relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6 transition-all dur-cinematic ease-exit ${
-          heroRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-        }`}
-      >
+      {isFreeTier && (
+        <section className="border border-black/10 bg-white p-5 md:p-6 space-y-5">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Starter Playlist</div>
+            <div className="text-3xl font-editorial italic mt-2">Three foundational episodes, pre-set for free users.</div>
+            <p className="text-sm text-gray-700 leading-relaxed mt-3 max-w-2xl">
+              This free-tier queue is intentionally fixed. Upgrade unlocks personalized episode sequencing, narrated delivery, and concierge-guided pathways.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {freeTierQueue.map((entry, index) => {
+              const active = entry.episode_id === playlistEpisodeId;
+              return (
+                <button
+                  key={entry.episode_id}
+                  type="button"
+                  onClick={() => setPlaylistEpisodeId(entry.episode_id)}
+                  className={`text-left border p-4 transition-colors ${
+                    active ? 'border-brand-teal bg-brand-soft' : 'border-black/10 hover-border-brand-teal'
+                  }`}
+                >
+                  <div className="text-[10px] uppercase tracking-[0.2em] opacity-60">Episode {index + 1}</div>
+                  <div className="text-xl font-editorial italic mt-3 leading-tight">{entry.title}</div>
+                  <p className="text-sm text-gray-600 leading-relaxed mt-3">{entry.hook_card}</p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {!isFreeTier && (
+        <section
+          ref={heroSectionRef}
+          data-reveal="hero"
+          className={`relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6 transition-all dur-cinematic ease-exit ${
+            heroRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+          }`}
+        >
         {featuredBackdrop && (
           <div
             className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-30"
@@ -528,7 +768,8 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
             </div>
           )}
         </div>
-      </section>
+        </section>
+      )}
 
       {isFreeTier && (
         <section className="border border-brand-teal/30 bg-brand-soft p-5 md:p-6">
@@ -548,13 +789,14 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
         </section>
       )}
 
-      <section
-        ref={queueSectionRef}
-        data-reveal="queue"
-        className={`relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6 space-y-4 transition-all dur-cinematic ease-exit ${
-          queueRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-        }`}
-      >
+      {!isFreeTier && (
+        <section
+          ref={queueSectionRef}
+          data-reveal="queue"
+          className={`relative overflow-hidden border border-[#173841] bg-[#07161a] text-[#dce7e8] p-4 md:p-6 space-y-4 transition-all dur-cinematic ease-exit ${
+            queueRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+          }`}
+        >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_14%,rgba(38,200,188,0.14),transparent_52%)]" />
 
         <div className="relative flex items-center justify-between gap-4 flex-wrap">
@@ -666,7 +908,8 @@ export function BingeFeedView(props: { onOpenPlan: () => void; isFreeTier?: bool
             </div>
           </div>
         )}
-      </section>
+        </section>
+      )}
 
       <div className="border border-black/10 bg-white/60 p-3 md:p-4">
         <div className="text-[10px] uppercase tracking-[0.2em] text-black/45 mb-3">Episode Progression</div>

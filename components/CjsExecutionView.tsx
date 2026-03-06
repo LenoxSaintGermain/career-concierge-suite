@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CjsAsset, CjsExecutionContent, ResumeReviewContent, SearchStrategyContent } from '../types';
+import { CjsAsset, CjsExecutionContent, ClientDoc, ResumeReviewContent, SearchStrategyContent } from '../types';
 import { generateResumeReview, generateSearchStrategy, listCjsAssets, uploadResumeAsset } from '../services/cjsApi';
 
 const statusTone: Record<string, string> = {
@@ -23,7 +23,7 @@ const toBase64 = (file: File) =>
 
 const assetDate = (item: CjsAsset) => item.updated_at || item.created_at || '';
 
-export function CjsExecutionView(props: { doc: CjsExecutionContent }) {
+export function CjsExecutionView(props: { doc: CjsExecutionContent; client: ClientDoc | null }) {
   const [assets, setAssets] = useState<CjsAsset[]>([]);
   const [review, setReview] = useState<ResumeReviewContent | null>(null);
   const [strategy, setStrategy] = useState<SearchStrategyContent | null>(null);
@@ -33,6 +33,19 @@ export function CjsExecutionView(props: { doc: CjsExecutionContent }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [targetRole, setTargetRole] = useState('');
   const [notes, setNotes] = useState('');
+  const journeyIntent = String(props.client?.intent || 'target_role');
+  const isCurrentRoleJourney = journeyIntent === 'current_role';
+  const isDirectionJourney = journeyIntent === 'not_sure';
+  const introCopy = isCurrentRoleJourney
+    ? 'Internal mobility and readiness operations: proposal prep, sponsor mapping, and AI leverage proof.'
+    : isDirectionJourney
+      ? 'Exploration operations: role-fit framing, resume translation, and low-risk discovery steps.'
+      : 'Promotion and job-search operations: resume versions, role alignment, and strategy execution.';
+  const strategyLabel = isCurrentRoleJourney
+    ? 'Generate Internal Mobility Strategy'
+    : isDirectionJourney
+      ? 'Generate Exploration Strategy'
+      : 'Generate Search Strategy';
 
   const resumeAssets = useMemo(
     () =>
@@ -118,7 +131,7 @@ export function CjsExecutionView(props: { doc: CjsExecutionContent }) {
         <div className="text-xs font-mono uppercase tracking-widest text-gray-400 mb-3">ConciergeJobSearch</div>
         <h2 className="text-4xl md:text-5xl font-editorial leading-none">Execution rail.</h2>
         <p className="text-sm text-gray-600 leading-relaxed mt-5 max-w-2xl">
-          Promotion and job-search operations: resume versions, role alignment, and strategy execution.
+          {introCopy}
         </p>
       </div>
 
@@ -265,7 +278,7 @@ export function CjsExecutionView(props: { doc: CjsExecutionContent }) {
             disabled={busy || resumeAssets.length === 0}
             className="w-full sm:w-auto px-4 py-3 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-50"
           >
-            Generate Search Strategy
+            {strategyLabel}
           </button>
           {strategy && (
             <div className="space-y-3 text-sm text-gray-700">

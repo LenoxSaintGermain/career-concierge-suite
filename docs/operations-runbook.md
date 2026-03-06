@@ -139,6 +139,28 @@ The admin console should now expose the following before any config edits are ma
 - approval queue pressure and hydrated-account count
 - agent registry policy with explicit read/write scopes
 - model routing and prompt overlay presence
+- Brand Studio controls for suite naming, colors, hierarchy, workflow labels, and logo URL
+
+## Brand Studio Operating Notes
+
+Use Admin -> Brand Studio for shell-level branding changes.
+
+Current scope:
+
+- suite and product naming
+- logo URL + alt text
+- mint/charcoal palette overrides
+- editorial hierarchy controls
+- suite-home shell copy
+- per-module eyebrow/title/overlay quote copy
+- display toggles for indices, status chips, descriptions, quotes, glow, and callout rail
+
+Operator guidance:
+
+- tune values top-down: identity -> colors -> hierarchy -> shell copy -> module copy
+- use the live preview before saving
+- logo injection is URL-based for now; broken or empty URLs should fall back to text-only branding
+- deeper artifact-body copy still lives in the module/view implementations and is not yet admin-driven
 
 If resume upload is enabled for binary upload, set one of:
 
@@ -181,11 +203,16 @@ Use the reset workflow instead of repeating blind imports.
 - intake persistence
 - admin config load
 - admin system overview load
-- roadmap + validation tile visibility for signed-in users
+- brand save + reload from Admin Brand Studio
+- logo propagation into header/prologue when configured
+- roadmap + validation tile visibility for admin users only
+- MyConcierge visibility and response flow for paid `not_sure` users
 - episode generation
+- narrated episode playback for auditory-learning personas
 - suite generation
 - live token generation
 - CJS upload/review/strategy flow
+- free-tier dashboard should only expose Intake, Episodes, and AI Readiness
 - Assets ledger summary + decision flow
 
 ## Recommended Release Sequence
@@ -196,4 +223,4 @@ Use the reset workflow instead of repeating blind imports.
 4. Confirm login
 5. Confirm intake write to `clients/{uid}`
 6. Confirm Admin loads and saves config
-7. Confirm episodes, suite, and live voice surfaces
+7. Confirm episodes, MyConcierge, tier-gated suite visibility, and live voice surfaces

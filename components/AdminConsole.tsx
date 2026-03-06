@@ -15,6 +15,7 @@ import {
   getAdminApiOrigin,
   saveAdminConfig,
 } from '../services/adminApi';
+import { BrandStudioSection } from './admin/BrandStudioSection';
 
 type Props = {
   open: boolean;
@@ -1423,6 +1424,8 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                   </label>
                 </div>
               </section>
+
+              <BrandStudioSection config={config} setConfig={setConfig} />
 
               <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Voice Engine</div>

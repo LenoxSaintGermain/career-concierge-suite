@@ -12,6 +12,12 @@
 - `docs/backlog-ledger.md`: story-level backlog status and execution ledger
 - `docs/mvp/demo_master_tasklist.md`: demo-readiness tasks mapped to test-user specs
 - `docs/mvp/demo_validation_checklist.md`: persona-by-persona QA execution script
+- `docs/mvp/editorial-grid_brand-studio_spec.md`: visual hierarchy, branding, and workflow-label sync rules
+- `docs/mvp/cinematic_episodes_player_spec.md`: queued Episodes redesign for the final client-facing cinematic player
+- `docs/mvp/microdrama_media-orchestration_spec.md`: queued reusable-vs-bespoke media strategy and pipeline architecture
+- `docs/mvp/agentic_staff_operating_model_spec.md`: canonical staffing, orchestration, and admin control-plane rules for the agentic OS
+- `docs/mvp/agentic_staffing_roadmap.md`: distilled implementation order for the staffing/orchestration model
+- `docs/mvp/agentic_execution_charter.md`: operator-facing baseline audit, confidence score, gap analysis, and deployable staff guide
 - `docs/documentation-map.md`: update matrix for future work
 
 ## Update Matrix
@@ -87,12 +93,58 @@
 - module flow changes impact demo QA sequencing
 - new backlog stories need explicit test steps
 
+### Update `docs/mvp/editorial-grid_brand-studio_spec.md` when
+
+- official naming or palette changes
+- workflow labels or overlay language change
+- Brand Studio controls change
+- the suite shell starts consuming new brand-config fields
+
+### Update `docs/mvp/cinematic_episodes_player_spec.md` when
+
+- the Episodes redesign scope changes
+- client vs operator mode boundaries change
+- player layout or interaction model changes
+- new design guardrails are added for future Episodes work
+
+### Update `docs/mvp/microdrama_media-orchestration_spec.md` when
+
+- media-planning trigger logic changes
+- reusable-vs-bespoke thresholds change
+- media storage architecture changes
+- the content-director or media-pipeline agent responsibilities change
+
+### Update `docs/mvp/agentic_staff_operating_model_spec.md` when
+
+- the canonical staff roster changes
+- orchestration triggers or handoff policy change
+- admin staffing controls change
+- a deferred runtime/channel decision becomes active scope
+
+### Update `docs/mvp/agentic_staffing_roadmap.md` when
+
+- staffing implementation order changes
+- stack-boundary decisions change
+- new staffing epics or master tasks are added
+
+### Update `docs/mvp/agentic_execution_charter.md` when
+
+- a stakeholder baseline audit changes
+- confidence scoring changes materially
+- recommended deployable staff count changes
+- the operator ledger/notebook protocol changes
+
 ## Code-to-Docs Mapping
 
 - `api/` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`
 - `services/firebase.ts` -> `README.md`, `docs/career-concierge-os.md`, `docs/ssai-production-migration.md`
 - major fork/repositioning changes -> `docs/career-concierge-fork.md`
 - `components/AdminConsole.tsx` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`
+- `components/admin/BrandStudioSection.tsx` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/mvp/editorial-grid_brand-studio_spec.md`
+- `components/BingeFeedView.tsx` -> `docs/mvp/cinematic_episodes_player_spec.md`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
+- `components/RoadmapView.tsx` -> `docs/backlog-ledger.md`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
+- staff/orchestration product planning -> `docs/mvp/agentic_staff_operating_model_spec.md`, `docs/mvp/agentic_staffing_roadmap.md`, `docs/career-concierge-os.md`, `docs/decision-log.md`
+- stakeholder baseline audit and operator guidance -> `docs/mvp/agentic_execution_charter.md`
 - `components/GeminiLivePanel.tsx` -> `README.md`, `docs/career-concierge-os.md`
 - `scripts/deploy_*` -> `README.md`, `docs/operations-runbook.md`, `docs/ssai-production-migration.md`
 - `api/scripts/seed_persona_fixtures.mjs` -> `README.md`, `docs/operations-runbook.md`, `docs/progress-log.md`

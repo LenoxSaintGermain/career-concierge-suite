@@ -174,23 +174,51 @@ export const generateReadinessDoc = (answers: IntakeAnswers): ReadinessContent =
   };
 };
 
-export const generateCjsExecutionDoc = (answers: IntakeAnswers): CjsExecutionContent => {
+export const generateCjsExecutionDoc = (
+  answers: IntakeAnswers,
+  intent: 'current_role' | 'target_role' | 'not_sure' = 'target_role'
+): CjsExecutionContent => {
   const target = resolveTargetRole(answers);
   const constraints = nonEmpty(answers.constraints);
   const blocked = constraints ? 'blocked' : 'planned';
 
+  if (intent === 'current_role') {
+    return {
+      intent_summary: `Internal mobility rail is available for ${target}, but the active focus stays on performance elevation and AI-led leverage in your current role.`,
+      stages: [
+        { step: 1, title: 'Smart Start Intake', status: 'ready', description: 'Professional DNA and internal operating context are captured.' },
+        { step: 2, title: 'AI Insights Report', status: 'ready', description: 'Readiness and AI usage patterns are framed for internal leverage.' },
+        { step: 3, title: 'Internal Pilot Brief', status: 'planned', description: 'Translate one recurring workflow into a small AI pilot proposal.' },
+        { step: 4, title: 'Sponsor Map', status: 'planned', description: 'Identify leaders who can validate the impact of an internal initiative.' },
+        { step: 5, title: 'External Search', status: 'blocked', description: 'Inactive by default for the current-role journey unless the client changes intent.' },
+      ],
+    };
+  }
+
+  if (intent === 'not_sure') {
+    return {
+      intent_summary: `Exploration rail is visible for ${target}, but execution is centered on role-fit discovery instead of active search volume.`,
+      stages: [
+        { step: 1, title: 'Smart Start Intake', status: 'ready', description: 'Transferable skills and constraints are mapped from your current background.' },
+        { step: 2, title: 'Role-Fit Hypotheses', status: 'planned', description: 'Generate 2-3 plausible role lanes and the proof each one requires.' },
+        { step: 3, title: 'Resume Reframe', status: 'planned', description: 'Translate current experience into language tech-adjacent teams already trust.' },
+        { step: 4, title: 'Informational Interviews', status: blocked, description: constraints ? `Waiting on constraints: ${constraints}` : 'Queue three exploratory conversations before any application sprint.' },
+      ],
+    };
+  }
+
   return {
-    intent_summary: `ConciergeJobSearch execution launched toward ${target}.`,
+    intent_summary: `Promotion-first ConciergeJobSearch execution is live for ${target}, with internal networking and proposal-driven momentum.`,
     stages: [
       { step: 1, title: 'Smart Start Intake', status: 'ready', description: 'Foundation event captured and mapped into Professional DNA.' },
       { step: 2, title: 'AI Insights Report', status: 'ready', description: 'Readiness and market context synthesized into execution guidance.' },
       { step: 3, title: 'Resume Optimization', status: 'planned', description: 'Resume reframed against target role language and keyword strategy.' },
-      { step: 4, title: 'Search Strategy', status: 'planned', description: 'Target account list and outreach vectors prioritized by signal score.' },
-      { step: 5, title: 'Search & Apply', status: blocked, description: constraints ? `Waiting on constraints: ${constraints}` : 'Application execution queue prepared.' },
-      { step: 6, title: 'Employer Insight Reports', status: 'planned', description: 'Company intelligence briefs for interviews and negotiation leverage.' },
+      { step: 4, title: 'Internal Search Strategy', status: 'planned', description: 'Stakeholder map, sponsor outreach, and proposal channels prioritized by signal score.' },
+      { step: 5, title: 'Project Proposal Push', status: blocked, description: constraints ? `Waiting on constraints: ${constraints}` : 'Internal campaign assets prepared for presentation and review.' },
+      { step: 6, title: 'Executive Proof Pack', status: 'planned', description: 'Briefing materials for ROI, role readiness, and team-level leverage.' },
       { step: 7, title: 'Interview Preparation', status: 'planned', description: 'Narrative frameworks and response structures tailored to role.' },
       { step: 8, title: 'Salary Negotiation', status: 'planned', description: 'Compensation framing and script set calibrated to market data.' },
-      { step: 9, title: 'Dispute to Counter', status: 'planned', description: 'Post-offer counter strategy with data-backed decision logic.' },
+      { step: 9, title: 'Decision-to-Counter', status: 'planned', description: 'Promotion or offer response strategy with data-backed decision logic.' },
     ],
   };
 };
