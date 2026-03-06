@@ -71,6 +71,99 @@ app.get('/v1/admin/config', requireAuth, requireAdmin, async (_req, res) => {
   return res.json({ config });
 });
 
+app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const limit = 8;
+    const clientsSnap = await db
+      .collection('clients')
+      .select('display_name', 'email', 'account', 'demo_profile')
+      .get();
+    const pendingRows = [];
+    const queueClientIds = new Set();
+    let hydratedAccountCount = 0;
+
+    for (const clientSnap of clientsSnap.docs) {
+      const clientData = clientSnap.data() ?? {};
+      if (clientData?.account?.hydrated === true || clientData?.demo_profile?.hydrated === true) {
+        hydratedAccountCount += 1;
+      }
+      const interactionsSnap = await clientInteractionsRef(clientSnap.id)
+        .where('status', '==', 'pending_approval')
+        .limit(limit)
+        .get();
+      if (!interactionsSnap.empty) queueClientIds.add(clientSnap.id);
+      interactionsSnap.docs.forEach((interactionSnap) => {
+        pendingRows.push(serializeInteraction(interactionSnap));
+      });
+    }
+
+    pendingRows.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+    const config = await loadAppConfig();
+    const writeScopeCount = AGENT_REGISTRY.reduce((total, agent) => total + agent.writes.length, 0);
+
+    return res.json({
+      runtime: {
+        project_id: process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || 'local',
+        region:
+          process.env.CLOUD_RUN_REGION ||
+          process.env.GOOGLE_CLOUD_REGION ||
+          process.env.REGION ||
+          'unknown',
+        service_name: process.env.K_SERVICE || 'career-concierge-api',
+        revision: process.env.K_REVISION || 'local-dev',
+        firestore_database_id: firestoreDatabaseId,
+        storage_bucket: storageBucketName || '',
+        gemini_configured: Boolean(geminiApiKey),
+        sesame_configured: Boolean(sesameApiKey),
+        admin_email_mode: adminEmailSet.size > 0 ? 'allowlist' : 'open',
+        admin_email_count: adminEmailSet.size,
+        rom_version: ROM_VERSION,
+      },
+      queue: {
+        pending_count: pendingRows.length,
+        client_count: queueClientIds.size,
+        hydrated_account_count: hydratedAccountCount,
+        items: pendingRows.slice(0, limit),
+      },
+      agents: {
+        count: AGENT_REGISTRY.length,
+        approval_required_count: AGENT_REGISTRY.filter((agent) => agent.approval_required).length,
+        write_scope_count: writeScopeCount,
+        items: AGENT_REGISTRY,
+      },
+      config_summary: {
+        external_media_enabled: Boolean(config.media?.external_media_enabled),
+        curated_library_count: Array.isArray(config.media?.curated_library) ? config.media.curated_library.length : 0,
+        curated_library_enabled_count: Array.isArray(config.media?.curated_library)
+          ? config.media.curated_library.filter((item) => item?.enabled !== false).length
+          : 0,
+        voice_enabled: Boolean(config.voice?.enabled),
+        voice_provider: nonEmpty(config.voice?.provider) || 'sesame',
+        live_model: nonEmpty(config.voice?.gemini_live_model) || geminiLiveModelDefault,
+        suite_model: nonEmpty(config.generation?.suite_model) || fastTextModel,
+        binge_model: nonEmpty(config.generation?.binge_model) || fastTextModel,
+        image_model: nonEmpty(config.media?.image_model) || imageModelDefault,
+        video_model: nonEmpty(config.media?.video_model) || videoModelDefault,
+        episodes_enabled: Boolean(config.ui?.episodes_enabled),
+        cjs_enabled: Boolean(config.operations?.cjs_enabled),
+        tone_guard_enabled: Boolean(config.safety?.tone_guard_enabled),
+        onboarding_email_enabled: Boolean(config.operations?.onboarding_email_enabled),
+        auto_generate_on_episode: Boolean(config.media?.auto_generate_on_episode),
+        suite_overlay_configured: Boolean(nonEmpty(config.prompts?.suite_appendix)),
+        binge_overlay_configured: Boolean(nonEmpty(config.prompts?.binge_appendix)),
+        rom_overlay_configured: Boolean(nonEmpty(config.prompts?.rom_appendix)),
+        live_overlay_configured: Boolean(nonEmpty(config.prompts?.live_appendix)),
+        art_director_overlay_configured: Boolean(nonEmpty(config.prompts?.art_director_appendix)),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_system_overview_failed',
+      detail: sanitizeError(error, 'admin_system_overview_failed'),
+    });
+  }
+});
+
 app.put('/v1/admin/config', requireAuth, requireAdmin, async (req, res) => {
   const next = normalizeConfig(req.body?.config ?? {});
   await configRef().set(

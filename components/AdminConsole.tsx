@@ -1,7 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CLIENT_INTENTS, FOCUS_PREFS, PACE_PREFS } from '../constants';
-import { AppConfig, CuratedMediaItem, MediaAudience, MediaJourneySurface, MediaPlatform, MediaSourceKind } from '../types';
-import { fetchAdminConfig, saveAdminConfig } from '../services/adminApi';
+import {
+  AdminSystemOverview,
+  AppConfig,
+  CuratedMediaItem,
+  MediaAudience,
+  MediaJourneySurface,
+  MediaPlatform,
+  MediaSourceKind,
+} from '../types';
+import { fetchAdminConfig, fetchAdminSystemOverview, saveAdminConfig } from '../services/adminApi';
 
 type Props = {
   open: boolean;
@@ -110,12 +118,32 @@ const createMediaItem = (): CuratedMediaItem => ({
   },
 });
 
+const labelize = (value: string) =>
+  value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const shortScope = (scope: string) =>
+  scope
+    .replace('clients/{uid}/', '')
+    .replace('clients/{uid}', 'profile')
+    .replace('/artifacts/', ' ')
+    .replace('/interactions/', ' ');
+
+const statusTone = (status: string) => {
+  if (status === 'pending_approval') return 'border-amber-500/25 bg-amber-50 text-amber-800';
+  if (status === 'approved') return 'border-emerald-500/25 bg-emerald-50 text-emerald-800';
+  if (status === 'rejected') return 'border-red-500/25 bg-red-50 text-red-800';
+  return 'border-black/10 bg-white text-black/65';
+};
+
 export function AdminConsole({ open, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const [overview, setOverview] = useState<AdminSystemOverview | null>(null);
   const [showAdvancedVoice, setShowAdvancedVoice] = useState(false);
 
   const isReady = useMemo(() => !!config && !loading, [config, loading]);
@@ -126,8 +154,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     setSuccess(null);
     setShowAdvancedVoice(false);
     try {
-      const cfg = await fetchAdminConfig();
+      const [cfg, nextOverview] = await Promise.all([fetchAdminConfig(), fetchAdminSystemOverview()]);
       setConfig(cfg);
+      setOverview(nextOverview);
     } catch (e: any) {
       setError(e?.message ?? 'Unable to load admin config.');
     } finally {
@@ -224,6 +253,8 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     try {
       const saved = await saveAdminConfig(config);
       setConfig(cloneConfig(saved));
+      const nextOverview = await fetchAdminSystemOverview();
+      setOverview(nextOverview);
       setSuccess('Configuration saved.');
       onSaved?.();
     } catch (e: any) {
@@ -232,6 +263,35 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
       setSaving(false);
     }
   };
+
+  const overviewCards = overview
+    ? [
+        {
+          eyebrow: 'Runtime',
+          title: `${overview.runtime.project_id} / ${overview.runtime.region}`,
+          body: `${overview.runtime.service_name} on ${overview.runtime.firestore_database_id}`,
+          meta: `rev ${overview.runtime.revision}`,
+        },
+        {
+          eyebrow: 'Approvals',
+          title: `${overview.queue.pending_count} pending / ${overview.queue.client_count} clients`,
+          body: 'Global admin queue across client ledgers.',
+          meta: overview.queue.pending_count > 0 ? 'attention required' : 'clear',
+        },
+        {
+          eyebrow: 'Agents',
+          title: `${overview.agents.count} live roles / ${overview.agents.write_scope_count} write scopes`,
+          body: `${overview.agents.approval_required_count} roles require approval before execution leaves the rail.`,
+          meta: `${overview.runtime.admin_email_count} admin emails`,
+        },
+        {
+          eyebrow: 'Routing',
+          title: `${overview.config_summary.voice_provider} / ${overview.config_summary.live_model}`,
+          body: `${overview.config_summary.curated_library_enabled_count} enabled media routes, ${overview.config_summary.curated_library_count} total entries.`,
+          meta: overview.config_summary.external_media_enabled ? 'external media on' : 'external media off',
+        },
+      ]
+    : [];
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-8">
@@ -270,6 +330,174 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
 
           {isReady && config && (
             <>
+              {overview && (
+                <>
+                  <section className="relative overflow-hidden border border-[#08242a] bg-[radial-gradient(circle_at_top,_rgba(27,208,191,0.18),_transparent_40%),linear-gradient(135deg,#041218_0%,#08242a_58%,#07171b_100%)] p-5 md:p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,0.16)]">
+                    <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[linear-gradient(90deg,transparent,rgba(27,208,191,0.08))] md:block" />
+                    <div className="relative space-y-6">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                        <div className="max-w-2xl space-y-2">
+                          <div className="text-[10px] uppercase tracking-[0.26em] text-brand-teal">Operating Surface</div>
+                          <h3 className="text-3xl md:text-4xl font-editorial italic leading-none">
+                            Backend posture, agent policy, and routing in one view.
+                          </h3>
+                          <p className="text-sm leading-relaxed text-white/72">
+                            This console now reflects the actual production operating model: runtime target, approval load,
+                            registry policy, and the live configuration that shapes the suite.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.22em] text-white/70 md:min-w-[18rem]">
+                          <div className="border border-white/10 bg-white/5 px-3 py-3">
+                            Gemini {overview.runtime.gemini_configured ? 'configured' : 'missing'}
+                          </div>
+                          <div className="border border-white/10 bg-white/5 px-3 py-3">
+                            Sesame {overview.runtime.sesame_configured ? 'configured' : 'missing'}
+                          </div>
+                          <div className="border border-white/10 bg-white/5 px-3 py-3">
+                            Storage {overview.runtime.storage_bucket ? 'wired' : 'unset'}
+                          </div>
+                          <div className="border border-white/10 bg-white/5 px-3 py-3">
+                            Voice {overview.config_summary.voice_enabled ? 'enabled' : 'disabled'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        {overviewCards.map((card) => (
+                          <article key={card.eyebrow} className="border border-white/12 bg-white/6 p-4 backdrop-blur-sm">
+                            <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">{card.eyebrow}</div>
+                            <div className="mt-3 text-2xl font-editorial leading-tight">{card.title}</div>
+                            <p className="mt-2 text-sm leading-relaxed text-white/70">{card.body}</p>
+                            <div className="mt-4 text-[10px] uppercase tracking-[0.22em] text-white/50">{card.meta}</div>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+                    <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Agent Registry</div>
+                          <h3 className="mt-2 text-3xl font-editorial italic leading-none">Policy map.</h3>
+                        </div>
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">
+                          {overview.agents.count} agents / {overview.agents.write_scope_count} write scopes
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                        {overview.agents.items.map((agent) => (
+                          <article key={agent.role_id} className="border border-black/10 bg-[#f8fbfb] p-4 space-y-4">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">{agent.role_id}</div>
+                                <h4 className="mt-2 text-xl font-editorial leading-tight">{agent.title}</h4>
+                              </div>
+                              <div className="space-y-2 text-right">
+                                <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">{agent.policy_version}</div>
+                                <span
+                                  className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${
+                                    agent.approval_required
+                                      ? 'border-amber-500/25 bg-amber-50 text-amber-800'
+                                      : 'border-emerald-500/25 bg-emerald-50 text-emerald-800'
+                                  }`}
+                                >
+                                  {agent.approval_required ? 'approval required' : 'direct execution'}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-sm leading-relaxed text-gray-700">{agent.objective}</p>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              <div className="space-y-2">
+                                <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Read Scope</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {agent.reads.map((scope) => (
+                                    <span key={scope} className="border border-black/12 bg-white px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-black/65">
+                                      {shortScope(scope)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Write Scope</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {agent.writes.map((scope) => (
+                                    <span key={scope} className="border border-brand-teal/25 bg-brand-soft px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-brand-teal">
+                                      {shortScope(scope)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">
+                              Access model: {labelize(agent.access_model)}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Admin Queue</div>
+                          <h3 className="mt-2 text-3xl font-editorial italic leading-none">Approval rail.</h3>
+                        </div>
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">
+                          {overview.queue.pending_count} pending
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        {overview.queue.items.length === 0 ? (
+                          <div className="border border-black/10 bg-[#f8fbfb] p-4 text-sm text-gray-600">
+                            No pending approvals across client ledgers.
+                          </div>
+                        ) : (
+                          overview.queue.items.map((item) => (
+                            <article key={`${item.client_uid || 'client'}-${item.id}`} className="border border-black/10 bg-[#f8fbfb] p-4 space-y-3">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">
+                                    {item.client_name || item.client_email || item.client_uid || 'Unknown client'}
+                                  </div>
+                                  <div className="text-[10px] uppercase tracking-[0.18em] text-black/35">
+                                    {labelize(item.source || item.type)}
+                                  </div>
+                                </div>
+                                <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${statusTone(item.status)}`}>
+                                  {labelize(item.status)}
+                                </span>
+                              </div>
+                              <h4 className="text-xl font-editorial leading-tight">{item.title}</h4>
+                              <p className="text-sm leading-relaxed text-gray-700">{item.summary}</p>
+                              {item.next_actions.length > 0 && (
+                                <div className="grid grid-cols-1 gap-2">
+                                  {item.next_actions.slice(0, 2).map((action) => (
+                                    <div key={action} className="border border-black/8 bg-white px-3 py-2 text-sm text-gray-700">
+                                      {action}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </article>
+                          ))
+                        )}
+                      </div>
+                      <div className="border border-black/10 bg-[#f8fbfb] p-4 text-sm text-gray-700">
+                        <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Runtime wiring</div>
+                        <div className="mt-3 space-y-2 text-sm">
+                          <div>API service: {overview.runtime.service_name}</div>
+                          <div>Project: {overview.runtime.project_id}</div>
+                          <div>Firestore DB: {overview.runtime.firestore_database_id}</div>
+                          <div>Bucket: {overview.runtime.storage_bucket || 'not configured'}</div>
+                        </div>
+                      </div>
+                    </section>
+                  </section>
+                </>
+              )}
+
               <section className="space-y-4 border border-black/10 bg-white p-5 md:p-6">
                 <div className="text-[10px] uppercase tracking-widest opacity-50">Generation</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

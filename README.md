@@ -95,6 +95,7 @@ New API routes:
 - `GET /v1/interactions`
 - `POST /v1/interactions/chief-of-staff`
 - `POST /v1/interactions/:interactionId/decision`
+- `GET /v1/admin/system-overview`
 - `GET /v1/admin/approval-queue`
 - `POST /v1/admin/approval-queue/:clientUid/:interactionId/decision`
 

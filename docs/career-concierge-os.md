@@ -51,6 +51,9 @@ Modules should feel like guided surfaces inside one OS, not isolated product pag
 
 The admin console is the operational control plane for:
 
+- runtime posture across Cloud Run, Firestore, and storage wiring
+- approval queue visibility across client ledgers
+- agent registry visibility with read/write scope policy
 - model routing
 - voice provider routing
 - prompt appendices and ROM tuning
@@ -79,6 +82,7 @@ The Express API under `api/` handles:
 - CJS execution rail endpoints (resume upload/review/strategy)
 - interaction ledger + approval endpoints
 - agent registry endpoint
+- admin system overview endpoint for runtime + policy visibility
 - explicit agent scope enforcement for core orchestration roles
 - binge episode generation
 - live token generation
@@ -113,6 +117,7 @@ Primary collections:
 - `clients/{clientId}/interactions/{interactionId}`
 
 Interaction ledger documents now carry client identity metadata so admin operators can work a global queue without losing ownership context.
+The admin console now consumes a dedicated system overview surface so operators can inspect runtime target, queue pressure, and agent policy before editing raw configuration fields.
 
 ## Relationship To Signal Atlas
 

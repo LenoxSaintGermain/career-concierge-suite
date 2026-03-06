@@ -357,6 +357,56 @@ export interface PublicConfig {
   operations: Pick<AppConfig['operations'], 'cjs_enabled'>;
 }
 
+export interface AdminSystemOverview {
+  runtime: {
+    project_id: string;
+    region: string;
+    service_name: string;
+    revision: string;
+    firestore_database_id: string;
+    storage_bucket: string;
+    gemini_configured: boolean;
+    sesame_configured: boolean;
+    admin_email_mode: 'open' | 'allowlist';
+    admin_email_count: number;
+    rom_version: string;
+  };
+  queue: {
+    pending_count: number;
+    client_count: number;
+    hydrated_account_count: number;
+    items: InteractionLog[];
+  };
+  agents: {
+    count: number;
+    approval_required_count: number;
+    write_scope_count: number;
+    items: AgentDefinition[];
+  };
+  config_summary: {
+    external_media_enabled: boolean;
+    curated_library_count: number;
+    curated_library_enabled_count: number;
+    voice_enabled: boolean;
+    voice_provider: string;
+    live_model: string;
+    suite_model: string;
+    binge_model: string;
+    image_model: string;
+    video_model: string;
+    episodes_enabled: boolean;
+    cjs_enabled: boolean;
+    tone_guard_enabled: boolean;
+    onboarding_email_enabled: boolean;
+    auto_generate_on_episode: boolean;
+    suite_overlay_configured: boolean;
+    binge_overlay_configured: boolean;
+    rom_overlay_configured: boolean;
+    live_overlay_configured: boolean;
+    art_director_overlay_configured: boolean;
+  };
+}
+
 export interface VoiceSynthesisResponse {
   provider: 'sesame' | 'gemini_live';
   mime_type: string;

@@ -1,5 +1,6 @@
 import { auth } from './firebase';
 import {
+  AdminSystemOverview,
   AppConfig,
   ClientIntent,
   CuratedMediaItem,
@@ -20,6 +21,8 @@ const resolveBaseUrl = () => {
   const value = (configuredBaseUrl || defaultBaseUrl).trim();
   return value.endsWith('/') ? value.slice(0, -1) : value;
 };
+
+export const getAdminApiOrigin = () => resolveBaseUrl();
 
 const MODULE_IDS: SuiteModuleId[] = [
   'intake',
@@ -214,6 +217,21 @@ export const fetchAdminConfig = async (): Promise<AppConfig> => {
 
   const data = await resp.json();
   return normalizeAdminConfig(data.config);
+};
+
+export const fetchAdminSystemOverview = async (): Promise<AdminSystemOverview> => {
+  const origin = resolveBaseUrl();
+  const resp = await fetch(`${origin}/v1/admin/system-overview`, {
+    method: 'GET',
+    headers: await authHeaders(),
+  });
+
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => '');
+    throw new Error(`Admin overview error (${resp.status}): ${txt || resp.statusText}`);
+  }
+
+  return (await resp.json()) as AdminSystemOverview;
 };
 
 export const canAccessAdminConfig = async (): Promise<boolean> => {
