@@ -203,6 +203,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Moved backend brand-config runtime imports under `api/` so the repo-based API build context can start successfully on Cloud Run.
 - Relaxed `/v1/admin/system-overview` so queue telemetry permission failures no longer block the full admin console.
 - Added `cloudbuild.api.yaml` so a repository trigger can build, push, and deploy the API service instead of stopping at image build.
+- Updated `cloudbuild.api.yaml` to use `CLOUD_LOGGING_ONLY`, which satisfies Cloud Build triggers that run under a specified service account.
 
 ### Backlog Status Snapshot
 

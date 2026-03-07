@@ -49,6 +49,7 @@ Admin overview behavior:
 - config editing remains available, while the UI shows a queue visibility warning instead of failing the full modal
 
 If using a standalone Cloud Build trigger instead of Cloud Run's repo-connected deploy, use `cloudbuild.api.yaml`. A single raw `docker build` trigger is insufficient because it does not roll the new image onto the `career-concierge-api` service.
+That build config also sets `logging: CLOUD_LOGGING_ONLY` so triggers using a dedicated service account do not fail on logs-bucket validation.
 
 ## Deploy UI
 
