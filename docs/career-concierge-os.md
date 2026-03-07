@@ -125,6 +125,13 @@ That operator rail now also surfaces the library-first media resolver summary:
 - client-specific narrative needs are logged as bespoke gaps
 - the decision summary is written back into `clients/{uid}/orchestration_runs/content_director_phase_a`
 
+Generated media is no longer only an in-memory response. The current pipeline layer now persists:
+
+- `clients/{uid}/media_jobs/{jobId}` for execution status
+- `clients/{uid}/media_manifests/{manifestId}` for assembled episode-media records
+- generated image binaries into Cloud Storage when a storage bucket is configured
+- video-status refresh updates back into the same job/manifest pair
+
 That queued media-pipeline track explicitly includes a future Admin Console operating section for queue monitoring, retries, approvals, library management, provider configuration, and failure inspection.
 The roadmap now also carries a queued agentic staff operating-model track so the canonical roles, handoffs, and stack boundaries are explicit before more agents are added.
 The same roadmap surface now visualizes the execution charter directly so operators can reference baseline confidence, staffing posture, and highest-risk gaps without leaving the modal.

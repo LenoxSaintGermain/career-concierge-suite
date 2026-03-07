@@ -1456,12 +1456,168 @@ const clientInteractionsRef = (uid) => clientRef(uid).collection('interactions')
 const clientLearningPlansRef = (uid) => clientRef(uid).collection('learning_plans');
 const clientEpisodePlansRef = (uid) => clientRef(uid).collection('episode_plans');
 const clientOrchestrationRunsRef = (uid) => clientRef(uid).collection('orchestration_runs');
+const clientMediaJobsRef = (uid) => clientRef(uid).collection('media_jobs');
+const clientMediaManifestsRef = (uid) => clientRef(uid).collection('media_manifests');
 
 const parseDataUrl = (input) => {
   const raw = nonEmpty(input);
   if (!raw) return '';
   const m = raw.match(/^data:.*;base64,(.+)$/);
   return m ? m[1] : raw;
+};
+
+const persistMediaAssetRecord = async ({ uid, jobId, asset, generatedAt }) => {
+  const persisted = {
+    kind: asset.kind,
+    model: asset.model,
+    prompt: asset.prompt,
+    status: asset.status,
+    note: nonEmpty(asset.note),
+    storage_provider: 'none',
+    storage_path: '',
+    source_url: '',
+    video_operation_name: nonEmpty(asset.video_operation_name),
+    video_done: Boolean(asset.video_done),
+  };
+
+  if (asset.kind === 'image' && nonEmpty(asset.image_data_url) && storageBucketName) {
+    try {
+      const base64 = parseDataUrl(asset.image_data_url);
+      if (base64) {
+        const bucket = admin.storage().bucket(storageBucketName);
+        const storagePath = `clients/${uid}/media/${jobId}/${asset.kind}-${generatedAt.getTime()}.jpg`;
+        await bucket.file(storagePath).save(Buffer.from(base64, 'base64'), {
+          resumable: false,
+          metadata: { contentType: 'image/jpeg', cacheControl: 'private, max-age=0, no-store' },
+        });
+        persisted.storage_provider = 'gcs';
+        persisted.storage_path = storagePath;
+      }
+    } catch (error) {
+      console.error('media_asset_storage_error', error);
+      persisted.note = [persisted.note, 'Image persistence failed.'].filter(Boolean).join(' ');
+    }
+  }
+
+  if (asset.kind === 'video' && nonEmpty(asset.video_uri)) {
+    persisted.storage_provider = 'gemini_uri';
+    persisted.source_url = nonEmpty(asset.video_uri);
+  }
+
+  return persisted;
+};
+
+const persistMediaPipelineArtifacts = async ({ uid, episodeId, direction, pack }) => {
+  const now = new Date();
+  const jobId = `media-job-${now.getTime().toString(36)}`;
+  const manifestId = episodeId;
+  const persistedAssets = await Promise.all(
+    (Array.isArray(pack.assets) ? pack.assets : []).map((asset) =>
+      persistMediaAssetRecord({ uid, jobId, asset, generatedAt: now })
+    )
+  );
+  const pipelineStatus = persistedAssets.some((asset) => asset.status === 'queued')
+    ? 'queued'
+    : pack.degraded
+      ? 'degraded'
+      : 'completed';
+
+  await Promise.all([
+    clientMediaJobsRef(uid).doc(jobId).set(
+      {
+        job_id: jobId,
+        manifest_id: manifestId,
+        episode_id: episodeId,
+        status: pipelineStatus,
+        trigger: 'binge_media_pack',
+        runner: 'inline_api',
+        generated_at: now,
+        updated_at: now,
+        narrative: pack.narrative,
+        degraded: Boolean(pack.degraded),
+        asset_count: persistedAssets.length,
+        queued_asset_count: persistedAssets.filter((asset) => asset.status === 'queued').length,
+        storage_bucket: storageBucketName || '',
+        assets: persistedAssets,
+      },
+      { merge: true }
+    ),
+    clientMediaManifestsRef(uid).doc(manifestId).set(
+      {
+        manifest_id: manifestId,
+        job_id: jobId,
+        episode_id: episodeId,
+        generated_at: now,
+        updated_at: now,
+        narrative: pack.narrative,
+        degraded: Boolean(pack.degraded),
+        pipeline_status: pipelineStatus,
+        direction,
+        assets: persistedAssets,
+      },
+      { merge: true }
+    ),
+  ]);
+
+  return {
+    job_id: jobId,
+    manifest_id: manifestId,
+    pipeline_status: pipelineStatus,
+    persisted_assets: persistedAssets,
+  };
+};
+
+const updatePersistedVideoStatus = async ({ uid, jobId, operationName, done, videoUri }) => {
+  if (!uid || !jobId) return;
+  try {
+    const jobRef = clientMediaJobsRef(uid).doc(jobId);
+    const jobSnap = await jobRef.get();
+    if (!jobSnap.exists) return;
+    const jobData = jobSnap.data() ?? {};
+    const manifestId = nonEmpty(jobData.manifest_id) || nonEmpty(jobData.episode_id);
+    const nextAssets = Array.isArray(jobData.assets)
+      ? jobData.assets.map((asset) => {
+          if (asset?.kind !== 'video') return asset;
+          if (operationName && nonEmpty(asset.video_operation_name) && nonEmpty(asset.video_operation_name) !== operationName) {
+            return asset;
+          }
+          return {
+            ...asset,
+            status: done && videoUri ? 'generated' : asset.status,
+            video_done: done,
+            source_url: videoUri || asset.source_url || '',
+            storage_provider: videoUri ? 'gemini_uri' : asset.storage_provider || 'none',
+          };
+        })
+      : [];
+    const nextStatus = nextAssets.some((asset) => asset?.status === 'queued')
+      ? 'queued'
+      : nextAssets.some((asset) => asset?.status === 'unavailable')
+        ? 'degraded'
+        : 'completed';
+
+    await jobRef.set(
+      {
+        status: nextStatus,
+        updated_at: new Date(),
+        assets: nextAssets,
+      },
+      { merge: true }
+    );
+
+    if (manifestId) {
+      await clientMediaManifestsRef(uid).doc(manifestId).set(
+        {
+          pipeline_status: nextStatus,
+          updated_at: new Date(),
+          assets: nextAssets,
+        },
+        { merge: true }
+      );
+    }
+  } catch (error) {
+    console.error('media_video_status_persist_error', error);
+  }
 };
 
 const readClientProfile = async (uid) => {
@@ -2832,6 +2988,7 @@ app.post('/v1/binge/episode', requireAuth, async (req, res) => {
 // Generate one semantic media pack (image + video operation) for the current episode narrative.
 app.post('/v1/binge/media-pack', requireAuth, async (req, res) => {
   const { episode, dna, target_skill } = req.body ?? {};
+  const uid = req.user.uid;
   const runtimeConfig = await loadAppConfig();
   const episodeId = nonEmpty(episode?.episode_id) || `ep-${Date.now().toString(36)}`;
   const direction = buildMediaDirection({
@@ -2840,27 +2997,37 @@ app.post('/v1/binge/media-pack', requireAuth, async (req, res) => {
     targetSkill: target_skill,
     runtimeConfig,
   });
+  const withPipelineAssets = (pack, pipeline) => ({
+    ...pack,
+    ...pipeline,
+    assets: Array.isArray(pack.assets)
+      ? pack.assets.map((asset, index) => ({
+          ...asset,
+          ...(Array.isArray(pipeline?.persisted_assets) ? pipeline.persisted_assets[index] ?? {} : {}),
+        }))
+      : [],
+  });
 
   if (!runtimeConfig.media.enabled) {
-    return res.json(
-      buildMediaFallbackPack({
-        episodeId,
-        runtimeConfig,
-        direction,
-        reason: 'media_module_disabled',
-      })
-    );
+    const pack = buildMediaFallbackPack({
+      episodeId,
+      runtimeConfig,
+      direction,
+      reason: 'media_module_disabled',
+    });
+    const pipeline = await persistMediaPipelineArtifacts({ uid, episodeId, direction, pack });
+    return res.json(withPipelineAssets(pack, pipeline));
   }
 
   if (!ai) {
-    return res.json(
-      buildMediaFallbackPack({
-        episodeId,
-        runtimeConfig,
-        direction,
-        reason: 'missing_gemini_api_key',
-      })
-    );
+    const pack = buildMediaFallbackPack({
+      episodeId,
+      runtimeConfig,
+      direction,
+      reason: 'missing_gemini_api_key',
+    });
+    const pipeline = await persistMediaPipelineArtifacts({ uid, episodeId, direction, pack });
+    return res.json(withPipelineAssets(pack, pipeline));
   }
 
   try {
@@ -2869,29 +3036,31 @@ app.post('/v1/binge/media-pack', requireAuth, async (req, res) => {
       generateVideoAsset({ runtimeConfig, direction }),
     ]);
 
-    const degraded = imageAsset.status !== 'generated' || videoAsset.status === 'unavailable';
-    return res.json({
+    const pack = {
       episode_id: episodeId,
       narrative: direction.narrative,
       generated_at: new Date().toISOString(),
-      degraded,
+      degraded: imageAsset.status !== 'generated' || videoAsset.status === 'unavailable',
       assets: [imageAsset, videoAsset],
-    });
+    };
+    const pipeline = await persistMediaPipelineArtifacts({ uid, episodeId, direction, pack });
+    return res.json(withPipelineAssets(pack, pipeline));
   } catch (error) {
     console.error('media_pack_error', error);
-    return res.json(
-      buildMediaFallbackPack({
-        episodeId,
-        runtimeConfig,
-        direction,
-        reason: sanitizeError(error, 'media_pack_failed'),
-      })
-    );
+    const pack = buildMediaFallbackPack({
+      episodeId,
+      runtimeConfig,
+      direction,
+      reason: sanitizeError(error, 'media_pack_failed'),
+    });
+    const pipeline = await persistMediaPipelineArtifacts({ uid, episodeId, direction, pack });
+    return res.json(withPipelineAssets(pack, pipeline));
   }
 });
 
 app.post('/v1/binge/media-pack/video-status', requireAuth, async (req, res) => {
   const operationName = nonEmpty(req.body?.operation_name);
+  const jobId = nonEmpty(req.body?.job_id);
   if (!operationName) {
     return res.status(400).json({ error: 'operation_name_required' });
   }
@@ -2904,9 +3073,17 @@ app.post('/v1/binge/media-pack/video-status', requireAuth, async (req, res) => {
       operation: { name: operationName },
     });
     const videoUri = nonEmpty(operation?.response?.generatedVideos?.[0]?.video?.uri);
+    await updatePersistedVideoStatus({
+      uid: req.user.uid,
+      jobId,
+      operationName,
+      done: Boolean(operation?.done),
+      videoUri: videoUri || '',
+    });
 
     return res.json({
       operation_name: operation?.name || operationName,
+      job_id: jobId || null,
       done: Boolean(operation?.done),
       video_uri: videoUri || null,
       error: operation?.error ?? null,

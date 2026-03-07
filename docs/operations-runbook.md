@@ -198,6 +198,27 @@ Negative checks:
 - free-tier or users without the Phase A episode plan should return `resolver.status = no_plan`
 - if curated media exists but no tags match, the resolver should report reusable-kit gaps rather than pretending the episode is fully covered
 
+## Media Job + Manifest Persistence
+
+`POST /v1/binge/media-pack` now persists generated output into:
+
+- `clients/{uid}/media_jobs/{jobId}`
+- `clients/{uid}/media_manifests/{manifestId}`
+
+Persistence expectations:
+
+- generated image assets write to Cloud Storage when `CCS_STORAGE_BUCKET` / storage bucket config is available
+- manifest/job records store asset status, prompt, model, and storage metadata
+- `POST /v1/binge/media-pack/video-status` can update the same persisted job when `job_id` is supplied
+
+Quick operator check:
+
+1. Generate a scene pack from Episodes operator mode.
+2. Confirm the response includes `job_id`, `manifest_id`, and `pipeline_status`.
+3. Inspect Firestore for matching `media_jobs` and `media_manifests` docs.
+4. If video is queued, call `POST /v1/binge/media-pack/video-status` with both `operation_name` and `job_id`.
+5. Confirm the existing job/manifest updates instead of a second job appearing.
+
 ## Starter Library Seeding
 
 Admin now includes a one-click starter pack inside the `Media` section.

@@ -224,6 +224,9 @@ export interface GeneratedMediaAsset {
   video_operation_name?: string;
   video_done?: boolean;
   video_uri?: string;
+  storage_provider?: 'gcs' | 'gemini_uri' | 'none';
+  storage_path?: string;
+  source_url?: string;
 }
 
 export interface GeneratedMediaPack {
@@ -231,6 +234,9 @@ export interface GeneratedMediaPack {
   narrative: string;
   generated_at: string;
   degraded: boolean;
+  job_id?: string;
+  manifest_id?: string;
+  pipeline_status?: 'queued' | 'degraded' | 'completed';
   assets: GeneratedMediaAsset[];
 }
 

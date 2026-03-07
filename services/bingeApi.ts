@@ -62,7 +62,10 @@ export const generateEpisodeMediaPack = async (episode: BingeEpisode): Promise<G
   return (await resp.json()) as GeneratedMediaPack;
 };
 
-export const refreshVideoOperation = async (operationName: string): Promise<{ done: boolean; video_uri?: string | null }> => {
+export const refreshVideoOperation = async (
+  operationName: string,
+  jobId?: string
+): Promise<{ done: boolean; video_uri?: string | null; job_id?: string | null }> => {
   const origin = resolveApiOrigin();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
@@ -76,7 +79,7 @@ export const refreshVideoOperation = async (operationName: string): Promise<{ do
         'content-type': 'application/json',
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ operation_name: operationName }),
+      body: JSON.stringify({ operation_name: operationName, job_id: jobId }),
     });
   } catch {
     throw new Error(
@@ -93,6 +96,7 @@ export const refreshVideoOperation = async (operationName: string): Promise<{ do
   return {
     done: Boolean(payload?.done),
     video_uri: payload?.video_uri ?? null,
+    job_id: payload?.job_id ?? null,
   };
 };
 

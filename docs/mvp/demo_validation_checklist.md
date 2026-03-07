@@ -159,3 +159,20 @@ Use this checklist for in-product validation before production demos. Each perso
 1. Login as Derrick free tier and confirm the media resolver does not claim a Phase A plan exists.
 2. Temporarily remove matching tags from a curated item and confirm the resolver reports `kit gaps` instead of pretending the episode is fully covered.
 3. Confirm bespoke narrative needs are labeled as bespoke gaps, not silently collapsed into generic library matches.
+
+## Media Pipeline Persistence Pass
+
+### Positive Path
+
+1. Login as a paid persona and open `Episodes` -> `Operator Mode`.
+2. Generate a scene pack.
+3. Confirm the operator rail shows `Pipeline`, `Job`, and `Manifest` identifiers.
+4. Verify Firestore contains `clients/{uid}/media_jobs/{jobId}` and `clients/{uid}/media_manifests/{manifestId}`.
+5. If a storage bucket is configured, confirm the generated image asset records a `storage_path`.
+6. If the video is queued, refresh status and confirm the persisted job/manifest update when the clip becomes available.
+
+### Negative Guards
+
+1. Confirm generating a scene pack without Gemini configured still creates a degraded job/manifest record instead of failing silently.
+2. Confirm repeated video-status refreshes update the same job rather than spawning duplicate job docs.
+3. Confirm persisted metadata does not require the client UI to retain the raw in-memory response in order to understand job state.

@@ -217,7 +217,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 | E06 ConciergeJobSearch Execution Rail | Done | Upload, resume review, and strategy generation are shipped in API + UI. |
 | E07 Editorial Grid Brand OS | In Progress | Shared brand config and Brand Studio shipped; deeper artifact-body copy harmonization is still open. |
 | E08 Client-Facing Cinematic Episodes Player | Done | Client-facing cinematic player shipped; admin/operator BTS controls are now separated behind explicit operator mode. |
-| E09 Content Director Media Pipeline | In Progress | Phase A planning trigger, starter library seeding, and the plan-backed library-first resolver are live; async pipeline work, storage architecture, and admin media ops remain. |
+| E09 Content Director Media Pipeline | In Progress | Phase A planning trigger, starter library seeding, resolver, and persisted media jobs/manifests are live; dedicated worker execution, richer lineage, and admin media ops remain. |
 | E10 Agentic Staff Operating Model | Queued | Canonical staffing spec and roadmap now exist; implementation has not started. |
 
 ### Next Implementation Priority
@@ -226,7 +226,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 2. Validate `MTL-09` with brand edits, logo injection, and Lucid overlay parity checks across suite home and module overlays.
 3. Finish `MTL-07` with real device regression checks on MyConcierge, Episodes, and free-tier surfaces.
 4. Run persona proof capture for shipped `MTL-10` and note any residual polish gaps in the validation package.
-5. Continue `MTL-11` with async jobs, storage architecture, and admin media ops now that Phase A planning, starter library seeding, and the library-first resolver are live.
+5. Continue `MTL-11` with dedicated worker execution, richer lineage, and admin media ops now that the first persisted media-pipeline layer is live.
 6. Start `MTL-12` so the staff roster, handoff graph, admin operating section, and evidence model are explicit before orchestration scope expands.
 
 ### Delivery: Admin Console Save Guard + Content Director Phase A Seed
@@ -267,3 +267,12 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Completed `E09-S02` by adding a reusable starter media pack and a one-click admin seeding action.
 - Operators can now bootstrap the curated library without hand-authoring the first reusable routes.
 - The starter pack is append-only by stable ids, so repeated loads do not duplicate entries or overwrite manual curation.
+
+### Delivery: Persisted Media Jobs + Manifests
+
+- Started `E09-S04` and `E09-S05` by adding persisted media jobs/manifests to the episode media-pack flow.
+- `POST /v1/binge/media-pack` now returns pipeline ids and writes:
+  - `clients/{uid}/media_jobs/{jobId}`
+  - `clients/{uid}/media_manifests/{manifestId}`
+- Generated image binaries now save to Cloud Storage when a bucket is configured.
+- Video-status polling can now update the same persisted job/manifest pair when the caller includes `job_id`.

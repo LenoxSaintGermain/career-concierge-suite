@@ -380,11 +380,12 @@ export function BingeFeedView(props: {
     setVideoRefreshBusy(true);
     setMediaError(null);
     try {
-      const status = await refreshVideoOperation(operationName);
+      const status = await refreshVideoOperation(operationName, mediaPack.job_id);
       setMediaPack((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
+          pipeline_status: status.done && status.video_uri ? 'completed' : prev.pipeline_status,
           assets: prev.assets.map((asset) => {
             if (asset.kind !== 'video') return asset;
             return {
@@ -1212,6 +1213,11 @@ export function BingeFeedView(props: {
             {mediaPack && (
               <div className="relative space-y-3">
                 <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Generated Narrative Assets</div>
+                <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.18em] text-[#8ea3a7]">
+                  {mediaPack.pipeline_status && <span>Pipeline {mediaPack.pipeline_status}</span>}
+                  {mediaPack.job_id && <span>Job {mediaPack.job_id}</span>}
+                  {mediaPack.manifest_id && <span>Manifest {mediaPack.manifest_id}</span>}
+                </div>
                 <div className="text-xs text-[#a9bcc0] leading-relaxed">{mediaPack.narrative}</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="border border-[#2e4c53] bg-[#0d2329] p-3 space-y-3">
@@ -1231,6 +1237,9 @@ export function BingeFeedView(props: {
                       </div>
                     )}
                     <div className="text-[11px] font-mono text-[#c6d6d9]">{imageAsset?.model ?? 'n/a'}</div>
+                    {imageAsset?.storage_path && (
+                      <div className="text-[10px] font-mono text-[#8ea3a7]">Stored at {imageAsset.storage_path}</div>
+                    )}
                     {imageAsset?.note && <p className="text-xs text-[#a9bcc0] leading-relaxed">{imageAsset.note}</p>}
                   </div>
 
@@ -1240,6 +1249,9 @@ export function BingeFeedView(props: {
                       <div className="text-[10px] uppercase tracking-[0.2em] text-brand-teal">{videoAsset?.status ?? 'n/a'}</div>
                     </div>
                     <div className="text-[11px] font-mono text-[#c6d6d9]">{videoAsset?.model ?? 'n/a'}</div>
+                    {videoAsset?.source_url && !videoAsset?.video_uri && (
+                      <div className="text-[10px] font-mono text-[#8ea3a7]">Tracked URI available in manifest</div>
+                    )}
                     {videoAsset?.note && <p className="text-xs text-[#a9bcc0] leading-relaxed">{videoAsset.note}</p>}
                     {videoAsset?.video_uri ? (
                       <a
