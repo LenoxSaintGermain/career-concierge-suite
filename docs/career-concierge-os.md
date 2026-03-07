@@ -99,6 +99,7 @@ It uses:
 - a persistent save rail with explicit unsaved-state feedback
 - collapsible media-library editing so large libraries do not overwhelm the modal
 - taxonomy shortcut chips inside the media-library editor so reusable media can be tagged consistently instead of relying only on free-form tag entry
+- a one-click starter media pack so operators can seed reusable episode routes without hand-authoring every initial library item
 - a future media-pipeline operations section that can inherit the same compact control-tower structure
 
 The operating surface still comes first, but it now behaves like a structured backstage OS instead of a stacked settings page.

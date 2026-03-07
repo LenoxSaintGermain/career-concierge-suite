@@ -451,9 +451,9 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E09-S02',
     epic: 'E09',
     title: 'Reusable Media Library + Taxonomy',
-    status: 'in_progress',
+    status: 'done',
     surface: 'Media library',
-    validation: 'Generic concept assets must be tagged and retrievable without regeneration.',
+    validation: 'Admin now supports taxonomy-guided tagging plus one-click starter-pack seeding so generic concept assets are immediately retrievable without regeneration.',
   },
   {
     id: 'E09-S03',

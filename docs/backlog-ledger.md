@@ -46,7 +46,7 @@ Source of truth backlog:
 | E08-S04 Mobile/Desktop Editorial Adaptation | E08 | P1 | Done | The player now preserves portrait-forward focus on small screens and a structured editorial balance on desktop. |
 | E08-S05 Brand-System Design QA Guardrails | E08 | P1 | Done | Episodes now inherit the shared brand system and expose explicit positive/negative validation coverage. |
 | E09-S01 Content Director Planning Trigger | E09 | P1 | Done | Suite generation now seeds `learning_plans`, `episode_plans`, and `orchestration_runs` as soon as intake + first-order artifact signal exist. |
-| E09-S02 Reusable Media Library + Taxonomy | E09 | P1 | In Progress | Admin media-library editing now includes structured taxonomy shortcuts; starter library seeding and retrieval ranking still remain. |
+| E09-S02 Reusable Media Library + Taxonomy | E09 | P1 | Done | Admin media-library editing now includes structured taxonomy shortcuts and a one-click starter pack with reusable episode routes. |
 | E09-S03 Library-First Resolver + Gap Analysis | E09 | P1 | Done | `/v1/media/library` now resolves tagged assets against the Phase A episode plan, classifies reusable-kit vs bespoke gaps, and persists the decision summary into `orchestration_runs`. |
 | E09-S04 Cloud Run Media-Pipeline Service | E09 | P1 | Queued | Long-running generation should move through a dedicated async media worker/service boundary. |
 | E09-S05 Cloud Storage + Firestore Metadata Model | E09 | P1 | Queued | Binary media should live in Cloud Storage and metadata/state in Firestore. |
@@ -123,6 +123,7 @@ Current task pulse:
 | 2026-03-06 20:28:00Z | API origin routing fix | Added a shared frontend API-origin resolver so repo-connected UI deploys infer the sibling Cloud Run API by default instead of calling the hard-coded canonical API host. | Done | `services/apiOrigin.ts`, `services/adminApi.ts`, `services/cjsApi.ts`, `services/bingeApi.ts`, `services/liveApi.ts`, `services/suiteApi.ts`, `services/voiceApi.ts`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-06 21:40:00Z | E08/MTL-10 implementation | Shipped the client-facing cinematic Episodes player, split admin-only operator mode from the default client surface, and expanded persona validation with positive/negative demo cases. | Done | `App.tsx`, `components/BingeFeedView.tsx`, `docs/mvp/demo_validation_checklist.md`, `docs/mvp/demo_master_tasklist.md`, `docs/backlog-ledger.md`, `docs/progress-log.md` |
 | 2026-03-07 00:20:00Z | E09-S03 media resolver | Added a plan-backed library-first resolver that ranks reusable media, classifies reusable-kit versus bespoke gaps, persists the summary to orchestration runs, and exposes the resolution state in the Episodes operator rail. | Done | `api/index.js`, `types.ts`, `components/BingeFeedView.tsx`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
+| 2026-03-07 00:45:00Z | E09-S02 starter library seed | Added a starter curated-media pack plus one-click admin seeding so reusable routes can be loaded into config without hand-building every entry. | Done | `components/AdminConsole.tsx`, `config/starterMediaLibrary.ts`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 
 ## Update Protocol
 

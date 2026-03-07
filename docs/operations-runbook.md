@@ -198,6 +198,23 @@ Negative checks:
 - free-tier or users without the Phase A episode plan should return `resolver.status = no_plan`
 - if curated media exists but no tags match, the resolver should report reusable-kit gaps rather than pretending the episode is fully covered
 
+## Starter Library Seeding
+
+Admin now includes a one-click starter pack inside the `Media` section.
+
+Operator workflow:
+
+1. Open `Admin` -> `Media`.
+2. Click `Load starter pack`.
+3. Save config.
+4. Refresh Episodes operator mode and confirm routed media now includes starter-pack entries where tags match the Phase A episode plan.
+
+Guardrails:
+
+- starter-pack load is append-only by `id`
+- repeated loads should not duplicate entries
+- manual library items should remain untouched
+
 ## CJS Rail + Ledger API Checks
 
 After API deploy, validate these authenticated routes:

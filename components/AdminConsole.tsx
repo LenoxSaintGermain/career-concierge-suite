@@ -16,6 +16,7 @@ import {
   saveAdminConfig,
 } from '../services/adminApi';
 import { MEDIA_LIBRARY_TAXONOMY_GROUPS, mergeMediaTags } from '../config/mediaLibraryTaxonomy';
+import { STARTER_MEDIA_LIBRARY_PACK } from '../config/starterMediaLibrary';
 import { BrandStudioSection } from './admin/BrandStudioSection';
 
 type Props = {
@@ -135,6 +136,12 @@ const createMediaItem = (): CuratedMediaItem => ({
     required_module_unlocks: [],
   },
 });
+
+const appendStarterMediaPack = (library: CuratedMediaItem[]) => {
+  const existingIds = new Set(library.map((item) => item.id));
+  const additions = STARTER_MEDIA_LIBRARY_PACK.filter((item) => !existingIds.has(item.id));
+  return [...library, ...additions];
+};
 
 const labelize = (value: string) =>
   value
@@ -518,6 +525,21 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
       };
     });
     setExpandedMediaId(nextExpandedId);
+  };
+
+  const seedStarterMediaPack = () => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      const nextLibrary = appendStarterMediaPack(prev.media.curated_library);
+      return {
+        ...prev,
+        media: {
+          ...prev.media,
+          curated_library: nextLibrary,
+        },
+      };
+    });
+    setExpandedMediaId((prev) => prev ?? STARTER_MEDIA_LIBRARY_PACK[0]?.id ?? null);
   };
 
   const save = async () => {
@@ -1081,13 +1103,22 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 material before generating bespoke media.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={addMediaItem}
-              className="border border-black/15 px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal"
-            >
-              Add media item
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={seedStarterMediaPack}
+                className="border border-black/15 px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal"
+              >
+                Load starter pack
+              </button>
+              <button
+                type="button"
+                onClick={addMediaItem}
+                className="border border-black/15 px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal"
+              >
+                Add media item
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3">

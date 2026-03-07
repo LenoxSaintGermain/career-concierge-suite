@@ -114,6 +114,22 @@ Use this checklist for in-product validation before production demos. Each perso
 2. Confirm Episodes still inherit brand colors/hierarchy after a save.
 3. Confirm operator-only Episodes controls remain gated to admins even after a full refresh.
 
+## Admin Media Library Pass
+
+### Positive Path
+
+1. Login as admin user and open `Admin`.
+2. Open the `Media` section.
+3. Click `Load starter pack`.
+4. Confirm four reusable entries are added to the curated library without duplicating on a second click.
+5. Save config, refresh, and confirm `Episodes` operator mode can route at least one starter-pack asset.
+
+### Negative Guards
+
+1. Confirm starter-pack seeding does not overwrite manually created library items.
+2. Confirm repeated starter-pack loads do not create duplicate ids.
+3. Confirm library items without a matching rule/tag still stay out of the routed result set.
+
 ## Episodes Operator Pass
 
 ### Positive Path
