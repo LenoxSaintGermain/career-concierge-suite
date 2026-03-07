@@ -1115,14 +1115,6 @@ const buildLibraryTagSet = (entries) =>
       .filter(Boolean)
   );
 
-const countSharedLibraryTags = (a, b) => {
-  let count = 0;
-  a.forEach((tag) => {
-    if (b.has(tag)) count += 1;
-  });
-  return count;
-};
-
 const buildLibraryFirstResolution = ({ items, episodePlan, surface }) => {
   if (!episodePlan || !Array.isArray(episodePlan.episodes) || !episodePlan.episodes.length) {
     return {
@@ -1141,7 +1133,7 @@ const buildLibraryFirstResolution = ({ items, episodePlan, surface }) => {
     };
   }
 
-  let reusedAssetCount = 0;
+  const reusedAssetIds = new Set();
   let reusableGapCount = 0;
   let bespokeGapCount = 0;
 
@@ -1183,16 +1175,16 @@ const buildLibraryFirstResolution = ({ items, episodePlan, surface }) => {
       reason: 'This need is specific to the client narrative and should not be fulfilled by a generic library asset.',
     }));
 
-    reusedAssetCount += selectedMatches.length;
+    selectedMatches.forEach((entry) => reusedAssetIds.add(entry.item.id));
     reusableGapCount += reusableGaps.length;
     bespokeGapCount += bespokeGaps.length;
 
     const coverage =
-      selectedMatches.length > 0
-        ? reusableGaps.length || bespokeGaps.length
+      selectedMatches.length > 0 && reusableGaps.length === 0
+        ? 'reused'
+        : selectedMatches.length > 0 || reusableGaps.length > 0
           ? 'mixed'
-          : 'reused'
-        : bespokeGaps.length > 0
+          : bespokeGaps.length > 0
           ? 'bespoke_only'
           : 'no_library_match';
 
@@ -1217,7 +1209,7 @@ const buildLibraryFirstResolution = ({ items, episodePlan, surface }) => {
     resolved_at: new Date().toISOString(),
     summary: {
       resolved_episode_count: episodes.length,
-      reused_asset_count: reusedAssetCount,
+      reused_asset_count: reusedAssetIds.size,
       reusable_gap_count: reusableGapCount,
       bespoke_gap_count: bespokeGapCount,
     },
@@ -1228,17 +1220,27 @@ const buildLibraryFirstResolution = ({ items, episodePlan, surface }) => {
 const persistLibraryFirstResolution = async ({ uid, resolution }) => {
   if (!resolution || resolution.status !== 'plan_backed' || !resolution.plan_id) return;
   try {
+    const runRef = clientOrchestrationRunsRef(uid).doc(resolution.plan_id);
+    const existingSnap = await runRef.get();
+    const nextResolution = {
+      strategy: resolution.strategy,
+      status: resolution.status,
+      surface: resolution.surface,
+      plan_id: resolution.plan_id,
+      resolved_at: resolution.resolved_at,
+      summary: resolution.summary,
+      episodes: resolution.episodes,
+    };
+    const existingResolution =
+      existingSnap.exists && existingSnap.data()?.media_resolution
+        ? existingSnap.data().media_resolution
+        : null;
+    if (JSON.stringify(existingResolution) === JSON.stringify(nextResolution)) {
+      return;
+    }
     await clientOrchestrationRunsRef(uid).doc(resolution.plan_id).set(
       {
-        media_resolution: {
-          strategy: resolution.strategy,
-          status: resolution.status,
-          surface: resolution.surface,
-          plan_id: resolution.plan_id,
-          resolved_at: resolution.resolved_at,
-          summary: resolution.summary,
-          episodes: resolution.episodes,
-        },
+        media_resolution: nextResolution,
         updated_at: new Date(),
       },
       { merge: true }
