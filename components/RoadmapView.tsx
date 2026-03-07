@@ -459,9 +459,9 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E09-S03',
     epic: 'E09',
     title: 'Library-First Resolver + Gap Analysis',
-    status: 'queued',
+    status: 'done',
     surface: 'Episode asset resolution',
-    validation: 'Resolver must reuse library assets first and classify gaps as reusable-kit or bespoke.',
+    validation: 'Resolver now reuses tagged library assets first, classifies unresolved reusable tags versus bespoke needs, and writes the decision summary into orchestration runs.',
   },
   {
     id: 'E09-S04',

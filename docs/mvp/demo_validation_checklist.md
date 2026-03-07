@@ -127,3 +127,19 @@ Use this checklist for in-product validation before production demos. Each perso
 
 1. Log in as a non-admin paid user and confirm the operator-mode toggle is not visible.
 2. Confirm the client mode does not leak `recommended_models`, prompt appendices, or art-director framing.
+
+## Media Resolver Pass
+
+### Positive Path
+
+1. Login as a paid persona who has completed intake and generated suite artifacts.
+2. Open `Episodes`, switch to `Operator Mode`, and click `Refresh Library`.
+3. Confirm the operator rail shows a `Library-first resolver` summary with reused asset count plus kit/bespoke gap counts.
+4. Confirm `Episode asset resolution` cards appear and list reused asset titles when matching tags exist.
+5. Verify Firestore contains `clients/{uid}/orchestration_runs/content_director_phase_a.media_resolution`.
+
+### Negative Guards
+
+1. Login as Derrick free tier and confirm the media resolver does not claim a Phase A plan exists.
+2. Temporarily remove matching tags from a curated item and confirm the resolver reports `kit gaps` instead of pretending the episode is fully covered.
+3. Confirm bespoke narrative needs are labeled as bespoke gaps, not silently collapsed into generic library matches.

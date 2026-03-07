@@ -168,6 +168,36 @@ UI behavior:
 - allowed accounts see the `Admin` button normally
 - disallowed accounts now see `Admin Locked` in the header rather than no admin affordance at all
 
+## Media Resolver Checks
+
+The current `E09-S03` implementation lives behind the authenticated media-library route:
+
+- `GET /v1/media/library?surface=episodes`
+
+Expected response shape additions:
+
+- `resolver.strategy = library_first`
+- `resolver.status = plan_backed` when `clients/{uid}/episode_plans/content_director_phase_a` exists
+- `resolver.summary` with reused asset count plus reusable-kit and bespoke gap counts
+- `resolver.episodes[]` with per-episode coverage, matched asset ids/titles, and gap analysis
+
+Expected persistence side effect:
+
+- `clients/{uid}/orchestration_runs/content_director_phase_a.media_resolution`
+
+Quick operator check:
+
+1. Sign in as a paid persona with completed intake.
+2. Load Episodes operator mode.
+3. Call `GET /v1/media/library?surface=episodes` with the user token.
+4. Confirm the response includes `resolver`.
+5. Confirm Firestore now shows `media_resolution` under `orchestration_runs/content_director_phase_a`.
+
+Negative checks:
+
+- free-tier or users without the Phase A episode plan should return `resolver.status = no_plan`
+- if curated media exists but no tags match, the resolver should report reusable-kit gaps rather than pretending the episode is fully covered
+
 ## CJS Rail + Ledger API Checks
 
 After API deploy, validate these authenticated routes:

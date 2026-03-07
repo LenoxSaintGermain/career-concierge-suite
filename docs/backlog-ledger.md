@@ -47,7 +47,7 @@ Source of truth backlog:
 | E08-S05 Brand-System Design QA Guardrails | E08 | P1 | Done | Episodes now inherit the shared brand system and expose explicit positive/negative validation coverage. |
 | E09-S01 Content Director Planning Trigger | E09 | P1 | Done | Suite generation now seeds `learning_plans`, `episode_plans`, and `orchestration_runs` as soon as intake + first-order artifact signal exist. |
 | E09-S02 Reusable Media Library + Taxonomy | E09 | P1 | In Progress | Admin media-library editing now includes structured taxonomy shortcuts; starter library seeding and retrieval ranking still remain. |
-| E09-S03 Library-First Resolver + Gap Analysis | E09 | P1 | Queued | Resolve existing assets first, then classify missing needs as reusable-kit or bespoke. |
+| E09-S03 Library-First Resolver + Gap Analysis | E09 | P1 | Done | `/v1/media/library` now resolves tagged assets against the Phase A episode plan, classifies reusable-kit vs bespoke gaps, and persists the decision summary into `orchestration_runs`. |
 | E09-S04 Cloud Run Media-Pipeline Service | E09 | P1 | Queued | Long-running generation should move through a dedicated async media worker/service boundary. |
 | E09-S05 Cloud Storage + Firestore Metadata Model | E09 | P1 | Queued | Binary media should live in Cloud Storage and metadata/state in Firestore. |
 | E09-S06 Operator Lineage vs Client Output Boundary | E09 | P1 | Queued | Operator mode should expose provenance while client mode only sees final assembled media. |
@@ -94,7 +94,7 @@ Current task pulse:
 | MTL-07 Mobile completion pass | In Progress | TU1/TU2/TU3/TU4 |
 | MTL-08 Manual QA script + acceptance proof capture | In Progress | TU1/TU2/TU3/TU4 |
 | MTL-09 Editorial grid brand OS + workflow label sync | In Progress | All personas + operator/admin |
-| MTL-10 Client-facing cinematic Episodes player | Queued | All personas, especially TU1/TU3/TU4 + investor demo narrative |
+| MTL-10 Client-facing cinematic Episodes player | Done | All personas, especially TU1/TU3/TU4 + investor demo narrative |
 | MTL-11 Content Director media orchestration + reusable library pipeline | In Progress | Episodes platform, operator/admin, future investor demos |
 | MTL-12 Agentic staff operating model + orchestration control plane | Queued | All personas + operator/admin + roadmap coherence |
 | MTL-13 Sample persona test harness + quick-switch ops | Queued | All personas + operator/admin + demo rehearsal |
@@ -122,6 +122,7 @@ Current task pulse:
 | 2026-03-06 20:14:00Z | Admin access hardening | Added known-operator fallback admin emails in the API and replaced the silent hidden-admin state with a visible `Admin Locked` header state in the suite UI. | Done | `api/index.js`, `App.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-06 20:28:00Z | API origin routing fix | Added a shared frontend API-origin resolver so repo-connected UI deploys infer the sibling Cloud Run API by default instead of calling the hard-coded canonical API host. | Done | `services/apiOrigin.ts`, `services/adminApi.ts`, `services/cjsApi.ts`, `services/bingeApi.ts`, `services/liveApi.ts`, `services/suiteApi.ts`, `services/voiceApi.ts`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-06 21:40:00Z | E08/MTL-10 implementation | Shipped the client-facing cinematic Episodes player, split admin-only operator mode from the default client surface, and expanded persona validation with positive/negative demo cases. | Done | `App.tsx`, `components/BingeFeedView.tsx`, `docs/mvp/demo_validation_checklist.md`, `docs/mvp/demo_master_tasklist.md`, `docs/backlog-ledger.md`, `docs/progress-log.md` |
+| 2026-03-07 00:20:00Z | E09-S03 media resolver | Added a plan-backed library-first resolver that ranks reusable media, classifies reusable-kit versus bespoke gaps, persists the summary to orchestration runs, and exposes the resolution state in the Episodes operator rail. | Done | `api/index.js`, `types.ts`, `components/BingeFeedView.tsx`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 
 ## Update Protocol
 

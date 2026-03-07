@@ -1089,6 +1089,165 @@ const loadClientJourneyProfile = async (uid) => {
   }
 };
 
+const loadContentDirectorEpisodePlan = async (uid) => {
+  try {
+    const snap = await clientEpisodePlansRef(uid).doc('content_director_phase_a').get();
+    if (!snap.exists) return null;
+    const data = snap.data() ?? {};
+    return data && typeof data === 'object' ? data : null;
+  } catch (error) {
+    console.error('content_director_episode_plan_load_error', error);
+    return null;
+  }
+};
+
+const normalizeLibraryTag = (value) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+const buildLibraryTagSet = (entries) =>
+  new Set(
+    toStringList(entries)
+      .map((entry) => normalizeLibraryTag(entry))
+      .filter(Boolean)
+  );
+
+const countSharedLibraryTags = (a, b) => {
+  let count = 0;
+  a.forEach((tag) => {
+    if (b.has(tag)) count += 1;
+  });
+  return count;
+};
+
+const buildLibraryFirstResolution = ({ items, episodePlan, surface }) => {
+  if (!episodePlan || !Array.isArray(episodePlan.episodes) || !episodePlan.episodes.length) {
+    return {
+      strategy: 'library_first',
+      status: 'no_plan',
+      surface,
+      plan_id: null,
+      resolved_at: new Date().toISOString(),
+      summary: {
+        resolved_episode_count: 0,
+        reused_asset_count: 0,
+        reusable_gap_count: 0,
+        bespoke_gap_count: 0,
+      },
+      episodes: [],
+    };
+  }
+
+  let reusedAssetCount = 0;
+  let reusableGapCount = 0;
+  let bespokeGapCount = 0;
+
+  const episodes = episodePlan.episodes.map((episode) => {
+    const reusableTags = toStringList(episode?.reusable_asset_tags);
+    const bespokeCandidates = toStringList(episode?.bespoke_candidates);
+    const reusableTagSet = buildLibraryTagSet(reusableTags);
+    const rankedMatches = items
+      .map((item) => {
+        const itemTagSet = buildLibraryTagSet(item?.tags);
+        const sharedTags = [...reusableTagSet].filter((tag) => itemTagSet.has(tag));
+        return {
+          item,
+          sharedTags,
+          score: sharedTags.length,
+        };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const pa = Number.isFinite(Number(a.item?.priority)) ? Number(a.item.priority) : 100;
+        const pb = Number.isFinite(Number(b.item?.priority)) ? Number(b.item.priority) : 100;
+        return pa - pb;
+      });
+
+    const selectedMatches = rankedMatches.slice(0, 3);
+    const matchedTagSet = new Set(selectedMatches.flatMap((entry) => entry.sharedTags));
+    const unmatchedReusableTags = reusableTags.filter(
+      (tag) => !matchedTagSet.has(normalizeLibraryTag(tag))
+    );
+    const reusableGaps = unmatchedReusableTags.map((tag) => ({
+      need: tag,
+      classification: 'reusable_kit',
+      reason: 'No approved library asset currently satisfies this reusable tag.',
+    }));
+    const bespokeGaps = bespokeCandidates.map((need) => ({
+      need,
+      classification: 'bespoke',
+      reason: 'This need is specific to the client narrative and should not be fulfilled by a generic library asset.',
+    }));
+
+    reusedAssetCount += selectedMatches.length;
+    reusableGapCount += reusableGaps.length;
+    bespokeGapCount += bespokeGaps.length;
+
+    const coverage =
+      selectedMatches.length > 0
+        ? reusableGaps.length || bespokeGaps.length
+          ? 'mixed'
+          : 'reused'
+        : bespokeGaps.length > 0
+          ? 'bespoke_only'
+          : 'no_library_match';
+
+    return {
+      episode_id: String(episode?.id || `episode-${Number(episode?.order || 0) + 1}`),
+      title: String(episode?.title || 'Untitled episode'),
+      objective: String(episode?.objective || ''),
+      coverage,
+      matched_asset_ids: selectedMatches.map((entry) => entry.item.id),
+      matched_asset_titles: selectedMatches.map((entry) => entry.item.title || entry.item.id),
+      matched_tags: [...matchedTagSet],
+      unmatched_reusable_tags: unmatchedReusableTags,
+      gap_analysis: [...reusableGaps, ...bespokeGaps],
+    };
+  });
+
+  return {
+    strategy: 'library_first',
+    status: 'plan_backed',
+    surface,
+    plan_id: String(episodePlan.plan_id || 'content_director_phase_a'),
+    resolved_at: new Date().toISOString(),
+    summary: {
+      resolved_episode_count: episodes.length,
+      reused_asset_count: reusedAssetCount,
+      reusable_gap_count: reusableGapCount,
+      bespoke_gap_count: bespokeGapCount,
+    },
+    episodes,
+  };
+};
+
+const persistLibraryFirstResolution = async ({ uid, resolution }) => {
+  if (!resolution || resolution.status !== 'plan_backed' || !resolution.plan_id) return;
+  try {
+    await clientOrchestrationRunsRef(uid).doc(resolution.plan_id).set(
+      {
+        media_resolution: {
+          strategy: resolution.strategy,
+          status: resolution.status,
+          surface: resolution.surface,
+          plan_id: resolution.plan_id,
+          resolved_at: resolution.resolved_at,
+          summary: resolution.summary,
+          episodes: resolution.episodes,
+        },
+        updated_at: new Date(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('library_resolution_persist_error', error);
+  }
+};
+
 const inferMediaPlatform = (sourceUrl, configuredPlatform = 'auto') => {
   if (configuredPlatform && configuredPlatform !== 'auto') return configuredPlatform;
   try {
@@ -2174,6 +2333,7 @@ app.get('/v1/media/library', requireAuth, async (req, res) => {
   const surfaceCandidate = nonEmpty(req.query?.surface).toLowerCase();
   const surface = JOURNEY_SURFACES.has(surfaceCandidate) ? surfaceCandidate : 'episodes';
   const context = await loadClientJourneyProfile(req.user.uid);
+  const episodePlan = await loadContentDirectorEpisodePlan(req.user.uid);
   const isAdmin = isAdminUser(req.user);
 
   if (!runtimeConfig.media.external_media_enabled) {
@@ -2181,6 +2341,7 @@ app.get('/v1/media/library', requireAuth, async (req, res) => {
       surface,
       generated_at: new Date().toISOString(),
       context: { ...context, is_admin: isAdmin },
+      resolver: buildLibraryFirstResolution({ items: [], episodePlan: null, surface }),
       items: [],
     });
   }
@@ -2200,6 +2361,8 @@ app.get('/v1/media/library', requireAuth, async (req, res) => {
       ...item,
       ...resolveExternalMediaUrls(item),
     }));
+  const resolver = buildLibraryFirstResolution({ items: visible, episodePlan, surface });
+  await persistLibraryFirstResolution({ uid: req.user.uid, resolution: resolver });
 
   return res.json({
     surface,
@@ -2213,6 +2376,7 @@ app.get('/v1/media/library', requireAuth, async (req, res) => {
       pace: context.pace,
       is_admin: isAdmin,
     },
+    resolver,
     items: visible,
   });
 });

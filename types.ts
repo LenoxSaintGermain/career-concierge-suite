@@ -279,6 +279,41 @@ export interface ResolvedCuratedMediaItem extends CuratedMediaItem {
   embed_url: string;
 }
 
+export interface CuratedMediaResolutionGap {
+  need: string;
+  classification: 'reusable_kit' | 'bespoke';
+  reason: string;
+}
+
+export interface CuratedMediaResolutionEpisode {
+  episode_id: string;
+  title: string;
+  objective: string;
+  coverage: 'reused' | 'mixed' | 'bespoke_only' | 'no_library_match';
+  matched_asset_ids: string[];
+  matched_asset_titles: string[];
+  matched_tags: string[];
+  unmatched_reusable_tags: string[];
+  gap_analysis: CuratedMediaResolutionGap[];
+}
+
+export interface CuratedMediaResolutionSummary {
+  resolved_episode_count: number;
+  reused_asset_count: number;
+  reusable_gap_count: number;
+  bespoke_gap_count: number;
+}
+
+export interface CuratedMediaResolution {
+  strategy: 'library_first';
+  status: 'plan_backed' | 'no_plan';
+  surface: MediaJourneySurface;
+  plan_id: string | null;
+  resolved_at: string;
+  summary: CuratedMediaResolutionSummary;
+  episodes: CuratedMediaResolutionEpisode[];
+}
+
 export interface CuratedMediaLibraryResponse {
   surface: MediaJourneySurface;
   generated_at: string;
@@ -291,6 +326,7 @@ export interface CuratedMediaLibraryResponse {
     pace: PacePreference | null;
     is_admin: boolean;
   };
+  resolver?: CuratedMediaResolution | null;
   items: ResolvedCuratedMediaItem[];
 }
 

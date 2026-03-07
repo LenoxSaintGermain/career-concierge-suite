@@ -285,6 +285,12 @@ export function BingeFeedView(props: {
     if (!library?.context) return null;
     return `${library.context.intake_complete ? 'post-intake' : 'pre-intake'} / ${library.context.intent || 'all intents'} / ${library.context.focus || 'all focuses'} / ${library.context.pace || 'all paces'}`;
   }, [library?.context]);
+  const resolverSummary = useMemo(() => {
+    if (!library?.resolver?.summary) return null;
+    const summary = library.resolver.summary;
+    return `${summary.resolved_episode_count} episodes / ${summary.reused_asset_count} reused / ${summary.reusable_gap_count} kit gaps / ${summary.bespoke_gap_count} bespoke`;
+  }, [library?.resolver]);
+  const resolverEpisodes = useMemo(() => library?.resolver?.episodes ?? [], [library?.resolver]);
   const activeBeat = useMemo(
     () => episodeBeats.find((beat) => beat.id === scene) ?? episodeBeats[0] ?? null,
     [episodeBeats, scene]
@@ -990,6 +996,23 @@ export function BingeFeedView(props: {
                 </div>
               ) : activeMedia ? (
                 <>
+                  {(routeSummary || resolverSummary) && (
+                    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-3">
+                      {routeSummary && (
+                        <div className="border border-[#284850] bg-[#0b1f24] px-3 py-3">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Routing context</div>
+                          <div className="text-xs text-[#dce6e8] mt-2">{routeSummary}</div>
+                        </div>
+                      )}
+                      {resolverSummary && (
+                        <div className="border border-[#284850] bg-[#0b1f24] px-3 py-3">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Library-first resolver</div>
+                          <div className="text-xs text-[#dce6e8] mt-2">{resolverSummary}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 lg:grid-cols-[1.22fr_0.78fr] gap-4">
                     <div ref={mediaStageRef} className="border border-[#29464d] bg-[#0d2227] p-3 md:p-4 space-y-3">
                       <div className="flex items-start justify-between gap-3">
@@ -1083,8 +1106,31 @@ export function BingeFeedView(props: {
                     </div>
                   </div>
 
-                  {routeSummary && (
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Routing context: {routeSummary}</div>
+                  {resolverEpisodes.length > 0 && (
+                    <div className="border border-[#29464d] bg-[#0d2227] p-3 md:p-4 space-y-3">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Episode asset resolution</div>
+                      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+                        {resolverEpisodes.map((episode) => (
+                          <div key={episode.episode_id} className="border border-[#284850] bg-[#102830] p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="text-sm font-editorial italic text-[#edf4f5] leading-tight">{episode.title}</div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-brand-teal">{episode.coverage.replace(/_/g, ' ')}</div>
+                            </div>
+                            <div className="text-xs text-[#b2c4c8] leading-relaxed">{episode.objective}</div>
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-[#8ea3a7]">
+                              {episode.matched_asset_titles.length
+                                ? `Reused: ${episode.matched_asset_titles.join(', ')}`
+                                : 'No routed library asset yet'}
+                            </div>
+                            {episode.unmatched_reusable_tags.length > 0 && (
+                              <div className="text-[11px] text-[#9cb2b6]">
+                                Kit gaps: {episode.unmatched_reusable_tags.join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </>
               ) : hasCuratedButNoMatch ? (

@@ -217,7 +217,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 | E06 ConciergeJobSearch Execution Rail | Done | Upload, resume review, and strategy generation are shipped in API + UI. |
 | E07 Editorial Grid Brand OS | In Progress | Shared brand config and Brand Studio shipped; deeper artifact-body copy harmonization is still open. |
 | E08 Client-Facing Cinematic Episodes Player | Done | Client-facing cinematic player shipped; admin/operator BTS controls are now separated behind explicit operator mode. |
-| E09 Content Director Media Pipeline | In Progress | Phase A planning trigger now seeds learning/episode plans plus orchestration run state; reusable library, resolver, and async pipeline work remain. |
+| E09 Content Director Media Pipeline | In Progress | Phase A planning trigger and plan-backed library-first resolver are live; starter library seeding, async pipeline work, storage architecture, and admin media ops remain. |
 | E10 Agentic Staff Operating Model | Queued | Canonical staffing spec and roadmap now exist; implementation has not started. |
 
 ### Next Implementation Priority
@@ -226,7 +226,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 2. Validate `MTL-09` with brand edits, logo injection, and Lucid overlay parity checks across suite home and module overlays.
 3. Finish `MTL-07` with real device regression checks on MyConcierge, Episodes, and free-tier surfaces.
 4. Run persona proof capture for shipped `MTL-10` and note any residual polish gaps in the validation package.
-5. Continue `MTL-11` with reusable library taxonomy and library-first resolver work now that Phase A planning seeds are live.
+5. Continue `MTL-11` with starter library seeding, async jobs, and admin media ops now that Phase A planning plus the library-first resolver are live.
 6. Start `MTL-12` so the staff roster, handoff graph, admin operating section, and evidence model are explicit before orchestration scope expands.
 
 ### Delivery: Admin Console Save Guard + Content Director Phase A Seed
@@ -250,3 +250,14 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Restored the suite home grid to canonical numeric tile order so the editorial layout no longer drifts by intent.
 - Started `E09-S02` by adding structured taxonomy shortcut chips to the admin media-library editor.
 - Reusable media tagging now has a guided vocabulary for concept, scene type, environment, intent, modality, reuse scope, and rights metadata.
+
+### Delivery: Library-First Resolver + Gap Analysis
+
+- Completed `E09-S03` by upgrading `GET /v1/media/library` from a simple filtered library list into a plan-backed resolver.
+- The resolver now:
+  - reads `clients/{uid}/episode_plans/content_director_phase_a`
+  - ranks reusable media by shared tags
+  - classifies unresolved reusable tags as `reusable_kit`
+  - classifies bespoke narrative needs as `bespoke`
+  - writes the summary back into `clients/{uid}/orchestration_runs/content_director_phase_a`
+- Episodes operator mode now exposes a compact resolver summary so demos can show why media was reused versus flagged for bespoke follow-up.

@@ -99,6 +99,7 @@ It uses:
 - a persistent save rail with explicit unsaved-state feedback
 - collapsible media-library editing so large libraries do not overwhelm the modal
 - taxonomy shortcut chips inside the media-library editor so reusable media can be tagged consistently instead of relying only on free-form tag entry
+- a future media-pipeline operations section that can inherit the same compact control-tower structure
 
 The operating surface still comes first, but it now behaves like a structured backstage OS instead of a stacked settings page.
 Brand Studio is now part of that write surface and is the canonical place to tune the editorial grid shell.
@@ -115,6 +116,14 @@ The roadmap validation module mirrors these logs, so all three must be updated i
 The in-app roadmap now carries the shipped client-facing Episodes player plus the still-queued Content Director media pipeline so product delivery and future architecture work remain visible together.
 
 Episodes now default to a client-facing cinematic player. Admins can still access BTS media-routing and generation controls, but only through an explicit operator mode inside the Episodes module.
+That operator rail now also surfaces the library-first media resolver summary:
+
+- routed media still comes from the curated library
+- the resolver checks the Phase A episode plan for reusable tags and bespoke candidates
+- unresolved reusable tags are logged as reusable-kit gaps
+- client-specific narrative needs are logged as bespoke gaps
+- the decision summary is written back into `clients/{uid}/orchestration_runs/content_director_phase_a`
+
 That queued media-pipeline track explicitly includes a future Admin Console operating section for queue monitoring, retries, approvals, library management, provider configuration, and failure inspection.
 The roadmap now also carries a queued agentic staff operating-model track so the canonical roles, handoffs, and stack boundaries are explicit before more agents are added.
 The same roadmap surface now visualizes the execution charter directly so operators can reference baseline confidence, staffing posture, and highest-risk gaps without leaving the modal.
