@@ -34,7 +34,7 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 | `MTL-08` Manual QA script and acceptance proof capture | In Progress | Produce proof package for each persona demo run | `E02-S04`, `E04-S02` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-09` Editorial grid brand OS + workflow label sync | In Progress | Replace POC shell language with official naming, palette, overlay treatment, and admin-tunable hierarchy | `E07-S01`, `E07-S02`, `E07-S03`, `E07-S04` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-10` Client-facing cinematic Episodes player | Done | Default Episodes is now a client-facing micro-drama player, with operator diagnostics preserved in a separate admin-only mode | `E08-S01`, `E08-S02`, `E08-S03`, `E08-S04`, `E08-S05` | `TU1`, `TU3`, `TU4` |
-| `MTL-11` Content Director media orchestration + reusable library pipeline | Queued | Introduce library-first media planning, bespoke thresholds, and a dedicated async media pipeline plus admin control surface | `E09-S01`, `E09-S02`, `E09-S03`, `E09-S04`, `E09-S05`, `E09-S06`, `E09-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
+| `MTL-11` Content Director media orchestration + reusable library pipeline | In Progress | Phase A planning seed now lands after suite generation; reusable library, resolver, async jobs, and admin pipeline ops remain | `E09-S01`, `E09-S02`, `E09-S03`, `E09-S04`, `E09-S05`, `E09-S06`, `E09-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-12` Agentic staff operating model + orchestration control plane | Queued | Formalize the staff roster, handoff graph, memory/evidence model, and admin orchestration console without re-platforming the current OS | `E10-S01`, `E10-S02`, `E10-S03`, `E10-S04`, `E10-S05`, `E10-S06`, `E10-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
 
 ## Acceptance Mapping (Test Spec -> Backlog)
@@ -126,7 +126,7 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 - `MTL-05`: CJS rail now supports resume upload + resume review + search strategy generation.
 - `MTL-09`: shared brand config, live preview, and suite-shell label overrides are now implemented in Admin + public config; final visual QA remains.
 - `MTL-10`: shipped in product; remaining work is persona proof capture and any follow-up polish discovered during demo rehearsal.
-- `MTL-11`: queued content/media architecture is defined in `docs/mvp/microdrama_media-orchestration_spec.md`; implementation has not started.
+- `MTL-11`: `E09-S01` is now live; suite generation seeds `learning_plans`, `episode_plans`, and `orchestration_runs` in Firestore. The library-first resolver, async pipeline, and admin media ops remain queued.
 - `MTL-12`: queued staffing/orchestration architecture is defined in `docs/mvp/agentic_staff_operating_model_spec.md`; implementation has not started.
 
 ## Definition of Done

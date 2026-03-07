@@ -540,6 +540,18 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     }
   };
 
+  const requestReload = () => {
+    if (loading || saving) return;
+    if (
+      hasUnsavedChanges &&
+      typeof window !== 'undefined' &&
+      !window.confirm('Reloading admin config will discard your unsaved changes. Continue?')
+    ) {
+      return;
+    }
+    load();
+  };
+
   const overviewCards = overview
     ? [
         {
@@ -1847,11 +1859,12 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                     key={section.id}
                     type="button"
                     onClick={() => setActiveSection(section.id)}
+                    disabled={saving}
                     className={`w-full border px-4 py-4 text-left transition-all ${
                       active
                         ? 'border-[#08242a] bg-[#08242a] text-white shadow-[0_20px_40px_-30px_rgba(0,0,0,0.45)]'
                         : 'border-transparent bg-transparent text-[#09161a] hover:border-black/10 hover:bg-white/70'
-                    }`}
+                    } disabled:cursor-not-allowed disabled:opacity-55`}
                   >
                     <div
                       className={`text-[10px] uppercase tracking-[0.24em] ${
@@ -1910,11 +1923,12 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                   key={section.id}
                   type="button"
                   onClick={() => setActiveSection(section.id)}
+                  disabled={saving}
                   className={`whitespace-nowrap border px-3 py-2 text-[10px] uppercase tracking-[0.18em] ${
                     activeSection === section.id
                       ? 'border-[#08242a] bg-[#08242a] text-white'
                       : 'border-black/10 bg-white text-black/55'
-                  }`}
+                  } disabled:cursor-not-allowed disabled:opacity-55`}
                 >
                   {section.shortLabel}
                 </button>
@@ -1934,7 +1948,11 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 {success}
               </div>
             ) : null}
-            {isReady && config ? renderActiveSection() : null}
+            {isReady && config ? (
+              <fieldset disabled={saving} className={saving ? 'opacity-70 transition-opacity' : undefined}>
+                {renderActiveSection()}
+              </fieldset>
+            ) : null}
           </div>
 
           <footer className="border-t border-black/10 bg-[rgba(255,255,255,0.86)] px-5 py-4 backdrop-blur md:px-6">
@@ -1947,7 +1965,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={load}
+                  onClick={requestReload}
                   disabled={loading || saving}
                   className="border border-black/10 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-black/60 transition-colors hover:border-black/20 hover:text-black disabled:opacity-30"
                 >

@@ -174,6 +174,7 @@ Primary collections:
 Interaction ledger documents now carry client identity metadata so admin operators can work a global queue without losing ownership context.
 The admin console now consumes a dedicated system overview surface so operators can inspect runtime target, queue pressure, and agent policy before editing raw configuration fields.
 The planned next evolution is to extend that operator visibility from policy snapshots into a full orchestration control plane rooted in the same Firebase/GCP stack.
+That evolution has now started for media orchestration: suite generation seeds `clients/{uid}/learning_plans/content_director_phase_a`, `clients/{uid}/episode_plans/content_director_phase_a`, and `clients/{uid}/orchestration_runs/content_director_phase_a` as soon as intake and first-order artifacts exist.
 
 ## Relationship To Signal Atlas
 

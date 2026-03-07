@@ -45,7 +45,7 @@ Source of truth backlog:
 | E08-S03 Editorial Context Overlays + Challenge Cards | E08 | P1 | Done | Context notes and challenge cards now teach concepts without exposing backend-generation language. |
 | E08-S04 Mobile/Desktop Editorial Adaptation | E08 | P1 | Done | The player now preserves portrait-forward focus on small screens and a structured editorial balance on desktop. |
 | E08-S05 Brand-System Design QA Guardrails | E08 | P1 | Done | Episodes now inherit the shared brand system and expose explicit positive/negative validation coverage. |
-| E09-S01 Content Director Planning Trigger | E09 | P1 | Queued | Learning-plan and episode-plan seeds should start once intake + first-order client signal exist. |
+| E09-S01 Content Director Planning Trigger | E09 | P1 | Done | Suite generation now seeds `learning_plans`, `episode_plans`, and `orchestration_runs` as soon as intake + first-order artifact signal exist. |
 | E09-S02 Reusable Media Library + Taxonomy | E09 | P1 | Queued | Generic concepts should be served from a tagged reusable library rather than regenerated. |
 | E09-S03 Library-First Resolver + Gap Analysis | E09 | P1 | Queued | Resolve existing assets first, then classify missing needs as reusable-kit or bespoke. |
 | E09-S04 Cloud Run Media-Pipeline Service | E09 | P1 | Queued | Long-running generation should move through a dedicated async media worker/service boundary. |
@@ -92,7 +92,7 @@ Current task pulse:
 | MTL-08 Manual QA script + acceptance proof capture | In Progress | TU1/TU2/TU3/TU4 |
 | MTL-09 Editorial grid brand OS + workflow label sync | In Progress | All personas + operator/admin |
 | MTL-10 Client-facing cinematic Episodes player | Queued | All personas, especially TU1/TU3/TU4 + investor demo narrative |
-| MTL-11 Content Director media orchestration + reusable library pipeline | Queued | Episodes platform, operator/admin, future investor demos |
+| MTL-11 Content Director media orchestration + reusable library pipeline | In Progress | Episodes platform, operator/admin, future investor demos |
 | MTL-12 Agentic staff operating model + orchestration control plane | Queued | All personas + operator/admin + roadmap coherence |
 
 ## Execution Ledger

@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned enhancement. This spec defines the content strategy and delivery architecture for reusable and bespoke episode media.
+Partially implemented. Phase A planning seeds now write after suite generation; reusable-library resolution, async media jobs, and admin media ops remain queued.
 
 ## Product Question
 
@@ -51,6 +51,7 @@ Phase A: fast planning seed
 
 - runs right after intake completion
 - establishes episode themes, concept order, and likely reusable assets
+- now implemented by the suite-generation trigger, which writes `learning_plans/content_director_phase_a`, `episode_plans/content_director_phase_a`, and `orchestration_runs/content_director_phase_a`
 
 Phase B: enriched planning pass
 
@@ -322,11 +323,14 @@ Architecture implication:
 ## Test Cases
 
 1. Complete intake and confirm a learning-plan seed plus episode-plan seed are created.
+   Positive: paid-tier intake that reaches `/v1/suite/generate` should create `learning_plans/content_director_phase_a`, `episode_plans/content_director_phase_a`, and `orchestration_runs/content_director_phase_a`.
+   Negative: free-tier intake should not create those phase-A planning docs yet, because it does not generate the first-order artifact bundle.
 2. Submit an episode plan that references generic concepts like `globe` or `LLM` and confirm existing library assets are reused.
 3. Submit an episode plan with employer- or location-specific context and confirm the pipeline marks the request as bespoke.
 4. Confirm generated binaries land in Cloud Storage and metadata/status records land in Firestore.
 5. Confirm operator mode can inspect lineage while client mode only sees the finished episode media.
 6. Confirm Admin exposes media-pipeline monitoring, retry controls, config fields, and library-management status in one section.
+7. Negative: if Content Director seeding fails, suite artifact generation should still return artifacts and surface an orchestration error state instead of failing the full intake.
 
 ## Backlog Mapping
 

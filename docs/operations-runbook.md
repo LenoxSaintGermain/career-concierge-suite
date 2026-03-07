@@ -202,6 +202,7 @@ The admin modal is intentionally structured as an operator workspace now:
 - collapsible media-library editing for lower scroll overhead
 
 If the console regresses into a single stacked form, treat that as a UX bug, not a cosmetic preference.
+While a save request is in flight, the active edit surface is now locked to prevent silent overwrite of later keystrokes, and reload now explicitly confirms before discarding unsaved admin edits.
 
 ## Brand Studio Operating Notes
 
@@ -265,6 +266,9 @@ Use the reset workflow instead of repeating blind imports.
 - intake persistence
 - admin config load
 - admin system overview load
+- suite generation creates `learning_plans/content_director_phase_a`
+- suite generation creates `episode_plans/content_director_phase_a`
+- suite generation creates `orchestration_runs/content_director_phase_a`
 - brand save + reload from Admin Brand Studio
 - logo propagation into header/prologue when configured
 - roadmap + validation tile visibility for admin users only

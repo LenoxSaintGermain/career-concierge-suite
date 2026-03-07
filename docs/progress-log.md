@@ -217,7 +217,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 | E06 ConciergeJobSearch Execution Rail | Done | Upload, resume review, and strategy generation are shipped in API + UI. |
 | E07 Editorial Grid Brand OS | In Progress | Shared brand config and Brand Studio shipped; deeper artifact-body copy harmonization is still open. |
 | E08 Client-Facing Cinematic Episodes Player | Done | Client-facing cinematic player shipped; admin/operator BTS controls are now separated behind explicit operator mode. |
-| E09 Content Director Media Pipeline | Queued | Spec and backlog are now defined; implementation has not started. |
+| E09 Content Director Media Pipeline | In Progress | Phase A planning trigger now seeds learning/episode plans plus orchestration run state; reusable library, resolver, and async pipeline work remain. |
 | E10 Agentic Staff Operating Model | Queued | Canonical staffing spec and roadmap now exist; implementation has not started. |
 
 ### Next Implementation Priority
@@ -226,5 +226,16 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 2. Validate `MTL-09` with brand edits, logo injection, and Lucid overlay parity checks across suite home and module overlays.
 3. Finish `MTL-07` with real device regression checks on MyConcierge, Episodes, and free-tier surfaces.
 4. Run persona proof capture for shipped `MTL-10` and note any residual polish gaps in the validation package.
-5. Start `MTL-11` so episode media planning and generation move to a library-first pipeline with clear storage/service boundaries.
+5. Continue `MTL-11` with reusable library taxonomy and library-first resolver work now that Phase A planning seeds are live.
 6. Start `MTL-12` so the staff roster, handoff graph, admin operating section, and evidence model are explicit before orchestration scope expands.
+
+### Delivery: Admin Console Save Guard + Content Director Phase A Seed
+
+- Locked the active admin edit surface while saves are in flight so late keystrokes cannot be overwritten by a stale save response.
+- Added a reload confirmation when unsaved admin edits would be discarded.
+- `POST /v1/suite/generate` now seeds:
+  - `clients/{uid}/learning_plans/content_director_phase_a`
+  - `clients/{uid}/episode_plans/content_director_phase_a`
+  - `clients/{uid}/orchestration_runs/content_director_phase_a`
+- The first Content Director seed is phase-A only: it captures learning themes, episode blueprints, reusable asset tags, and bespoke candidates from intake + first-order artifacts.
+- Added `content_director` to the live agent registry so the admin console reflects the new orchestration role.

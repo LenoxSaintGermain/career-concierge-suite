@@ -868,6 +868,169 @@ const deriveEpisodeTargetSkill = ({ dna = {}, explicitSkill = '' }) => {
   return 'AI Strategy & Leadership';
 };
 
+const uniqueList = (entries) => [...new Set(toStringList(entries))];
+
+const buildContentDirectorSeeds = ({ intent, preferences, answers = {}, artifacts = {}, meta = {} }) => {
+  const currentTitle = nonEmpty(answers.current_title || answers.current_or_target_job_title) || 'current role';
+  const targetRole = nonEmpty(answers.target || answers.current_or_target_job_title) || 'next role';
+  const industry = nonEmpty(answers.industry) || 'cross-industry';
+  const modalities = uniqueList(answers.learning_modalities).slice(0, 3);
+  const foundational = uniqueList(answers.foundational_interests).slice(0, 2);
+  const advanced = uniqueList(answers.advanced_interests).slice(0, 2);
+  const briefLearned = uniqueList(artifacts?.brief?.learned).slice(0, 3);
+  const leverage = uniqueList(artifacts?.profile?.leverage).slice(0, 2);
+  const nearTermGaps = uniqueList(artifacts?.gaps?.near_term).slice(0, 2);
+  const nextMoves = Array.isArray(artifacts?.plan?.next_72_hours)
+    ? artifacts.plan.next_72_hours
+        .map((item) => nonEmpty(item?.label))
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
+  const learningThemes = uniqueList([...foundational, ...advanced, ...briefLearned, ...leverage]).slice(0, 4);
+  const reusableAssetTags = uniqueList([
+    'editorial_grid',
+    'llm_metaphor',
+    'operator_console',
+    industry !== 'cross-industry' ? industry.toLowerCase() : '',
+    intent,
+    preferences?.focus || '',
+    preferences?.pace || '',
+    ...foundational.map((entry) => entry.toLowerCase()),
+  ]).slice(0, 6);
+  const bespokeCandidates = uniqueList([
+    industry !== 'cross-industry' ? `${industry} environment cues` : '',
+    `${currentTitle} operating reality`,
+    `${targetRole} transition stakes`,
+    ...nearTermGaps,
+  ]).slice(0, 4);
+  const targetSkill = deriveEpisodeTargetSkill({
+    dna: {
+      ...answers,
+      intent,
+      industry,
+      foundational_interests: foundational,
+      advanced_interests: advanced,
+    },
+  });
+
+  const episodeBlueprints = [
+    {
+      id: 'episode-01',
+      title: intent === 'target_role' ? 'The Promotion Signal' : intent === 'not_sure' ? 'The Pattern Hunt' : 'The Leverage Audit',
+      objective:
+        intent === 'target_role'
+          ? `Frame ${currentTitle} experience as evidence for ${targetRole}.`
+          : intent === 'not_sure'
+            ? 'Turn diffuse signals into a credible direction hypothesis.'
+            : 'Convert current execution into clearer leadership leverage.',
+      reusable_asset_tags: uniqueList([...reusableAssetTags, 'cold_open', 'prestige_office']).slice(0, 6),
+      bespoke_candidates: uniqueList([`${industry} establishing shot`, `${currentTitle} decision desk`]).slice(0, 3),
+    },
+    {
+      id: 'episode-02',
+      title: 'How the System Works',
+      objective: `Teach ${targetSkill} through narrative beats instead of generic instruction.`,
+      reusable_asset_tags: uniqueList([...reusableAssetTags, 'llm_metaphor', 'systems_animation']).slice(0, 6),
+      bespoke_candidates: uniqueList([`${industry} workflow`, ...modalities]).slice(0, 3),
+    },
+    {
+      id: 'episode-03',
+      title: 'The Rehearsal Loop',
+      objective: nextMoves[0] || 'Translate planning into one concrete rehearsal and one executive-facing proof move.',
+      reusable_asset_tags: uniqueList([...reusableAssetTags, 'challenge_overlay', 'execution_rehearsal']).slice(0, 6),
+      bespoke_candidates: uniqueList([`${targetRole} scenario rehearsal`, ...nearTermGaps]).slice(0, 3),
+    },
+  ];
+
+  return {
+    learningPlan: {
+      plan_id: 'content_director_phase_a',
+      source: 'content_director',
+      phase: 'phase_a',
+      status: 'seeded',
+      generated_at: meta.generated_at || new Date().toISOString(),
+      signal_threshold: 'intake_plus_first_order_artifacts',
+      summary: `Phase A seed for ${intent} journey in ${industry}.`,
+      intent,
+      preferences,
+      modalities,
+      current_title: currentTitle,
+      target_role: targetRole,
+      industry,
+      learning_themes: learningThemes,
+      reusable_asset_tags: reusableAssetTags,
+      bespoke_candidates: bespokeCandidates,
+      next_moves: nextMoves,
+      source_artifacts: ['brief', 'plan', 'profile', 'ai_profile', 'gaps'],
+      source_meta: meta,
+    },
+    episodePlan: {
+      plan_id: 'content_director_phase_a',
+      source: 'content_director',
+      phase: 'phase_a',
+      status: 'seeded',
+      generated_at: meta.generated_at || new Date().toISOString(),
+      target_skill: targetSkill,
+      episode_count: episodeBlueprints.length,
+      episodes: episodeBlueprints.map((episode, index) => ({
+        ...episode,
+        order: index + 1,
+        asset_strategy: 'reusable_first',
+        source_artifacts: ['brief', 'profile', 'gaps'],
+      })),
+      source_meta: meta,
+    },
+  };
+};
+
+const seedContentDirectorPlanning = async ({ uid, intent, preferences, answers, artifacts, meta }) => {
+  const seeds = buildContentDirectorSeeds({ intent, preferences, answers, artifacts, meta });
+  const now = new Date();
+  const runId = 'content_director_phase_a';
+
+  await Promise.all([
+    clientLearningPlansRef(uid).doc('content_director_phase_a').set(
+      {
+        ...seeds.learningPlan,
+        updated_at: now,
+      },
+      { merge: true }
+    ),
+    clientEpisodePlansRef(uid).doc('content_director_phase_a').set(
+      {
+        ...seeds.episodePlan,
+        updated_at: now,
+      },
+      { merge: true }
+    ),
+    clientOrchestrationRunsRef(uid).doc(runId).set(
+      {
+        run_id: runId,
+        agent_role: 'content_director',
+        phase: 'phase_a',
+        status: 'seeded',
+        trigger: 'suite_generate',
+        signal_threshold: 'intake_plus_first_order_artifacts',
+        intent,
+        preferences,
+        generated_at: meta.generated_at || now.toISOString(),
+        updated_at: now,
+        learning_plan_ref: `clients/${uid}/learning_plans/content_director_phase_a`,
+        episode_plan_ref: `clients/${uid}/episode_plans/content_director_phase_a`,
+        source_artifacts: ['brief', 'plan', 'profile', 'ai_profile', 'gaps'],
+      },
+      { merge: true }
+    ),
+  ]);
+
+  return {
+    run_id: runId,
+    learning_plan_id: 'content_director_phase_a',
+    episode_plan_id: 'content_director_phase_a',
+    status: 'seeded',
+  };
+};
+
 const withArtifactMeta = (artifacts, meta) =>
   Object.fromEntries(
     Object.entries(artifacts).map(([key, value]) => [key, { ...value, _meta: meta }])
@@ -1099,6 +1262,16 @@ const AGENT_REGISTRY = [
     access_model: 'read_write_scoped',
     policy_version: '2026-03-05.1',
   },
+  {
+    role_id: 'content_director',
+    title: 'Content Director',
+    objective: 'Seed learning and episode plans once intake and first-order artifact signal are available.',
+    reads: ['clients/{uid}', 'clients/{uid}/artifacts/*'],
+    writes: ['clients/{uid}/learning_plans/*', 'clients/{uid}/episode_plans/*', 'clients/{uid}/orchestration_runs/*'],
+    approval_required: false,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-06.1',
+  },
 ];
 
 const toIso = (value) => {
@@ -1119,6 +1292,9 @@ const clientRef = (uid) => db.collection('clients').doc(uid);
 const clientAssetsRef = (uid) => clientRef(uid).collection('assets');
 const clientArtifactsRef = (uid) => clientRef(uid).collection('artifacts');
 const clientInteractionsRef = (uid) => clientRef(uid).collection('interactions');
+const clientLearningPlansRef = (uid) => clientRef(uid).collection('learning_plans');
+const clientEpisodePlansRef = (uid) => clientRef(uid).collection('episode_plans');
+const clientOrchestrationRunsRef = (uid) => clientRef(uid).collection('orchestration_runs');
 
 const parseDataUrl = (input) => {
   const raw = nonEmpty(input);
@@ -1903,9 +2079,20 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       preferences,
       model: 'deterministic-fallback',
     });
+    const artifacts = withArtifactMeta(buildSuiteFallback(answers), meta);
+    let contentDirector = { status: 'skipped' };
+    try {
+      contentDirector = await seedContentDirectorPlanning({ uid, intent, preferences, answers, artifacts, meta });
+    } catch (planningError) {
+      console.error('content_director_seed_error', planningError);
+      contentDirector = { status: 'error', detail: sanitizeError(planningError, 'content_director_seed_failed') };
+    }
     return res.json({
       meta,
-      artifacts: withArtifactMeta(buildSuiteFallback(answers), meta),
+      artifacts,
+      orchestration: {
+        content_director: contentDirector,
+      },
     });
   }
 
@@ -1934,9 +2121,27 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
     }
 
     const meta = baseMeta('gemini', false, { uid, intent, preferences, model: suiteModel });
+    const responseArtifacts = withArtifactMeta(artifacts, meta);
+    let contentDirector = { status: 'skipped' };
+    try {
+      contentDirector = await seedContentDirectorPlanning({
+        uid,
+        intent,
+        preferences,
+        answers,
+        artifacts: responseArtifacts,
+        meta,
+      });
+    } catch (planningError) {
+      console.error('content_director_seed_error', planningError);
+      contentDirector = { status: 'error', detail: sanitizeError(planningError, 'content_director_seed_failed') };
+    }
     return res.json({
       meta,
-      artifacts: withArtifactMeta(artifacts, meta),
+      artifacts: responseArtifacts,
+      orchestration: {
+        content_director: contentDirector,
+      },
     });
   } catch (error) {
     console.error('suite_generation_error', error);
@@ -1946,9 +2151,20 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       intent,
       preferences,
     });
+    const artifacts = withArtifactMeta(buildSuiteFallback(answers), meta);
+    let contentDirector = { status: 'skipped' };
+    try {
+      contentDirector = await seedContentDirectorPlanning({ uid, intent, preferences, answers, artifacts, meta });
+    } catch (planningError) {
+      console.error('content_director_seed_error', planningError);
+      contentDirector = { status: 'error', detail: sanitizeError(planningError, 'content_director_seed_failed') };
+    }
     return res.json({
       meta,
-      artifacts: withArtifactMeta(buildSuiteFallback(answers), meta),
+      artifacts,
+      orchestration: {
+        content_director: contentDirector,
+      },
     });
   }
 });
