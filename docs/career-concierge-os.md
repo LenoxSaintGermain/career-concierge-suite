@@ -44,11 +44,13 @@ The client-facing suite is a modular OS-style workspace built around:
 - Plan
 - ConciergeJobSearch execution
 
-Intent routing now matters to the actual suite order and behavior:
+Intent routing now matters to the actual suite behavior:
 
 - `current_role`: prioritize Episodes, AI Profile, Gaps, and internal-leverage planning
 - `target_role`: prioritize ConciergeJobSearch, Assets, Brief, and promotion-ready execution
 - `not_sure`: prioritize Profile, Gaps, MyConcierge, and exploration-first guidance
+
+The home grid itself now stays in canonical module index order so the editorial OS remains legible. Intent changes the recommended path and downstream orchestration, not the visible tile numbering.
 
 Tier routing also changes the visible surface:
 
@@ -96,6 +98,7 @@ It uses:
 - one active workspace at a time for generation, media, brand, voice, or governance edits
 - a persistent save rail with explicit unsaved-state feedback
 - collapsible media-library editing so large libraries do not overwhelm the modal
+- taxonomy shortcut chips inside the media-library editor so reusable media can be tagged consistently instead of relying only on free-form tag entry
 
 The operating surface still comes first, but it now behaves like a structured backstage OS instead of a stacked settings page.
 Brand Studio is now part of that write surface and is the canonical place to tune the editorial grid shell.

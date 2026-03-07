@@ -239,3 +239,14 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - `clients/{uid}/orchestration_runs/content_director_phase_a`
 - The first Content Director seed is phase-A only: it captures learning themes, episode blueprints, reusable asset tags, and bespoke candidates from intake + first-order artifacts.
 - Added `content_director` to the live agent registry so the admin console reflects the new orchestration role.
+
+### Backlog Addition: Sample Persona Test Harness
+
+- Added a queued `E11 / MTL-13` track for one-click sample persona launch, reset/reseed controls, and persona-aware validation shortcuts.
+- This keeps the operator testing need visible in the roadmap instead of leaving it as tribal knowledge around seeded fixture emails.
+
+### Delivery: Home Grid Order Fix + Media Taxonomy Shortcuts
+
+- Restored the suite home grid to canonical numeric tile order so the editorial layout no longer drifts by intent.
+- Started `E09-S02` by adding structured taxonomy shortcut chips to the admin media-library editor.
+- Reusable media tagging now has a guided vocabulary for concept, scene type, environment, intent, modality, reuse scope, and rights metadata.

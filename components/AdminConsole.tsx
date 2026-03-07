@@ -15,6 +15,7 @@ import {
   getAdminApiOrigin,
   saveAdminConfig,
 } from '../services/adminApi';
+import { MEDIA_LIBRARY_TAXONOMY_GROUPS, mergeMediaTags } from '../config/mediaLibraryTaxonomy';
 import { BrandStudioSection } from './admin/BrandStudioSection';
 
 type Props = {
@@ -1239,6 +1240,46 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                                 }))
                               }
                             />
+                            <div className="space-y-3">
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">
+                                Taxonomy shortcuts
+                              </div>
+                              <div className="space-y-3 border border-black/10 bg-white p-3">
+                                {MEDIA_LIBRARY_TAXONOMY_GROUPS.map((group) => (
+                                  <div key={group.id} className="space-y-2">
+                                    <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">
+                                      {group.label}
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {group.values.map((value) => {
+                                        const active = item.tags.includes(value);
+                                        return (
+                                          <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() =>
+                                              updateMediaItem(index, (prev) => ({
+                                                ...prev,
+                                                tags: active
+                                                  ? prev.tags.filter((entry) => entry !== value)
+                                                  : mergeMediaTags(prev.tags, value),
+                                              }))
+                                            }
+                                            className={`px-3 py-2 text-[10px] uppercase tracking-[0.16em] border transition-colors ${
+                                              active
+                                                ? 'border-brand-teal bg-brand-soft text-brand-teal'
+                                                : 'border-black/10 hover:border-brand-teal'
+                                            }`}
+                                          >
+                                            {labelize(value)}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
 
                           <div className="space-y-5">

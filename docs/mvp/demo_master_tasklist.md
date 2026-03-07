@@ -34,8 +34,9 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 | `MTL-08` Manual QA script and acceptance proof capture | In Progress | Produce proof package for each persona demo run | `E02-S04`, `E04-S02` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-09` Editorial grid brand OS + workflow label sync | In Progress | Replace POC shell language with official naming, palette, overlay treatment, and admin-tunable hierarchy | `E07-S01`, `E07-S02`, `E07-S03`, `E07-S04` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-10` Client-facing cinematic Episodes player | Done | Default Episodes is now a client-facing micro-drama player, with operator diagnostics preserved in a separate admin-only mode | `E08-S01`, `E08-S02`, `E08-S03`, `E08-S04`, `E08-S05` | `TU1`, `TU3`, `TU4` |
-| `MTL-11` Content Director media orchestration + reusable library pipeline | In Progress | Phase A planning seed now lands after suite generation; reusable library, resolver, async jobs, and admin pipeline ops remain | `E09-S01`, `E09-S02`, `E09-S03`, `E09-S04`, `E09-S05`, `E09-S06`, `E09-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
+| `MTL-11` Content Director media orchestration + reusable library pipeline | In Progress | Phase A planning seed is live and admin taxonomy shortcuts now support structured library tagging; starter library seeding, resolver, async jobs, and admin pipeline ops remain | `E09-S01`, `E09-S02`, `E09-S03`, `E09-S04`, `E09-S05`, `E09-S06`, `E09-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-12` Agentic staff operating model + orchestration control plane | Queued | Formalize the staff roster, handoff graph, memory/evidence model, and admin orchestration console without re-platforming the current OS | `E10-S01`, `E10-S02`, `E10-S03`, `E10-S04`, `E10-S05`, `E10-S06`, `E10-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
+| `MTL-13` Sample persona test harness + quick-switch ops | Queued | Let operators launch, reset, and validate seeded demo users without manual auth and state wrangling | `E11-S01`, `E11-S02`, `E11-S03` | `TU1`, `TU2`, `TU3`, `TU4` |
 
 ## Acceptance Mapping (Test Spec -> Backlog)
 
@@ -104,6 +105,12 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 - `AC-6`: The roadmap remains aligned to the current web OS stack and explicitly defers ClawWork/Supabase/messaging-channel requirements -> `E10-S06`, `MTL-12`
 - `AC-7`: Staff outputs can carry evaluation/confidence signals for operator review -> `E10-S07`, `MTL-12`
 
+### Persona Harness Validation
+
+- `AC-1`: Operator can launch each seeded sample persona quickly from one operating surface -> `E11-S01`, `MTL-13`
+- `AC-2`: Operator can reset and reseed a sample persona without touching unrelated data -> `E11-S02`, `MTL-13`
+- `AC-3`: Validation surface links launch, reset, and proof-capture steps per persona -> `E11-S03`, `MTL-13`
+
 ## Execution Order for Demo Readiness
 
 1. Complete `MTL-01` fixtures to lock repeatable test runs.
@@ -117,6 +124,7 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 9. Capture proof for shipped `MTL-10` across TU1, TU3, and TU4 so the final Episodes demo uses the client-facing cinematic player rather than the operator BTS surface.
 10. Implement `MTL-11` so media planning, reuse, and bespoke generation happen through a library-first pipeline instead of ad hoc per-episode generation.
 11. Implement `MTL-12` so the agentic staff model, orchestration governance, and admin control plane are explicit before staff sprawl or channel expansion.
+12. Implement `MTL-13` so persona rehearsal and investor-demo testing no longer depend on manual login, reset, and state-recovery steps.
 
 ## Current Implementation Notes
 
@@ -126,8 +134,9 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 - `MTL-05`: CJS rail now supports resume upload + resume review + search strategy generation.
 - `MTL-09`: shared brand config, live preview, and suite-shell label overrides are now implemented in Admin + public config; final visual QA remains.
 - `MTL-10`: shipped in product; remaining work is persona proof capture and any follow-up polish discovered during demo rehearsal.
-- `MTL-11`: `E09-S01` is now live; suite generation seeds `learning_plans`, `episode_plans`, and `orchestration_runs` in Firestore. The library-first resolver, async pipeline, and admin media ops remain queued.
+- `MTL-11`: `E09-S01` is live and `E09-S02` is now in progress; suite generation seeds planning docs in Firestore and admin now exposes structured taxonomy shortcuts for media tagging. Starter library seeding, library-first resolution, async pipeline work, and admin media ops remain queued.
 - `MTL-12`: queued staffing/orchestration architecture is defined in `docs/mvp/agentic_staff_operating_model_spec.md`; implementation has not started.
+- `MTL-13`: queued operator-testing harness is required so seeded personas can be launched and reset quickly during QA and demos.
 
 ## Definition of Done
 

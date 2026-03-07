@@ -37,12 +37,6 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   },
 };
 
-const priorityByIntent: Record<string, SuiteModuleId[]> = {
-  current_role: ['intake', 'episodes', 'ai_profile', 'gaps', 'plan', 'brief', 'profile', 'my_concierge', 'readiness', 'cjs_execution', 'assets', 'suite_distilled', 'roadmap'],
-  target_role: ['intake', 'cjs_execution', 'assets', 'plan', 'brief', 'my_concierge', 'episodes', 'profile', 'ai_profile', 'gaps', 'readiness', 'suite_distilled', 'roadmap'],
-  not_sure: ['intake', 'profile', 'gaps', 'my_concierge', 'episodes', 'plan', 'brief', 'readiness', 'ai_profile', 'assets', 'cjs_execution', 'suite_distilled', 'roadmap'],
-};
-
 const headerScaleClass = {
   compact: 'text-2xl md:text-3xl',
   standard: 'text-3xl md:text-4xl',
@@ -197,12 +191,8 @@ const App: React.FC = () => {
         if (m.id === 'roadmap' && !isAdminUser) return false;
         if (isFreeTier && !['intake', 'episodes', 'readiness'].includes(m.id)) return false;
         return true;
-      }).sort((a, b) => {
-        const intent = String(client?.intent || 'current_role');
-        const ordered = priorityByIntent[intent] || priorityByIntent.current_role;
-        return ordered.indexOf(a.id) - ordered.indexOf(b.id);
-      }),
-    [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled, isAdminUser, isFreeTier, client?.intent]
+      }).sort((a, b) => Number(a.index) - Number(b.index)),
+    [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled, isAdminUser, isFreeTier]
   );
 
   const openModule = useMemo(

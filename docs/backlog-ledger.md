@@ -46,7 +46,7 @@ Source of truth backlog:
 | E08-S04 Mobile/Desktop Editorial Adaptation | E08 | P1 | Done | The player now preserves portrait-forward focus on small screens and a structured editorial balance on desktop. |
 | E08-S05 Brand-System Design QA Guardrails | E08 | P1 | Done | Episodes now inherit the shared brand system and expose explicit positive/negative validation coverage. |
 | E09-S01 Content Director Planning Trigger | E09 | P1 | Done | Suite generation now seeds `learning_plans`, `episode_plans`, and `orchestration_runs` as soon as intake + first-order artifact signal exist. |
-| E09-S02 Reusable Media Library + Taxonomy | E09 | P1 | Queued | Generic concepts should be served from a tagged reusable library rather than regenerated. |
+| E09-S02 Reusable Media Library + Taxonomy | E09 | P1 | In Progress | Admin media-library editing now includes structured taxonomy shortcuts; starter library seeding and retrieval ranking still remain. |
 | E09-S03 Library-First Resolver + Gap Analysis | E09 | P1 | Queued | Resolve existing assets first, then classify missing needs as reusable-kit or bespoke. |
 | E09-S04 Cloud Run Media-Pipeline Service | E09 | P1 | Queued | Long-running generation should move through a dedicated async media worker/service boundary. |
 | E09-S05 Cloud Storage + Firestore Metadata Model | E09 | P1 | Queued | Binary media should live in Cloud Storage and metadata/state in Firestore. |
@@ -59,6 +59,9 @@ Source of truth backlog:
 | E10-S05 Human Escalation + Approval Discipline | E10 | P1 | Queued | Sensitive outbound and bespoke actions should route into role-aware approval and escalation flows. |
 | E10-S06 Current-Stack Channel/Runtime Policy | E10 | P1 | Queued | Staffing roadmap should stay aligned to web OS + GCP/Firebase rather than imported multi-channel architecture. |
 | E10-S07 Staff Effectiveness Telemetry | E10 | P1 | Queued | Operators should be able to inspect confidence and evaluation signals across staff outputs. |
+| E11-S01 One-Click Sample Persona Launch | E11 | P1 | Queued | Admin should let operators launch seeded sample users quickly without manual credential wrangling. |
+| E11-S02 Persona Reset + Reseed Controls | E11 | P1 | Queued | Operators should be able to reset sample-user state and reseed deterministic fixtures for repeatable demos. |
+| E11-S03 Persona-Aware Validation Shortcuts | E11 | P1 | Queued | Roadmap/validation should link launch, reset, and proof-capture steps per sample persona. |
 
 ## Demo-Critical Sequence
 
@@ -94,6 +97,7 @@ Current task pulse:
 | MTL-10 Client-facing cinematic Episodes player | Queued | All personas, especially TU1/TU3/TU4 + investor demo narrative |
 | MTL-11 Content Director media orchestration + reusable library pipeline | In Progress | Episodes platform, operator/admin, future investor demos |
 | MTL-12 Agentic staff operating model + orchestration control plane | Queued | All personas + operator/admin + roadmap coherence |
+| MTL-13 Sample persona test harness + quick-switch ops | Queued | All personas + operator/admin + demo rehearsal |
 
 ## Execution Ledger
 

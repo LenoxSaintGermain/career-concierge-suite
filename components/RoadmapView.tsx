@@ -204,6 +204,14 @@ const EPIC_ROWS: EpicRow[] = [
     stories: ['E10-S01', 'E10-S02', 'E10-S03', 'E10-S04', 'E10-S05', 'E10-S06', 'E10-S07'],
     focus: 'Canonical staff contracts, orchestration governance, admin control-plane visibility, and current-stack discipline.',
   },
+  {
+    id: 'E11',
+    title: 'Sample Persona Test Harness',
+    priority: 'P1',
+    status: 'queued',
+    stories: ['E11-S01', 'E11-S02', 'E11-S03'],
+    focus: 'Quick-launch, reset, and validation shortcuts for seeded demo personas.',
+  },
 ];
 
 const STORY_ROWS: StoryRow[] = [
@@ -443,7 +451,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E09-S02',
     epic: 'E09',
     title: 'Reusable Media Library + Taxonomy',
-    status: 'queued',
+    status: 'in_progress',
     surface: 'Media library',
     validation: 'Generic concept assets must be tagged and retrievable without regeneration.',
   },
@@ -543,6 +551,30 @@ const STORY_ROWS: StoryRow[] = [
     surface: 'Evaluation + confidence signals',
     validation: 'Operators should be able to review staff confidence and policy flags without exposing them in the client suite.',
   },
+  {
+    id: 'E11-S01',
+    epic: 'E11',
+    title: 'One-Click Sample Persona Launch',
+    status: 'queued',
+    surface: 'Admin persona harness',
+    validation: 'Launch each seeded sample user quickly without manual credential handling.',
+  },
+  {
+    id: 'E11-S02',
+    epic: 'E11',
+    title: 'Persona Reset + Reseed Controls',
+    status: 'queued',
+    surface: 'Admin persona harness',
+    validation: 'Reset and reseed deterministic persona state without disturbing unrelated users.',
+  },
+  {
+    id: 'E11-S03',
+    epic: 'E11',
+    title: 'Persona-Aware Validation Shortcuts',
+    status: 'queued',
+    surface: 'Roadmap validation',
+    validation: 'Tie launch, reset, and proof-capture actions directly to each sample persona checklist.',
+  },
 ];
 
 const PERSONA_TRACKS: PersonaTrack[] = [
@@ -553,7 +585,7 @@ const PERSONA_TRACKS: PersonaTrack[] = [
     tier: 'SkillSync AI Premier',
     intent: 'Stay sharp in current role',
     status: 'in_progress',
-    stories: ['E03-S01', 'E03-S02', 'E04-S02', 'E05-S02', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S03'],
+    stories: ['E03-S01', 'E03-S02', 'E04-S02', 'E05-S02', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S03', 'E11-S01', 'E11-S03'],
     acceptanceFocus: [
       'AI Profile reflects regular AI usage + template work style.',
       'Episode sequence starts with AI Strategy and Leadership in voice-first format.',
@@ -568,7 +600,7 @@ const PERSONA_TRACKS: PersonaTrack[] = [
     tier: 'CJS Premier',
     intent: 'Move into a specific next role',
     status: 'in_progress',
-    stories: ['E06-S01', 'E06-S02', 'E06-S03', 'E02-S04', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S05'],
+    stories: ['E06-S01', 'E06-S02', 'E06-S03', 'E02-S04', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S05', 'E11-S01', 'E11-S03'],
     acceptanceFocus: [
       'Your Plan includes KPI and ROI-driven 72-hour actions.',
       'CJS rail drives resume review + internal promotion strategy.',
@@ -583,7 +615,7 @@ const PERSONA_TRACKS: PersonaTrack[] = [
     tier: 'SkillSync Foundation',
     intent: 'Need help designing direction',
     status: 'in_progress',
-    stories: ['E04-S02', 'E03-S01', 'E04-S03', 'E02-S03', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S03'],
+    stories: ['E04-S02', 'E03-S01', 'E04-S03', 'E02-S03', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S03', 'E11-S01', 'E11-S03'],
     acceptanceFocus: [
       'Profile and Gaps highlight transferable skills into tech pathways.',
       'Episode sequence starts with foundational process automation tracks.',
@@ -598,7 +630,7 @@ const PERSONA_TRACKS: PersonaTrack[] = [
     tier: 'Free Foundation Access',
     intent: 'Learn AI fundamentals before upgrading',
     status: 'in_progress',
-    stories: ['E01-S01', 'E03-S01', 'E05-S03', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S06'],
+    stories: ['E01-S01', 'E03-S01', 'E05-S03', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S06', 'E11-S01', 'E11-S03'],
     acceptanceFocus: [
       'Short intake only for foundational interests.',
       'Only readiness + generic resource guide are visible.',
@@ -715,6 +747,15 @@ const MASTER_TASKLIST: MasterTask[] = [
     goal: 'Formalize the staff roster, handoff graph, evidence model, and admin orchestration console on the current stack.',
     surfaces: 'Chief of Staff, Admin, Firestore orchestration runs',
     stories: ['E10-S01', 'E10-S02', 'E10-S03', 'E10-S04', 'E10-S05', 'E10-S06', 'E10-S07'],
+    personas: ['TU1', 'TU2', 'TU3', 'TU4'],
+  },
+  {
+    id: 'MTL-13',
+    title: 'Sample persona test harness + quick-switch ops',
+    status: 'queued',
+    goal: 'Let operators launch, reset, and validate seeded sample users without manual auth and state wrangling.',
+    surfaces: 'Admin, Roadmap validation, Persona fixtures',
+    stories: ['E11-S01', 'E11-S02', 'E11-S03'],
     personas: ['TU1', 'TU2', 'TU3', 'TU4'],
   },
 ];
