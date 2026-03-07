@@ -1,7 +1,7 @@
 substitutions:
   _SERVICE_NAME: career-concierge-api
   _REGION: europe-west1
-  _IMAGE_NAME: europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/career-concierge-api
+  _IMAGE_NAME: europe-west1-docker.pkg.dev/ssai-f6191/cloud-run-source-deploy/career-concierge-api
 
 steps:
   - name: gcr.io/cloud-builders/docker
