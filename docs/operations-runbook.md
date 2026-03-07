@@ -193,6 +193,16 @@ The admin console should now expose the following before any config edits are ma
 - model routing and prompt overlay presence
 - Brand Studio controls for suite naming, colors, hierarchy, workflow labels, and logo URL
 
+The admin modal is intentionally structured as an operator workspace now:
+
+- left rail for section switching
+- control-tower summary for runtime and queue visibility
+- one active edit surface at a time
+- persistent save rail with unsaved-state feedback
+- collapsible media-library editing for lower scroll overhead
+
+If the console regresses into a single stacked form, treat that as a UX bug, not a cosmetic preference.
+
 ## Brand Studio Operating Notes
 
 Use Admin -> Brand Studio for shell-level branding changes.

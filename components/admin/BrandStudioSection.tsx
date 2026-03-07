@@ -33,6 +33,9 @@ const LABELS: Record<SuiteModuleId, string> = {
   roadmap: '13 Roadmap',
 };
 
+const BRAND_DEFAULTS = DEFAULT_BRAND_CONFIG as BrandConfig;
+const MODULE_IDS = BRAND_MODULE_IDS as SuiteModuleId[];
+
 const headerScaleClass = {
   compact: 'text-2xl md:text-[30px]',
   standard: 'text-3xl md:text-[38px]',
@@ -326,7 +329,7 @@ function Preview({ brand, selectedModuleId }: { brand: BrandConfig; selectedModu
 export function BrandStudioSection({ config, setConfig }: Props) {
   const [selectedModuleId, setSelectedModuleId] = useState<SuiteModuleId>('intake');
   const selectedModule = useMemo(
-    () => getBrandModuleCopy(config.brand, selectedModuleId),
+    () => getBrandModuleCopy(config.brand as BrandConfig, selectedModuleId),
     [config.brand, selectedModuleId]
   );
 
@@ -353,7 +356,7 @@ export function BrandStudioSection({ config, setConfig }: Props) {
     }));
   };
 
-  const brand = config.brand || DEFAULT_BRAND_CONFIG;
+  const brand = (config.brand || BRAND_DEFAULTS) as BrandConfig;
 
   return (
     <section className="space-y-5 border border-black/10 bg-white p-5 md:p-6">
@@ -655,9 +658,9 @@ export function BrandStudioSection({ config, setConfig }: Props) {
                 onChange={(e) => setSelectedModuleId(e.target.value as SuiteModuleId)}
                 className="border-b border-black/10 focus-border-brand-teal outline-none py-2 text-sm bg-transparent"
               >
-                {BRAND_MODULE_IDS.map((moduleId) => (
+                {MODULE_IDS.map((moduleId) => (
                   <option key={moduleId} value={moduleId}>
-                    {LABELS[moduleId as SuiteModuleId]}
+                    {LABELS[moduleId]}
                   </option>
                 ))}
               </select>

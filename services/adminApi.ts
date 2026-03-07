@@ -33,9 +33,8 @@ import { resolveApiOrigin } from './apiOrigin';
 
 export const getAdminApiOrigin = () => resolveApiOrigin();
 
-const MODULE_IDS: SuiteModuleId[] = [
-  ...BRAND_MODULE_IDS,
-];
+const MODULE_IDS = [...BRAND_MODULE_IDS] as SuiteModuleId[];
+const BRAND_DEFAULTS = DEFAULT_BRAND_CONFIG as BrandConfig;
 const SURFACE_SET = new Set<MediaJourneySurface>([...MODULE_IDS, 'suite_home', 'pre_intake', 'post_intake']);
 const PLATFORM_SET = new Set<MediaPlatform>([
   'auto',
@@ -78,7 +77,7 @@ const normalizeHexColor = (value: unknown, fallback: string) => {
 
 const normalizeBrandModuleCopy = (moduleId: SuiteModuleId, input: unknown): BrandModuleCopy => {
   const source = input && typeof input === 'object' ? (input as any) : {};
-  const fallback = DEFAULT_BRAND_CONFIG.modules[moduleId];
+  const fallback = BRAND_DEFAULTS.modules[moduleId];
   return {
     eyebrow: String(source?.eyebrow ?? fallback.eyebrow).trim() || fallback.eyebrow,
     title: String(source?.title ?? fallback.title).trim() || fallback.title,
@@ -105,135 +104,135 @@ const normalizeBrandConfig = (input: unknown): BrandConfig => {
   return {
     identity: {
       company_name:
-        String(identity?.company_name ?? DEFAULT_BRAND_CONFIG.identity.company_name).trim() ||
-        DEFAULT_BRAND_CONFIG.identity.company_name,
+        String(identity?.company_name ?? BRAND_DEFAULTS.identity.company_name).trim() ||
+        BRAND_DEFAULTS.identity.company_name,
       suite_name:
-        String(identity?.suite_name ?? DEFAULT_BRAND_CONFIG.identity.suite_name).trim() ||
-        DEFAULT_BRAND_CONFIG.identity.suite_name,
+        String(identity?.suite_name ?? BRAND_DEFAULTS.identity.suite_name).trim() ||
+        BRAND_DEFAULTS.identity.suite_name,
       product_name:
-        String(identity?.product_name ?? DEFAULT_BRAND_CONFIG.identity.product_name).trim() ||
-        DEFAULT_BRAND_CONFIG.identity.product_name,
-      logo_url: String(identity?.logo_url ?? DEFAULT_BRAND_CONFIG.identity.logo_url).trim(),
+        String(identity?.product_name ?? BRAND_DEFAULTS.identity.product_name).trim() ||
+        BRAND_DEFAULTS.identity.product_name,
+      logo_url: String(identity?.logo_url ?? BRAND_DEFAULTS.identity.logo_url).trim(),
       logo_alt:
-        String(identity?.logo_alt ?? DEFAULT_BRAND_CONFIG.identity.logo_alt).trim() ||
-        DEFAULT_BRAND_CONFIG.identity.logo_alt,
+        String(identity?.logo_alt ?? BRAND_DEFAULTS.identity.logo_alt).trim() ||
+        BRAND_DEFAULTS.identity.logo_alt,
       header_context:
-        String(identity?.header_context ?? DEFAULT_BRAND_CONFIG.identity.header_context).trim() ||
-        DEFAULT_BRAND_CONFIG.identity.header_context,
+        String(identity?.header_context ?? BRAND_DEFAULTS.identity.header_context).trim() ||
+        BRAND_DEFAULTS.identity.header_context,
     },
     colors: {
-      accent: normalizeHexColor(colors?.accent, DEFAULT_BRAND_CONFIG.colors.accent),
-      accent_dark: normalizeHexColor(colors?.accent_dark, DEFAULT_BRAND_CONFIG.colors.accent_dark),
-      ink: normalizeHexColor(colors?.ink, DEFAULT_BRAND_CONFIG.colors.ink),
-      page_background: normalizeHexColor(colors?.page_background, DEFAULT_BRAND_CONFIG.colors.page_background),
+      accent: normalizeHexColor(colors?.accent, BRAND_DEFAULTS.colors.accent),
+      accent_dark: normalizeHexColor(colors?.accent_dark, BRAND_DEFAULTS.colors.accent_dark),
+      ink: normalizeHexColor(colors?.ink, BRAND_DEFAULTS.colors.ink),
+      page_background: normalizeHexColor(colors?.page_background, BRAND_DEFAULTS.colors.page_background),
       surface_background: normalizeHexColor(
         colors?.surface_background,
-        DEFAULT_BRAND_CONFIG.colors.surface_background
+        BRAND_DEFAULTS.colors.surface_background
       ),
-      grid_line: normalizeHexColor(colors?.grid_line, DEFAULT_BRAND_CONFIG.colors.grid_line),
+      grid_line: normalizeHexColor(colors?.grid_line, BRAND_DEFAULTS.colors.grid_line),
       overlay_background: normalizeHexColor(
         colors?.overlay_background,
-        DEFAULT_BRAND_CONFIG.colors.overlay_background
+        BRAND_DEFAULTS.colors.overlay_background
       ),
-      overlay_text: normalizeHexColor(colors?.overlay_text, DEFAULT_BRAND_CONFIG.colors.overlay_text),
+      overlay_text: normalizeHexColor(colors?.overlay_text, BRAND_DEFAULTS.colors.overlay_text),
     },
     hierarchy: {
       header_scale: BRAND_HEADER_SCALE_SET.has(hierarchy?.header_scale as BrandHeaderScale)
         ? (hierarchy.header_scale as BrandHeaderScale)
-        : DEFAULT_BRAND_CONFIG.hierarchy.header_scale,
+        : BRAND_DEFAULTS.hierarchy.header_scale,
       subheader_scale: BRAND_SUBHEADER_SCALE_SET.has(hierarchy?.subheader_scale as BrandSubheaderScale)
         ? (hierarchy.subheader_scale as BrandSubheaderScale)
-        : DEFAULT_BRAND_CONFIG.hierarchy.subheader_scale,
+        : BRAND_DEFAULTS.hierarchy.subheader_scale,
       body_density: BRAND_BODY_DENSITY_SET.has(hierarchy?.body_density as BrandBodyDensity)
         ? (hierarchy.body_density as BrandBodyDensity)
-        : DEFAULT_BRAND_CONFIG.hierarchy.body_density,
+        : BRAND_DEFAULTS.hierarchy.body_density,
       tile_emphasis: BRAND_TILE_EMPHASIS_SET.has(hierarchy?.tile_emphasis as BrandTileEmphasis)
         ? (hierarchy.tile_emphasis as BrandTileEmphasis)
-        : DEFAULT_BRAND_CONFIG.hierarchy.tile_emphasis,
+        : BRAND_DEFAULTS.hierarchy.tile_emphasis,
       overlay_style: BRAND_OVERLAY_STYLE_SET.has(hierarchy?.overlay_style as BrandOverlayStyle)
         ? (hierarchy.overlay_style as BrandOverlayStyle)
-        : DEFAULT_BRAND_CONFIG.hierarchy.overlay_style,
+        : BRAND_DEFAULTS.hierarchy.overlay_style,
     },
     toggles: {
       show_logo_mark:
         typeof toggles?.show_logo_mark === 'boolean'
           ? toggles.show_logo_mark
-          : DEFAULT_BRAND_CONFIG.toggles.show_logo_mark,
+          : BRAND_DEFAULTS.toggles.show_logo_mark,
       show_suite_kicker:
         typeof toggles?.show_suite_kicker === 'boolean'
           ? toggles.show_suite_kicker
-          : DEFAULT_BRAND_CONFIG.toggles.show_suite_kicker,
+          : BRAND_DEFAULTS.toggles.show_suite_kicker,
       show_module_indices:
         typeof toggles?.show_module_indices === 'boolean'
           ? toggles.show_module_indices
-          : DEFAULT_BRAND_CONFIG.toggles.show_module_indices,
+          : BRAND_DEFAULTS.toggles.show_module_indices,
       show_module_status:
         typeof toggles?.show_module_status === 'boolean'
           ? toggles.show_module_status
-          : DEFAULT_BRAND_CONFIG.toggles.show_module_status,
+          : BRAND_DEFAULTS.toggles.show_module_status,
       show_tile_descriptions:
         typeof toggles?.show_tile_descriptions === 'boolean'
           ? toggles.show_tile_descriptions
-          : DEFAULT_BRAND_CONFIG.toggles.show_tile_descriptions,
+          : BRAND_DEFAULTS.toggles.show_tile_descriptions,
       show_detail_quotes:
         typeof toggles?.show_detail_quotes === 'boolean'
           ? toggles.show_detail_quotes
-          : DEFAULT_BRAND_CONFIG.toggles.show_detail_quotes,
+          : BRAND_DEFAULTS.toggles.show_detail_quotes,
       show_grid_glow:
         typeof toggles?.show_grid_glow === 'boolean'
           ? toggles.show_grid_glow
-          : DEFAULT_BRAND_CONFIG.toggles.show_grid_glow,
+          : BRAND_DEFAULTS.toggles.show_grid_glow,
       show_home_callout:
         typeof toggles?.show_home_callout === 'boolean'
           ? toggles.show_home_callout
-          : DEFAULT_BRAND_CONFIG.toggles.show_home_callout,
+          : BRAND_DEFAULTS.toggles.show_home_callout,
     },
     copy: {
       prologue_quote:
-        String(copy?.prologue_quote ?? DEFAULT_BRAND_CONFIG.copy.prologue_quote).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.prologue_quote,
+        String(copy?.prologue_quote ?? BRAND_DEFAULTS.copy.prologue_quote).trim() ||
+        BRAND_DEFAULTS.copy.prologue_quote,
       prologue_description:
-        String(copy?.prologue_description ?? DEFAULT_BRAND_CONFIG.copy.prologue_description).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.prologue_description,
+        String(copy?.prologue_description ?? BRAND_DEFAULTS.copy.prologue_description).trim() ||
+        BRAND_DEFAULTS.copy.prologue_description,
       prologue_enter_label:
-        String(copy?.prologue_enter_label ?? DEFAULT_BRAND_CONFIG.copy.prologue_enter_label).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.prologue_enter_label,
+        String(copy?.prologue_enter_label ?? BRAND_DEFAULTS.copy.prologue_enter_label).trim() ||
+        BRAND_DEFAULTS.copy.prologue_enter_label,
       home_kicker:
-        String(copy?.home_kicker ?? DEFAULT_BRAND_CONFIG.copy.home_kicker).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.home_kicker,
+        String(copy?.home_kicker ?? BRAND_DEFAULTS.copy.home_kicker).trim() ||
+        BRAND_DEFAULTS.copy.home_kicker,
       home_title:
-        String(copy?.home_title ?? DEFAULT_BRAND_CONFIG.copy.home_title).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.home_title,
+        String(copy?.home_title ?? BRAND_DEFAULTS.copy.home_title).trim() ||
+        BRAND_DEFAULTS.copy.home_title,
       home_description:
-        String(copy?.home_description ?? DEFAULT_BRAND_CONFIG.copy.home_description).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.home_description,
+        String(copy?.home_description ?? BRAND_DEFAULTS.copy.home_description).trim() ||
+        BRAND_DEFAULTS.copy.home_description,
       home_callout_label:
-        String(copy?.home_callout_label ?? DEFAULT_BRAND_CONFIG.copy.home_callout_label).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.home_callout_label,
+        String(copy?.home_callout_label ?? BRAND_DEFAULTS.copy.home_callout_label).trim() ||
+        BRAND_DEFAULTS.copy.home_callout_label,
       home_callout_value:
-        String(copy?.home_callout_value ?? DEFAULT_BRAND_CONFIG.copy.home_callout_value).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.home_callout_value,
+        String(copy?.home_callout_value ?? BRAND_DEFAULTS.copy.home_callout_value).trim() ||
+        BRAND_DEFAULTS.copy.home_callout_value,
       free_tier_notice:
-        String(copy?.free_tier_notice ?? DEFAULT_BRAND_CONFIG.copy.free_tier_notice).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.free_tier_notice,
+        String(copy?.free_tier_notice ?? BRAND_DEFAULTS.copy.free_tier_notice).trim() ||
+        BRAND_DEFAULTS.copy.free_tier_notice,
       module_ready_label:
-        String(copy?.module_ready_label ?? DEFAULT_BRAND_CONFIG.copy.module_ready_label).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.module_ready_label,
+        String(copy?.module_ready_label ?? BRAND_DEFAULTS.copy.module_ready_label).trim() ||
+        BRAND_DEFAULTS.copy.module_ready_label,
       module_locked_label:
-        String(copy?.module_locked_label ?? DEFAULT_BRAND_CONFIG.copy.module_locked_label).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.module_locked_label,
+        String(copy?.module_locked_label ?? BRAND_DEFAULTS.copy.module_locked_label).trim() ||
+        BRAND_DEFAULTS.copy.module_locked_label,
       mobile_focus_hint:
-        String(copy?.mobile_focus_hint ?? DEFAULT_BRAND_CONFIG.copy.mobile_focus_hint).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.mobile_focus_hint,
+        String(copy?.mobile_focus_hint ?? BRAND_DEFAULTS.copy.mobile_focus_hint).trim() ||
+        BRAND_DEFAULTS.copy.mobile_focus_hint,
       modal_meta_label:
-        String(copy?.modal_meta_label ?? DEFAULT_BRAND_CONFIG.copy.modal_meta_label).trim() ||
-        DEFAULT_BRAND_CONFIG.copy.modal_meta_label,
+        String(copy?.modal_meta_label ?? BRAND_DEFAULTS.copy.modal_meta_label).trim() ||
+        BRAND_DEFAULTS.copy.modal_meta_label,
       modal_account_label:
         String(copy?.modal_account_label ?? DEFAULT_BRAND_CONFIG.copy.modal_account_label).trim() ||
         DEFAULT_BRAND_CONFIG.copy.modal_account_label,
     },
     modules: normalizedModules,
-  };
+  } as BrandConfig;
 };
 
 const normalizeCuratedMediaItem = (input: unknown, index: number): CuratedMediaItem => {

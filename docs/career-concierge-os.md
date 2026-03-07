@@ -88,7 +88,16 @@ The admin console is the operational control plane for:
 
 This console is part of the product operating system.
 It is not a temporary debug panel and should be documented and designed as a first-class surface.
-The current layout is split into a read-only operating surface first, followed by the write surfaces for active config.
+The current layout is now a compact operator shell rather than a single long-form modal.
+It uses:
+
+- a left-rail navigation for section switching
+- a control-tower summary as the read-only operating surface
+- one active workspace at a time for generation, media, brand, voice, or governance edits
+- a persistent save rail with explicit unsaved-state feedback
+- collapsible media-library editing so large libraries do not overwhelm the modal
+
+The operating surface still comes first, but it now behaves like a structured backstage OS instead of a stacked settings page.
 Brand Studio is now part of that write surface and is the canonical place to tune the editorial grid shell.
 The next planned admin expansion is a dedicated orchestration operating section for staff registry visibility, run monitoring, handoff-policy control, approvals, and evaluation state.
 For demo/operator continuity, admin access now accepts Firebase `admin` or `staff` claims, allowlisted `ADMIN_EMAILS`, and a baked-in operator fallback for `operator@thirdsignal.ai` plus `gws@conciergecareerservices.com`.
