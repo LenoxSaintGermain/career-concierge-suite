@@ -1,56 +1,104 @@
 # Demo Validation Checklist (Persona E2E)
 
-Use this checklist for in-product validation before production demos.
+Use this checklist for in-product validation before production demos. Each persona now includes positive-path proof plus negative guards so the demo operator can confirm both the intended journey and the important things the product must not do.
 
 ## TU1 Donell Woodson
 
+### Positive Path
+
 1. Login with `demo.tu1.donell@thirdsignal.ai`.
-2. Open `Your AI Profile` and verify regular-usage narrative + template-driven guidance.
-3. Open `Your Gaps` and confirm the role gap is framed as a jump from senior program management to AI-transformation leadership.
-4. Open `Episodes` and verify Episode 1 is on `AI Strategy & Leadership` and is delivered with narration or an auditory-ready experience.
-5. Open `Your Plan` and confirm actions are internal execution focused, including a pilot-oriented recommendation such as Copilot-assisted status reporting.
-6. Open `ConciergeJobSearch` and verify the module is accessible but does not recommend an active external job-search sprint.
-7. In `Assets`, log one Chief of Staff summary and verify the ledger entry appears.
+2. Open `Episodes` and confirm the default surface is the cinematic client player, not an operator dashboard.
+3. Verify Episode 1 is routed to `AI Strategy & Leadership`.
+4. Confirm the episode reads as `cold open -> beats -> challenge -> resolution`.
+5. Use `Play narration` and confirm audio playback is available or the UI reports a graceful narration error.
+6. Open `Your AI Profile` and verify regular-usage narrative + template-driven guidance.
+7. Open `Your Gaps` and confirm the role gap is framed as a jump from senior program management to AI-transformation leadership.
+8. Open `Your Plan` and confirm actions are internal execution focused, including a pilot-oriented recommendation such as Copilot-assisted status reporting.
+9. Open `ConciergeJobSearch` and verify the module is accessible but framed around promotion/internal execution rather than an external-search sprint.
+10. In `Assets`, log one Chief of Staff summary and verify the ledger entry appears.
+
+### Negative Guards
+
+1. Confirm the default Episodes surface does not show `Art Director Queue`, model names, prompt fields, or generation-status language.
+2. Confirm `ConciergeJobSearch` does not suggest spray-and-pray outbound applications.
+3. Confirm Donell is not shown a free-tier upgrade CTA inside the primary paid flow.
 
 ## TU2 Garry Francois
+
+### Positive Path
 
 1. Login with `demo.tu2.garry@thirdsignal.ai`.
 2. Open `The Brief` and verify it summarizes Garry's promotion goal and the obstacle of proving ROI.
 3. Open `Your Plan` and verify the 72-hour sprint includes identifying 3 marketing KPIs influenced by AI-driven segmentation.
-4. Open `ConciergeJobSearch` and upload a resume file.
-5. Confirm the resume asset appears in the versions list and that the workspace can hold at least three resume variants.
-6. Click `Run Resume Review` and verify the output includes Director-of-Marketing-tailored suggestions, a score, and rewrite focus.
-7. Click `Generate Search Strategy` and verify the strategy centers on internal networking and project proposals rather than external spray-and-pray applications.
-8. Open `Assets` and confirm pending approval entries were created for generated outward-facing deliverables.
+4. Open `Episodes` and confirm the player remains client-facing while the learning arc supports marketing/promotion framing.
+5. Open `ConciergeJobSearch` and upload a resume file.
+6. Confirm the resume asset appears in the versions list and that the workspace can hold at least three resume variants.
+7. Click `Run Resume Review` and verify the output includes Director-of-Marketing-tailored suggestions, a score, and rewrite focus.
+8. Click `Generate Search Strategy` and verify the strategy centers on internal networking and project proposals rather than external spray-and-pray applications.
+9. Open `Assets` and confirm pending approval entries were created for generated outward-facing deliverables.
+
+### Negative Guards
+
+1. Confirm Episodes does not expose operator/BTS media-routing language for Garry in the normal client view.
+2. Confirm the search strategy does not default to generic national job-board volume tactics.
+3. Confirm outward-facing assets remain reviewable in the approval rail rather than auto-shipping.
 
 ## TU3 Taylor Fulton
 
+### Positive Path
+
 1. Login with `demo.tu3.taylor@thirdsignal.ai`.
-2. Open `Your Profile` and confirm project-management strengths are framed as transferable to tech roles.
-3. Open `Your Gaps` and confirm technical-development needs include software-delivery or SDLC fluency.
-4. Open `MyConcierge` and ask, `What tech roles are a good fit for my skills?`; verify the response is conversational, relevant, and confidence-building.
-5. Open `Episodes` and verify the first recommended topic is `Process Automation / Workflow Optimization`.
-6. Open `Your Plan` and confirm the actions emphasize exploration, including an Agile course and informational interviews.
-7. Open `Assets`; log one Chief of Staff summary and verify next actions remain exploration-oriented.
+2. Open `Episodes` and confirm the first recommended topic is `Process Automation / Workflow Optimization`.
+3. Confirm the episode stage is portrait-forward and immersive on mobile-width or narrow viewport presentation.
+4. Progress through the full episode and complete the challenge before continuing.
+5. Open `Your Profile` and confirm project-management strengths are framed as transferable to tech roles.
+6. Open `Your Gaps` and confirm technical-development needs include software-delivery or SDLC fluency.
+7. Open `MyConcierge` and ask, `What tech roles are a good fit for my skills?`; verify the response is conversational, relevant, and confidence-building.
+8. Open `Your Plan` and confirm the actions emphasize exploration, including an Agile course and informational interviews.
+9. Open `Assets`; log one Chief of Staff summary and verify next actions remain exploration-oriented.
+
+### Negative Guards
+
+1. Confirm Taylor is not forced into promotion-language or internal-sponsor recommendations.
+2. Confirm `MyConcierge` does not answer with a cold tool list or a generic AI explainer.
+3. Confirm the episode challenge reads as judgment/reflection, not a trivia quiz.
 
 ## TU4 Derrick Gervin (Free Tier)
+
+### Positive Path
 
 1. Login with `demo.tu4.derrick@thirdsignal.ai`.
 2. Confirm the dashboard hides paid-only artifacts and modules, including `The Brief`, `Your Plan`, `Your Profile`, `Your AI Profile`, `Your Gaps`, `MyConcierge`, and `ConciergeJobSearch`.
 3. Complete intake and verify the simplified field set only collects free-tier essentials.
-4. Open `AI Readiness` and confirm Derrick only receives readiness guidance plus a generic resource-guide experience.
-5. Open `Episodes` and verify the feed is a pre-set introductory playlist rather than a personalized sequence.
-6. Complete the free content path and verify a prominent upgrade CTA is displayed with paid-tier benefits.
+4. Open `Episodes` and verify the client player still feels polished, but the feed is the fixed 3-episode starter playlist.
+5. Progress through all three starter episodes and confirm the experience remains coherent without paid-only personalization language.
+6. Open `AI Readiness` and confirm Derrick only receives readiness guidance plus a generic resource-guide experience.
+7. Complete the free content path and verify a prominent upgrade CTA is displayed with paid-tier benefits.
+
+### Negative Guards
+
+1. Confirm Derrick never sees paid-only modules unlocked by mistake.
+2. Confirm the free-tier Episodes view does not promise personalized sequencing or concierge-only features.
+3. Confirm the default episode view does not expose BTS/operator controls.
 
 ## Admin Approval Pass
 
+### Positive Path
+
 1. Login as admin user.
-2. Open `Assets` module.
+2. Open `Assets`.
 3. Find `pending_approval` entries in the global approval queue.
 4. Approve one and reject one.
 5. Confirm status transitions to `approved` / `rejected`.
 
+### Negative Guards
+
+1. Confirm non-admin users cannot access the admin approval surface.
+2. Confirm rejected items do not silently appear as approved or shipped.
+
 ## Admin Brand Studio Pass
+
+### Positive Path
 
 1. Login as admin user and open `Admin`.
 2. Open `Brand Studio`.
@@ -59,3 +107,23 @@ Use this checklist for in-product validation before production demos.
 5. Change one accent color, save config, and confirm the suite shell and accent-driven UI tokens update.
 6. Toggle off module indices or tile descriptions, save config, and confirm the suite-home grid reflects the new hierarchy.
 7. Edit `Smart Start Intake` eyebrow/title/overlay quote and confirm suite-home + intake overlay copy stay synchronized.
+
+### Negative Guards
+
+1. Confirm Brand Studio changes do not surface raw config JSON to normal users.
+2. Confirm Episodes still inherit brand colors/hierarchy after a save.
+3. Confirm operator-only Episodes controls remain gated to admins even after a full refresh.
+
+## Episodes Operator Pass
+
+### Positive Path
+
+1. Login as admin user and open `Episodes`.
+2. Confirm the default mode is still `Client View`.
+3. Switch to `Operator Mode`.
+4. Verify routed media, library refresh, prompt fields, and generated scene-pack controls appear only in operator mode.
+
+### Negative Guards
+
+1. Log in as a non-admin paid user and confirm the operator-mode toggle is not visible.
+2. Confirm the client mode does not leak `recommended_models`, prompt appendices, or art-director framing.

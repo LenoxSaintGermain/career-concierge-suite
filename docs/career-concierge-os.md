@@ -100,7 +100,9 @@ Backlog-to-implementation status is tracked in `docs/progress-log.md`.
 Story-level status plus execution history is tracked in `docs/backlog-ledger.md`.
 Demo task sequencing by persona is tracked in `docs/mvp/demo_master_tasklist.md`.
 The roadmap validation module mirrors these logs, so all three must be updated in the same pass as product changes.
-The in-app roadmap now also carries queued planning tracks for the client-facing Episodes redesign and the Content Director media pipeline so design/architecture work is visible before implementation begins.
+The in-app roadmap now carries the shipped client-facing Episodes player plus the still-queued Content Director media pipeline so product delivery and future architecture work remain visible together.
+
+Episodes now default to a client-facing cinematic player. Admins can still access BTS media-routing and generation controls, but only through an explicit operator mode inside the Episodes module.
 That queued media-pipeline track explicitly includes a future Admin Console operating section for queue monitoring, retries, approvals, library management, provider configuration, and failure inspection.
 The roadmap now also carries a queued agentic staff operating-model track so the canonical roles, handoffs, and stack boundaries are explicit before more agents are added.
 The same roadmap surface now visualizes the execution charter directly so operators can reference baseline confidence, staffing posture, and highest-risk gaps without leaving the modal.

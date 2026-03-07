@@ -609,6 +609,7 @@ const App: React.FC = () => {
               ) : openModule.id === 'episodes' ? (
                 <BingeFeedView
                   client={client}
+                  isAdminUser={isAdminUser}
                   isFreeTier={isFreeTier}
                   onOpenPlan={() => openModuleById(isFreeTier ? 'readiness' : 'plan')}
                 />

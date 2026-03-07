@@ -40,11 +40,11 @@ Source of truth backlog:
 | E07-S02 Admin Brand Studio + Preview | E07 | P1 | Done | Admin now exposes ordered brand controls with a live editorial-grid preview. |
 | E07-S03 Logo Propagation | E07 | P1 | Done | Optional logo URL now propagates through the suite shell and prologue. |
 | E07-S04 Workflow Label + Overlay Sync | E07 | P1 | In Progress | Suite shell and overlays are synced to the Lucid workflow language; artifact-body copy is still separately owned. |
-| E08-S01 Client Episodes View vs BTS Mode | E08 | P1 | Queued | Default Episodes experience should hide operator-generation apparatus from normal users. |
-| E08-S02 Cinematic Vertical Micro-Drama Player | E08 | P1 | Queued | Episodes should become a narrative player rather than a BTS lesson surface. |
-| E08-S03 Editorial Context Overlays + Challenge Cards | E08 | P1 | Queued | Concepts should be taught through compact notes and judgment-based prompts. |
-| E08-S04 Mobile/Desktop Editorial Adaptation | E08 | P1 | Queued | The player needs portrait-first immersion on mobile and architectural balance on desktop. |
-| E08-S05 Brand-System Design QA Guardrails | E08 | P1 | Queued | Episodes redesign must stay compliant with the shared brand studio rules. |
+| E08-S01 Client Episodes View vs BTS Mode | E08 | P1 | Done | Default Episodes experience now hides operator-generation apparatus from normal users and keeps BTS controls in admin-only operator mode. |
+| E08-S02 Cinematic Vertical Micro-Drama Player | E08 | P1 | Done | Episodes now read as a cinematic cold-open-to-resolution player rather than a BTS lesson surface. |
+| E08-S03 Editorial Context Overlays + Challenge Cards | E08 | P1 | Done | Context notes and challenge cards now teach concepts without exposing backend-generation language. |
+| E08-S04 Mobile/Desktop Editorial Adaptation | E08 | P1 | Done | The player now preserves portrait-forward focus on small screens and a structured editorial balance on desktop. |
+| E08-S05 Brand-System Design QA Guardrails | E08 | P1 | Done | Episodes now inherit the shared brand system and expose explicit positive/negative validation coverage. |
 | E09-S01 Content Director Planning Trigger | E09 | P1 | Queued | Learning-plan and episode-plan seeds should start once intake + first-order client signal exist. |
 | E09-S02 Reusable Media Library + Taxonomy | E09 | P1 | Queued | Generic concepts should be served from a tagged reusable library rather than regenerated. |
 | E09-S03 Library-First Resolver + Gap Analysis | E09 | P1 | Queued | Resolve existing assets first, then classify missing needs as reusable-kit or bespoke. |
@@ -117,6 +117,7 @@ Current task pulse:
 | 2026-03-06 19:42:00Z | Roadmap charter UI | Refactored the roadmap modal into compact plan/charter/validation views and added live confidence scores derived from epic/task status so operators can track the charter with less scroll. | Done | `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/progress-log.md` |
 | 2026-03-06 20:14:00Z | Admin access hardening | Added known-operator fallback admin emails in the API and replaced the silent hidden-admin state with a visible `Admin Locked` header state in the suite UI. | Done | `api/index.js`, `App.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-06 20:28:00Z | API origin routing fix | Added a shared frontend API-origin resolver so repo-connected UI deploys infer the sibling Cloud Run API by default instead of calling the hard-coded canonical API host. | Done | `services/apiOrigin.ts`, `services/adminApi.ts`, `services/cjsApi.ts`, `services/bingeApi.ts`, `services/liveApi.ts`, `services/suiteApi.ts`, `services/voiceApi.ts`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
+| 2026-03-06 21:40:00Z | E08/MTL-10 implementation | Shipped the client-facing cinematic Episodes player, split admin-only operator mode from the default client surface, and expanded persona validation with positive/negative demo cases. | Done | `App.tsx`, `components/BingeFeedView.tsx`, `docs/mvp/demo_validation_checklist.md`, `docs/mvp/demo_master_tasklist.md`, `docs/backlog-ledger.md`, `docs/progress-log.md` |
 
 ## Update Protocol
 

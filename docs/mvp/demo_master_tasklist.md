@@ -33,7 +33,7 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 | `MTL-07` Mobile completion pass for intake, episodes, roadmap | In Progress | Eliminate mobile rendering and interaction regressions | `E04-S03` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-08` Manual QA script and acceptance proof capture | In Progress | Produce proof package for each persona demo run | `E02-S04`, `E04-S02` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-09` Editorial grid brand OS + workflow label sync | In Progress | Replace POC shell language with official naming, palette, overlay treatment, and admin-tunable hierarchy | `E07-S01`, `E07-S02`, `E07-S03`, `E07-S04` | `TU1`, `TU2`, `TU3`, `TU4` |
-| `MTL-10` Client-facing cinematic Episodes player | Queued | Replace BTS-style Episodes with the final user-facing micro-drama player while preserving a separate operator mode | `E08-S01`, `E08-S02`, `E08-S03`, `E08-S04`, `E08-S05` | `TU1`, `TU3`, `TU4` |
+| `MTL-10` Client-facing cinematic Episodes player | Done | Default Episodes is now a client-facing micro-drama player, with operator diagnostics preserved in a separate admin-only mode | `E08-S01`, `E08-S02`, `E08-S03`, `E08-S04`, `E08-S05` | `TU1`, `TU3`, `TU4` |
 | `MTL-11` Content Director media orchestration + reusable library pipeline | Queued | Introduce library-first media planning, bespoke thresholds, and a dedicated async media pipeline plus admin control surface | `E09-S01`, `E09-S02`, `E09-S03`, `E09-S04`, `E09-S05`, `E09-S06`, `E09-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-12` Agentic staff operating model + orchestration control plane | Queued | Formalize the staff roster, handoff graph, memory/evidence model, and admin orchestration console without re-platforming the current OS | `E10-S01`, `E10-S02`, `E10-S03`, `E10-S04`, `E10-S05`, `E10-S06`, `E10-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
 
@@ -114,7 +114,7 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 6. Finish `MTL-03` and `MTL-08` for final investor-proof audit trail.
 7. Re-run `MTL-07` mobile pass before production demo freeze.
 8. Validate `MTL-09` against the Lucid overlay screenshots and operator brand-edit workflow.
-9. Implement and validate `MTL-10` so the final Episodes demo uses the client-facing cinematic player rather than the operator BTS surface.
+9. Capture proof for shipped `MTL-10` across TU1, TU3, and TU4 so the final Episodes demo uses the client-facing cinematic player rather than the operator BTS surface.
 10. Implement `MTL-11` so media planning, reuse, and bespoke generation happen through a library-first pipeline instead of ad hoc per-episode generation.
 11. Implement `MTL-12` so the agentic staff model, orchestration governance, and admin control plane are explicit before staff sprawl or channel expansion.
 
@@ -125,7 +125,7 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 - `MTL-03`: Chief of Staff interaction ledger shipped in `Assets` module with global admin approval queue.
 - `MTL-05`: CJS rail now supports resume upload + resume review + search strategy generation.
 - `MTL-09`: shared brand config, live preview, and suite-shell label overrides are now implemented in Admin + public config; final visual QA remains.
-- `MTL-10`: queued design/UX enhancement is defined in `docs/mvp/cinematic_episodes_player_spec.md`; implementation has not started.
+- `MTL-10`: shipped in product; remaining work is persona proof capture and any follow-up polish discovered during demo rehearsal.
 - `MTL-11`: queued content/media architecture is defined in `docs/mvp/microdrama_media-orchestration_spec.md`; implementation has not started.
 - `MTL-12`: queued staffing/orchestration architecture is defined in `docs/mvp/agentic_staff_operating_model_spec.md`; implementation has not started.
 

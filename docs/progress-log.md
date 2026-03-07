@@ -216,7 +216,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 | E05 Admin Console & System Ops | In Progress | Core config controls ship; roadmap/admin experience now extended. |
 | E06 ConciergeJobSearch Execution Rail | Done | Upload, resume review, and strategy generation are shipped in API + UI. |
 | E07 Editorial Grid Brand OS | In Progress | Shared brand config and Brand Studio shipped; deeper artifact-body copy harmonization is still open. |
-| E08 Client-Facing Cinematic Episodes Player | Queued | Spec and backlog are now defined; implementation has not started. |
+| E08 Client-Facing Cinematic Episodes Player | Done | Client-facing cinematic player shipped; admin/operator BTS controls are now separated behind explicit operator mode. |
 | E09 Content Director Media Pipeline | Queued | Spec and backlog are now defined; implementation has not started. |
 | E10 Agentic Staff Operating Model | Queued | Canonical staffing spec and roadmap now exist; implementation has not started. |
 
@@ -225,6 +225,6 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 1. Run persona QA checklist in `docs/mvp/demo_validation_checklist.md` and capture evidence for TU1/TU3/TU4 against the newly shipped flows.
 2. Validate `MTL-09` with brand edits, logo injection, and Lucid overlay parity checks across suite home and module overlays.
 3. Finish `MTL-07` with real device regression checks on MyConcierge, Episodes, and free-tier surfaces.
-4. Start `MTL-10` so Episodes moves from BTS/operator framing to the final client-facing cinematic player.
+4. Run persona proof capture for shipped `MTL-10` and note any residual polish gaps in the validation package.
 5. Start `MTL-11` so episode media planning and generation move to a library-first pipeline with clear storage/service boundaries.
 6. Start `MTL-12` so the staff roster, handoff graph, admin operating section, and evidence model are explicit before orchestration scope expands.
