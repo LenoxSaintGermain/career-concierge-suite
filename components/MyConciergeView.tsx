@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ClientDoc, SuiteModuleId } from '../types';
+import { resolveApiOrigin } from '../services/apiOrigin';
 
 type ConciergeMode = 'human' | 'ai';
 
@@ -126,6 +127,8 @@ export function MyConciergeView(props: {
 }) {
   const [mode, setMode] = useState<ConciergeMode>('human');
   const [prompt, setPrompt] = useState('');
+  const [handoffBusy, setHandoffBusy] = useState(false);
+  const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
   const client = props.client;
 
   const quickPrompts = useMemo(() => (client ? quickPromptsForClient(client) : []), [client]);
@@ -153,6 +156,43 @@ export function MyConciergeView(props: {
     );
   }
 
+  const requestHumanHandoff = async () => {
+    if (!client || !suggestedResponse) return;
+    const email = nonEmpty(client.email);
+    if (!email) {
+      setHandoffStatus('This account is missing an email, so the operator handoff could not be logged.');
+      return;
+    }
+    setHandoffBusy(true);
+    setHandoffStatus(null);
+    try {
+      const resp = await fetch(`${resolveApiOrigin()}/v1/public/concierge-request`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          request_kind: 'smart_start_booking',
+          name: nonEmpty(client.display_name) || nonEmpty(client.demo_profile?.name) || 'Client',
+          email,
+          goal: `${suggestedResponse.headline} — ${prompt || quickPrompts[0] || 'Follow-up request from MyConcierge'}`,
+          preferred_timing: 'Follow up with next available Smart Start slot',
+          source: 'my_concierge',
+          client_uid: client.uid,
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => '');
+        throw new Error(txt || resp.statusText);
+      }
+      setHandoffStatus('Human concierge follow-up requested. Operator queue now has your handoff context.');
+    } catch (error: any) {
+      setHandoffStatus(error?.message ?? 'Unable to request human follow-up.');
+    } finally {
+      setHandoffBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -174,7 +214,7 @@ export function MyConciergeView(props: {
                 mode === 'human' ? 'border-brand-teal bg-brand-soft' : 'border-black/10 hover-border-brand-teal'
               }`}
             >
-              <div className="text-[10px] uppercase tracking-[0.2em] opacity-60">Human</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] opacity-60">Human Concierge</div>
               <div className="text-lg font-editorial italic mt-2">Stay sharp in my current role</div>
             </button>
             <button
@@ -184,7 +224,7 @@ export function MyConciergeView(props: {
                 mode === 'ai' ? 'border-brand-teal bg-brand-soft' : 'border-black/10 hover-border-brand-teal'
               }`}
             >
-              <div className="text-[10px] uppercase tracking-[0.2em] opacity-60">AI</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] opacity-60">AI Concierge</div>
               <div className="text-lg font-editorial italic mt-2">Move into a specific next role</div>
             </button>
           </div>
@@ -244,6 +284,36 @@ export function MyConciergeView(props: {
                 ))}
               </ul>
             </div>
+          </div>
+
+          <div className="border border-black/5 bg-[#f6f3ec] p-5">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Concierge handoff</div>
+            <div className="mt-2 text-xl font-editorial italic leading-tight">Escalate this thread into a tracked human follow-up when needed.</div>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-gray-700">
+              AI Concierge keeps the guidance moving. Human Concierge is the escalation lane for Smart Start scheduling, premium support, and higher-touch direction changes.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={requestHumanHandoff}
+                disabled={handoffBusy}
+                className="px-4 py-3 border border-black/10 bg-white text-[10px] uppercase tracking-[0.22em] hover-border-brand-teal disabled:opacity-50"
+              >
+                {handoffBusy ? 'Requesting…' : 'Request human follow-up'}
+              </button>
+              <button
+                type="button"
+                onClick={() => props.onOpenModule('plan')}
+                className="px-4 py-3 border border-black/10 bg-white text-[10px] uppercase tracking-[0.22em] hover-border-brand-teal"
+              >
+                Continue in Your Plan
+              </button>
+            </div>
+            {handoffStatus ? (
+              <div className="mt-4 border border-black/10 bg-white px-4 py-3 text-xs leading-relaxed text-gray-700">
+                {handoffStatus}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-3">

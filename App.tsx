@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { User } from 'firebase/auth';
 import { SUITE_MODULES } from './suite/modules';
 import { BrandConfig, ClientDoc, PublicConfig, SuiteModule, SuiteModuleId } from './types';
-import { subscribeToAuth, logout } from './services/authService';
+import { loginWithCustomSessionToken, subscribeToAuth, logout } from './services/authService';
 import { getOrCreateClient, markIntroSeen } from './services/clientService';
 import { getArtifact } from './services/artifactService';
 import { LoginView } from './components/LoginView';
@@ -21,6 +21,11 @@ import { AdminConsole } from './components/AdminConsole';
 import { RoadmapView } from './components/RoadmapView';
 import { AssetsView } from './components/AssetsView';
 import { MyConciergeView } from './components/MyConciergeView';
+import { SkillSyncTvView } from './components/SkillSyncTvView';
+import { FlashCardsView } from './components/FlashCardsView';
+import { EventsNetworkingView } from './components/EventsNetworkingView';
+import { TelescopeView } from './components/TelescopeView';
+import { SkillSyncTeamView } from './components/SkillSyncTeamView';
 import { canAccessAdminConfig, fetchPublicConfig } from './services/adminApi';
 import { cloneBrandConfig, getBrandModuleCopy, hexToRgba } from './config/brandSystem.js';
 
@@ -90,6 +95,8 @@ const overlayRailStyle = (brand: BrandConfig): React.CSSProperties => {
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [launchBootstrapPending, setLaunchBootstrapPending] = useState(false);
+  const [launchBootstrapError, setLaunchBootstrapError] = useState<string | null>(null);
 
   const [clientLoaded, setClientLoaded] = useState(false);
   const [client, setClient] = useState<ClientDoc | null>(null);
@@ -117,6 +124,7 @@ const App: React.FC = () => {
   const [artifact, setArtifact] = useState<any>(null);
 
   const modalScrollRef = useRef<HTMLDivElement>(null);
+  const launchQueryHandledRef = useRef(false);
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState(false);
@@ -138,6 +146,40 @@ const App: React.FC = () => {
 
   useEffect(() => {
     refreshPublicConfig();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const demoToken = params.get('demo_launch_token');
+    if (!demoToken) return;
+
+    let cancelled = false;
+    setLaunchBootstrapPending(true);
+    setLaunchBootstrapError(null);
+
+    (async () => {
+      try {
+        await loginWithCustomSessionToken(demoToken);
+        params.delete('demo_launch_token');
+        params.delete('demo_persona');
+        const nextQuery = params.toString();
+        const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+        window.history.replaceState({}, '', nextUrl);
+      } catch (error: any) {
+        if (!cancelled) {
+          setLaunchBootstrapError(error?.message ?? 'Unable to launch sample persona.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLaunchBootstrapPending(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -189,7 +231,7 @@ const App: React.FC = () => {
         if (!publicConfig.ui.episodes_enabled && m.id === 'episodes') return false;
         if (!publicConfig.operations.cjs_enabled && m.id === 'cjs_execution') return false;
         if (m.id === 'roadmap' && !isAdminUser) return false;
-        if (isFreeTier && !['intake', 'episodes', 'readiness'].includes(m.id)) return false;
+        if (isFreeTier && !['intake', 'episodes', 'tv', 'readiness', 'team'].includes(m.id)) return false;
         return true;
       }).sort((a, b) => Number(a.index) - Number(b.index)),
     [publicConfig.ui.episodes_enabled, publicConfig.operations.cjs_enabled, isAdminUser, isFreeTier]
@@ -209,6 +251,22 @@ const App: React.FC = () => {
     if (isFreeTier && m.id === 'readiness') return !intakeComplete;
     return !intakeComplete;
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !authReady || !clientLoaded || launchQueryHandledRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const requestedModule = params.get('module') as SuiteModuleId | null;
+    if (!requestedModule) return;
+    launchQueryHandledRef.current = true;
+    const moduleExists = visibleModules.some((module) => module.id === requestedModule);
+    if (moduleExists) {
+      setOpenModuleId(requestedModule);
+    }
+    params.delete('module');
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [authReady, clientLoaded, visibleModules]);
 
   // Load artifacts on module open.
   useEffect(() => {
@@ -292,19 +350,26 @@ const App: React.FC = () => {
     setOpenModuleId(id);
   };
 
-  if (!authReady) {
+  if (!authReady || launchBootstrapPending) {
     return (
       <div
         className="min-h-screen text-white flex items-center justify-center"
         style={{ backgroundColor: brand.colors.overlay_background, color: brand.colors.overlay_text }}
       >
-        <div className="text-[10px] uppercase tracking-[0.3em] opacity-50 animate-pulse">Initializing…</div>
+        <div className="text-[10px] uppercase tracking-[0.3em] opacity-50 animate-pulse">
+          {launchBootstrapPending ? 'Opening sample persona…' : 'Initializing…'}
+        </div>
       </div>
     );
   }
 
   if (!user) {
-    return <LoginView onAuthed={() => { /* auth state will update via listener */ }} />;
+    return (
+      <LoginView
+        onAuthed={() => { /* auth state will update via listener */ }}
+        bootstrapError={launchBootstrapError}
+      />
+    );
   }
 
   // Prologue overlay (plays once per user; stored in Firestore).
@@ -603,8 +668,18 @@ const App: React.FC = () => {
                   isFreeTier={isFreeTier}
                   onOpenPlan={() => openModuleById(isFreeTier ? 'readiness' : 'plan')}
                 />
+              ) : openModule.id === 'tv' ? (
+                <SkillSyncTvView client={client} />
+              ) : openModule.id === 'flash_cards' ? (
+                <FlashCardsView client={client} />
               ) : openModule.id === 'my_concierge' ? (
                 <MyConciergeView client={client} onOpenModule={openModuleById} />
+              ) : openModule.id === 'events' ? (
+                <EventsNetworkingView client={client} onOpenModule={openModuleById} />
+              ) : openModule.id === 'telescope' ? (
+                <TelescopeView client={client} onOpenModule={openModuleById} />
+              ) : openModule.id === 'team' ? (
+                <SkillSyncTeamView client={client} onOpenModule={openModuleById} />
               ) : openModule.id === 'roadmap' ? (
                 <RoadmapView />
               ) : (
