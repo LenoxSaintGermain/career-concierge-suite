@@ -62,6 +62,16 @@ Source of truth backlog:
 | E11-S01 One-Click Sample Persona Launch | E11 | P1 | Queued | Admin should let operators launch seeded sample users quickly without manual credential wrangling. |
 | E11-S02 Persona Reset + Reseed Controls | E11 | P1 | Queued | Operators should be able to reset sample-user state and reseed deterministic fixtures for repeatable demos. |
 | E11-S03 Persona-Aware Validation Shortcuts | E11 | P1 | Queued | Roadmap/validation should link launch, reset, and proof-capture steps per sample persona. |
+| E12-S01 SkillSync AI TV Module | E12 | P1 | Queued | Build the Lucid TV tile as a client-safe editorial video library with personalized rails and entitlement gating. |
+| E12-S02 Flash Cards Module | E12 | P1 | Queued | Turn plan themes and episode history into persistent review decks with free-versus-paid access rules. |
+| E12-S03 Events & Networking Module | E12 | P1 | Queued | Surface curated events plus bookmark or request-help actions without pretending unsupported external booking exists. |
+| E12-S04 Telescope Opportunity Horizon Module | E12 | P1 | Queued | Define Telescope as an adjacent-role and market-radar surface linked back into Plan, Episodes, and CJS. |
+| E12-S05 SkillSync AI Team Module | E12 | P1 | Queued | Expose the support roster and premium handoff posture in a client-safe surface, distinct from admin controls. |
+| E12-S06 Placeholder Tile Governance | E12 | P1 | Queued | Keep placeholder tiles hidden, operator-only, or clearly upcoming so the editorial grid stays trustworthy. |
+| E13-S01 Public AI Concierge Pre-Auth Entry | E13 | P0 | Queued | Add the public concierge landing-to-intake flow with tier selection, identity capture, and optional resume handoff. |
+| E13-S02 Booking + Date/Time Smart Start Scheduling | E13 | P0 | Queued | Add the Lucid/Jim booking flow with persisted scheduling state and operator visibility. |
+| E13-S03 Human/AI MyConcierge Handoff Semantics | E13 | P0 | Queued | Make premium human-versus-AI concierge help explicit in the user journey and Team surface. |
+| E13-S04 Operator Booking + Onboarding Visibility | E13 | P0 | Queued | Show booking status, intake progress, and concierge handoff state inside the admin operating console. |
 
 ## Demo-Critical Sequence
 
@@ -98,6 +108,8 @@ Current task pulse:
 | MTL-11 Content Director media orchestration + reusable library pipeline | In Progress | Episodes platform, operator/admin, future investor demos |
 | MTL-12 Agentic staff operating model + orchestration control plane | Queued | All personas + operator/admin + roadmap coherence |
 | MTL-13 Sample persona test harness + quick-switch ops | Queued | All personas + operator/admin + demo rehearsal |
+| MTL-14 Lucid tile parity + expansion modules | Queued | All personas + suite-home parity + roadmap confidence closure |
+| MTL-15 Public AI Concierge onboarding + booking ops | Queued | All personas + operator/admin + closure of the largest remaining baseline gap |
 
 ## Execution Ledger
 
@@ -125,6 +137,7 @@ Current task pulse:
 | 2026-03-07 00:20:00Z | E09-S03 media resolver | Added a plan-backed library-first resolver that ranks reusable media, classifies reusable-kit versus bespoke gaps, persists the summary to orchestration runs, and exposes the resolution state in the Episodes operator rail. | Done | `api/index.js`, `types.ts`, `components/BingeFeedView.tsx`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-07 00:45:00Z | E09-S02 starter library seed | Added a starter curated-media pack plus one-click admin seeding so reusable routes can be loaded into config without hand-building every entry. | Done | `components/AdminConsole.tsx`, `config/starterMediaLibrary.ts`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-07 01:30:00Z | E09-S04/E09-S05 pipeline persistence | Added persisted media jobs/manifests, Cloud Storage image saves, Firestore metadata/state writes, and video-status writeback for generated episode media. | Done | `api/index.js`, `types.ts`, `services/bingeApi.ts`, `components/BingeFeedView.tsx`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
+| 2026-03-08 04:30:00Z | E12/E13/MTL-14/MTL-15 planning | Added the 90% confidence-closure pass, formalized Lucid tile expansion stories, and mapped the missing AI Concierge onboarding/booking baseline into committed roadmap, backlog, and acceptance docs. | Done | `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`, `components/RoadmapView.tsx`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`, `docs/career-concierge-os.md` |
 
 ## Update Protocol
 

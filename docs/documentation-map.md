@@ -18,6 +18,7 @@
 - `docs/mvp/agentic_staff_operating_model_spec.md`: canonical staffing, orchestration, and admin control-plane rules for the agentic OS
 - `docs/mvp/agentic_staffing_roadmap.md`: distilled implementation order for the staffing/orchestration model
 - `docs/mvp/agentic_execution_charter.md`: operator-facing baseline audit, confidence score, gap analysis, and deployable staff guide
+- `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`: committed path to 90% confidence plus the new Lucid tile/module scope, AC, and tests
 - `docs/documentation-map.md`: update matrix for future work
 
 ## Update Matrix
@@ -134,6 +135,13 @@
 - recommended deployable staff count changes
 - the operator ledger/notebook protocol changes
 
+### Update `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md` when
+
+- the path to 90% confidence changes
+- Lucid tile/module scope changes
+- new Lucid overlays add or remove client modules
+- acceptance criteria for TV, Flash Cards, Events, Telescope, Team, or onboarding/booking change
+
 ## Code-to-Docs Mapping
 
 - `api/` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`
@@ -143,6 +151,7 @@
 - `components/admin/BrandStudioSection.tsx` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/mvp/editorial-grid_brand-studio_spec.md`
 - `components/BingeFeedView.tsx` -> `docs/mvp/cinematic_episodes_player_spec.md`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
 - `components/RoadmapView.tsx` -> `docs/backlog-ledger.md`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
+- confidence-closure and Lucid tile planning -> `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`, `docs/backlog-ledger.md`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
 - staff/orchestration product planning -> `docs/mvp/agentic_staff_operating_model_spec.md`, `docs/mvp/agentic_staffing_roadmap.md`, `docs/career-concierge-os.md`, `docs/decision-log.md`
 - stakeholder baseline audit and operator guidance -> `docs/mvp/agentic_execution_charter.md`
 - `components/GeminiLivePanel.tsx` -> `README.md`, `docs/career-concierge-os.md`

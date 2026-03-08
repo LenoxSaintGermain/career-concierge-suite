@@ -219,15 +219,18 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 | E08 Client-Facing Cinematic Episodes Player | Done | Client-facing cinematic player shipped; admin/operator BTS controls are now separated behind explicit operator mode. |
 | E09 Content Director Media Pipeline | In Progress | Phase A planning trigger, starter library seeding, resolver, and persisted media jobs/manifests are live; dedicated worker execution, richer lineage, and admin media ops remain. |
 | E10 Agentic Staff Operating Model | Queued | Canonical staffing spec and roadmap now exist; implementation has not started. |
+| E11 Sample Persona Test Harness | Queued | Fast persona launch, reset, and proof capture are still needed for repeatable demo execution confidence. |
+| E12 Lucid Module Expansion | Queued | The Lucid-added tiles now have committed backlog scope, acceptance criteria, and negative-test coverage targets. |
+| E13 AI Concierge Onboarding + Booking | Queued | Public concierge entry, scheduling, and booking-state visibility are now explicit roadmap work instead of an audit footnote. |
 
 ### Next Implementation Priority
 
-1. Run persona QA checklist in `docs/mvp/demo_validation_checklist.md` and capture evidence for TU1/TU3/TU4 against the newly shipped flows.
-2. Validate `MTL-09` with brand edits, logo injection, and Lucid overlay parity checks across suite home and module overlays.
-3. Finish `MTL-07` with real device regression checks on MyConcierge, Episodes, and free-tier surfaces.
-4. Run persona proof capture for shipped `MTL-10` and note any residual polish gaps in the validation package.
-5. Continue `MTL-11` with dedicated worker execution, richer lineage, and admin media ops now that the first persisted media-pipeline layer is live.
-6. Start `MTL-12` so the staff roster, handoff graph, admin operating section, and evidence model are explicit before orchestration scope expands.
+1. Continue `MTL-11` with dedicated worker execution, richer lineage, and admin media ops now that the first persisted media-pipeline layer is live.
+2. Start `MTL-12` so the staff roster, handoff graph, admin operating section, and evidence model are explicit before orchestration scope expands.
+3. Implement `MTL-13` so sample-persona launch, reset, and proof capture stop depending on manual recovery steps.
+4. Implement `MTL-15` to close the public AI Concierge and scheduling gap that still suppresses baseline confidence.
+5. Implement `MTL-14` so the Lucid-added tiles become real validated modules instead of unresolved dashboard promises.
+6. Run persona QA checklist in `docs/mvp/demo_validation_checklist.md` and capture evidence for TU1 through TU4 once the closure-pass work lands.
 
 ### Delivery: Admin Console Save Guard + Content Director Phase A Seed
 
@@ -281,3 +284,22 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 
 - Flattened the admin section content into a single-column editorial stack so medium-width laptop views no longer feel cramped or overlap.
 - Added transient retry handling to admin config/overview fetches and saves for `502`/`503`/`504` plus browser fetch failures.
+
+### Planning: 90% Confidence Closure Pass + Lucid Module Expansion
+
+- Published `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md` as the committed spec for the pass that can credibly move both roadmap confidence metrics to `90%+`.
+- Corrected roadmap drift where shipped `E08` work was still marked `queued` in the in-app confidence model.
+- Added `E12` for the Lucid-added dashboard modules:
+  - `SkillSync AI TV`
+  - `Flash Cards`
+  - `Events & Networking`
+  - `Telescope`
+  - `SkillSync AI Team`
+  - placeholder tile governance
+- Added `E13` for the remaining red baseline gap:
+  - public AI Concierge pre-auth entry
+  - Smart Start booking / date-time scheduling
+  - human-versus-AI concierge handoff semantics
+  - operator visibility for bookings and onboarding state
+- Added `MTL-14` and `MTL-15` so the roadmap now shows one explicit closure pass rather than leaving those items as audit observations.
+- Formalized acceptance criteria and positive/negative validation coverage for the Lucid-only modules, which previously had names in spec but not committed AC depth.

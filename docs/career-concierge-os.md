@@ -60,6 +60,12 @@ Tier routing also changes the visible surface:
 
 The roadmap validation module is now treated as an operator/admin surface, not a standard client module.
 It now behaves as a compact operator console rather than a single long scroll: a plan tab, charter tab, and validation tab share the same surface, and the charter confidence metrics update from live roadmap status instead of static prose alone.
+That roadmap now also carries an explicit closure pass for the remaining baseline gaps:
+
+- `E12` Lucid module expansion for `SkillSync AI TV`, `Flash Cards`, `Events & Networking`, `Telescope`, `SkillSync AI Team`, and placeholder-tile governance
+- `E13` public AI Concierge onboarding plus Smart Start booking and operator booking visibility
+
+Those tracks exist because the older Lucid analysis named the modules, but did not give the repo a committed story/AC/test stack for them.
 
 The design target remains an editorial, cinematic workspace rather than a generic SaaS dashboard.
 Modules should feel like guided surfaces inside one OS, not isolated product pages.
@@ -138,6 +144,7 @@ That queued media-pipeline track explicitly includes a future Admin Console oper
 The roadmap now also carries a queued agentic staff operating-model track so the canonical roles, handoffs, and stack boundaries are explicit before more agents are added.
 The same roadmap surface now visualizes the execution charter directly so operators can reference baseline confidence, staffing posture, and highest-risk gaps without leaving the modal.
 The roadmap `Plan` view now uses a stacked execution brief instead of narrow sprint columns, so roadmap phases, gaps, and active work remain readable on laptop-width screens.
+The confidence model itself now treats partially-modeled checkpoints as floors rather than hard caps, so closure-pass epics can raise baseline confidence as they are actually shipped.
 
 ### API Layer
 

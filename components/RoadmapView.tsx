@@ -63,7 +63,7 @@ interface CharterCheckpoint {
   note: string;
   epics?: string[];
   tasks?: string[];
-  forcedScore?: number;
+  minimumScore?: number;
 }
 
 const ROADMAP_NODES: RoadmapNode[] = [
@@ -107,18 +107,27 @@ const ROADMAP_NODES: RoadmapNode[] = [
     id: 's5',
     phase: 'Sprint 5',
     window: 'Weeks 9-10',
-    headline: 'Brand OS hardening, cinematic Episodes, and media pipeline',
+    headline: 'Brand OS hardening, cinematic Episodes, and media pipeline foundation',
     epics: ['E07', 'E08', 'E09'],
     stories: ['E07-S04', 'E08-S01', 'E08-S02', 'E08-S03', 'E08-S04', 'E08-S05', 'E09-S01', 'E09-S02', 'E09-S03', 'E09-S04', 'E09-S05', 'E09-S06', 'E09-S07'],
-    status: 'queued',
+    status: 'in_progress',
   },
   {
     id: 's6',
     phase: 'Sprint 6',
     window: 'Weeks 11-12',
-    headline: 'Agentic staff operating model and orchestration control plane',
-    epics: ['E10'],
-    stories: ['E10-S01', 'E10-S02', 'E10-S03', 'E10-S04', 'E10-S05', 'E10-S06', 'E10-S07'],
+    headline: 'Agentic staff operating model and persona harness',
+    epics: ['E10', 'E11'],
+    stories: ['E10-S01', 'E10-S02', 'E10-S03', 'E10-S04', 'E10-S05', 'E10-S06', 'E10-S07', 'E11-S01', 'E11-S02', 'E11-S03'],
+    status: 'queued',
+  },
+  {
+    id: 's7',
+    phase: 'Sprint 7',
+    window: 'Weeks 13-14',
+    headline: '90% confidence closure pass: Lucid modules and concierge onboarding',
+    epics: ['E09', 'E10', 'E11', 'E12', 'E13'],
+    stories: ['E09-S06', 'E09-S07', 'E10-S04', 'E10-S05', 'E11-S01', 'E11-S02', 'E11-S03', 'E12-S01', 'E12-S02', 'E12-S03', 'E12-S04', 'E12-S05', 'E12-S06', 'E13-S01', 'E13-S02', 'E13-S03', 'E13-S04'],
     status: 'queued',
   },
 ];
@@ -184,7 +193,7 @@ const EPIC_ROWS: EpicRow[] = [
     id: 'E08',
     title: 'Client-Facing Cinematic Episodes Player',
     priority: 'P1',
-    status: 'queued',
+    status: 'done',
     stories: ['E08-S01', 'E08-S02', 'E08-S03', 'E08-S04', 'E08-S05'],
     focus: 'Separate BTS/operator mode from the final user-facing micro-drama player.',
   },
@@ -211,6 +220,22 @@ const EPIC_ROWS: EpicRow[] = [
     status: 'queued',
     stories: ['E11-S01', 'E11-S02', 'E11-S03'],
     focus: 'Quick-launch, reset, and validation shortcuts for seeded demo personas.',
+  },
+  {
+    id: 'E12',
+    title: 'Lucid Module Expansion',
+    priority: 'P1',
+    status: 'queued',
+    stories: ['E12-S01', 'E12-S02', 'E12-S03', 'E12-S04', 'E12-S05', 'E12-S06'],
+    focus: 'Ship the missing Lucid dashboard modules with clear client-safe scope, entitlement rules, and validation coverage.',
+  },
+  {
+    id: 'E13',
+    title: 'AI Concierge Onboarding + Booking',
+    priority: 'P0',
+    status: 'queued',
+    stories: ['E13-S01', 'E13-S02', 'E13-S03', 'E13-S04'],
+    focus: 'Close the public AI Concierge, booking, and concierge-handoff baseline gap from Jim and Lucid.',
   },
 ];
 
@@ -403,7 +428,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E08-S01',
     epic: 'E08',
     title: 'Client Episodes View vs BTS Mode',
-    status: 'queued',
+    status: 'done',
     surface: 'Episodes IA',
     validation: 'Default Episodes mode must hide art-director/model-routing language while preserving operator access in a separate mode.',
   },
@@ -411,7 +436,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E08-S02',
     epic: 'E08',
     title: 'Cinematic Vertical Micro-Drama Player',
-    status: 'queued',
+    status: 'done',
     surface: 'Episodes player',
     validation: 'Episodes should read as cold open -> beats -> challenge -> continuation in a portrait-forward stage.',
   },
@@ -419,7 +444,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E08-S03',
     epic: 'E08',
     title: 'Editorial Context Overlays + Challenge Cards',
-    status: 'queued',
+    status: 'done',
     surface: 'Episodes overlays',
     validation: 'Context notes must be concise/editorial and challenge cards must test judgment without exposing backend machinery.',
   },
@@ -427,7 +452,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E08-S04',
     epic: 'E08',
     title: 'Mobile/Desktop Editorial Adaptation',
-    status: 'queued',
+    status: 'done',
     surface: 'Responsive Episodes UI',
     validation: 'Mobile stays portrait-first and immersive; desktop balances identity rail, stage, and context column.',
   },
@@ -435,7 +460,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E08-S05',
     epic: 'E08',
     title: 'Brand-System Design QA Guardrails',
-    status: 'queued',
+    status: 'done',
     surface: 'Episodes design QA',
     validation: 'Episodes redesign must remain compliant with Brand Studio palette, hierarchy, spacing, and motion rules.',
   },
@@ -575,6 +600,86 @@ const STORY_ROWS: StoryRow[] = [
     surface: 'Roadmap validation',
     validation: 'Tie launch, reset, and proof-capture actions directly to each sample persona checklist.',
   },
+  {
+    id: 'E12-S01',
+    epic: 'E12',
+    title: 'SkillSync AI TV Module',
+    status: 'queued',
+    surface: 'TV library',
+    validation: 'TV must expose a curated editorial video library with personalized rails and free-tier gating, without leaking operator-generation language.',
+  },
+  {
+    id: 'E12-S02',
+    epic: 'E12',
+    title: 'Flash Cards Module',
+    status: 'queued',
+    surface: 'Learning reinforcement',
+    validation: 'Decks should derive from plan themes or episode history, persist review state, and respect free-versus-paid entitlements.',
+  },
+  {
+    id: 'E12-S03',
+    epic: 'E12',
+    title: 'Events & Networking Module',
+    status: 'queued',
+    surface: 'Community + concierge actions',
+    validation: 'Relevant events must support bookmark or request-help actions and persist operator-visible interest signals without implying fake external booking.',
+  },
+  {
+    id: 'E12-S04',
+    epic: 'E12',
+    title: 'Telescope Opportunity Horizon Module',
+    status: 'queued',
+    surface: 'Opportunity radar',
+    validation: 'Telescope should frame adjacent roles, market themes, and next-step paths by horizon and link back into Plan, Episodes, or CJS.',
+  },
+  {
+    id: 'E12-S05',
+    epic: 'E12',
+    title: 'SkillSync AI Team Module',
+    status: 'queued',
+    surface: 'Support roster',
+    validation: 'Client-facing Team view should explain support roles and premium handoff options without exposing internal prompts, runs, or admin controls.',
+  },
+  {
+    id: 'E12-S06',
+    epic: 'E12',
+    title: 'Placeholder Tile Governance',
+    status: 'queued',
+    surface: 'Suite home grid',
+    validation: 'Placeholder tiles must be hidden, operator-only, or clearly marked upcoming so numbering and grid trust remain coherent.',
+  },
+  {
+    id: 'E13-S01',
+    epic: 'E13',
+    title: 'Public AI Concierge Pre-Auth Entry',
+    status: 'queued',
+    surface: 'Landing -> intake',
+    validation: 'Voice-led or concierge-led public entry should capture tier, identity basics, optional resume, and hand off cleanly into the suite intake.',
+  },
+  {
+    id: 'E13-S02',
+    epic: 'E13',
+    title: 'Booking + Date/Time Smart Start Scheduling',
+    status: 'queued',
+    surface: 'Scheduling flow',
+    validation: 'Users should be able to select a Smart Start time, receive confirmation context, and persist booking state for operator review.',
+  },
+  {
+    id: 'E13-S03',
+    epic: 'E13',
+    title: 'Human/AI MyConcierge Handoff Semantics',
+    status: 'queued',
+    surface: 'MyConcierge + Team',
+    validation: 'The suite must make human versus AI concierge help explicit, including when a paid user can request escalation.',
+  },
+  {
+    id: 'E13-S04',
+    epic: 'E13',
+    title: 'Operator Booking + Onboarding Visibility',
+    status: 'queued',
+    surface: 'Admin onboarding ops',
+    validation: 'Admin should inspect booking state, intake progress, and concierge handoff state without leaving the operating console.',
+  },
 ];
 
 const PERSONA_TRACKS: PersonaTrack[] = [
@@ -585,7 +690,7 @@ const PERSONA_TRACKS: PersonaTrack[] = [
     tier: 'SkillSync AI Premier',
     intent: 'Stay sharp in current role',
     status: 'in_progress',
-    stories: ['E03-S01', 'E03-S02', 'E04-S02', 'E05-S02', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S03', 'E11-S01', 'E11-S03'],
+    stories: ['E03-S01', 'E03-S02', 'E04-S02', 'E05-S02', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S03', 'E11-S01', 'E11-S03', 'E12-S01', 'E12-S04', 'E13-S03'],
     acceptanceFocus: [
       'AI Profile reflects regular AI usage + template work style.',
       'Episode sequence starts with AI Strategy and Leadership in voice-first format.',
@@ -600,7 +705,7 @@ const PERSONA_TRACKS: PersonaTrack[] = [
     tier: 'CJS Premier',
     intent: 'Move into a specific next role',
     status: 'in_progress',
-    stories: ['E06-S01', 'E06-S02', 'E06-S03', 'E02-S04', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S05', 'E11-S01', 'E11-S03'],
+    stories: ['E06-S01', 'E06-S02', 'E06-S03', 'E02-S04', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S05', 'E11-S01', 'E11-S03', 'E12-S01', 'E12-S03', 'E12-S04', 'E13-S02'],
     acceptanceFocus: [
       'Your Plan includes KPI and ROI-driven 72-hour actions.',
       'CJS rail drives resume review + internal promotion strategy.',
@@ -615,7 +720,7 @@ const PERSONA_TRACKS: PersonaTrack[] = [
     tier: 'SkillSync Foundation',
     intent: 'Need help designing direction',
     status: 'in_progress',
-    stories: ['E04-S02', 'E03-S01', 'E04-S03', 'E02-S03', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S03', 'E11-S01', 'E11-S03'],
+    stories: ['E04-S02', 'E03-S01', 'E04-S03', 'E02-S03', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S03', 'E11-S01', 'E11-S03', 'E12-S02', 'E12-S03', 'E12-S04', 'E13-S01'],
     acceptanceFocus: [
       'Profile and Gaps highlight transferable skills into tech pathways.',
       'Episode sequence starts with foundational process automation tracks.',
@@ -630,7 +735,7 @@ const PERSONA_TRACKS: PersonaTrack[] = [
     tier: 'Free Foundation Access',
     intent: 'Learn AI fundamentals before upgrading',
     status: 'in_progress',
-    stories: ['E01-S01', 'E03-S01', 'E05-S03', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S06', 'E11-S01', 'E11-S03'],
+    stories: ['E01-S01', 'E03-S01', 'E05-S03', 'E08-S01', 'E08-S02', 'E09-S01', 'E09-S03', 'E09-S07', 'E10-S02', 'E10-S06', 'E11-S01', 'E11-S03', 'E12-S01', 'E12-S02', 'E12-S06', 'E13-S01'],
     acceptanceFocus: [
       'Short intake only for foundational interests.',
       'Only readiness + generic resource guide are visible.',
@@ -725,7 +830,7 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-10',
     title: 'Client-facing cinematic Episodes player',
-    status: 'queued',
+    status: 'done',
     goal: 'Replace BTS-style Episodes with the final user-facing micro-drama player while keeping a separate operator mode.',
     surfaces: 'Episodes, Binge API, Operator mode',
     stories: ['E08-S01', 'E08-S02', 'E08-S03', 'E08-S04', 'E08-S05'],
@@ -756,6 +861,24 @@ const MASTER_TASKLIST: MasterTask[] = [
     goal: 'Let operators launch, reset, and validate seeded sample users without manual auth and state wrangling.',
     surfaces: 'Admin, Roadmap validation, Persona fixtures',
     stories: ['E11-S01', 'E11-S02', 'E11-S03'],
+    personas: ['TU1', 'TU2', 'TU3', 'TU4'],
+  },
+  {
+    id: 'MTL-14',
+    title: 'Lucid tile parity + expansion modules',
+    status: 'queued',
+    goal: 'Ship the missing Lucid tiles with tight scope, entitlement rules, and acceptance coverage instead of leaving them as visual placeholders.',
+    surfaces: 'Suite home, TV, Flash Cards, Events, Telescope, Team',
+    stories: ['E12-S01', 'E12-S02', 'E12-S03', 'E12-S04', 'E12-S05', 'E12-S06'],
+    personas: ['TU1', 'TU2', 'TU3', 'TU4'],
+  },
+  {
+    id: 'MTL-15',
+    title: 'Public AI Concierge onboarding + booking ops',
+    status: 'queued',
+    goal: 'Close the pre-auth concierge, scheduling, and operator booking-state gap that still keeps the Lucid/Jim baseline below target confidence.',
+    surfaces: 'Landing flow, booking, MyConcierge, Admin',
+    stories: ['E13-S01', 'E13-S02', 'E13-S03', 'E13-S04'],
     personas: ['TU1', 'TU2', 'TU3', 'TU4'],
   },
 ];
@@ -802,17 +925,19 @@ const CHARTER_CHECKPOINTS: CharterCheckpoint[] = [
     lane: 'Journey OS',
     title: 'Public AI Concierge onboarding',
     source: 'Lucid',
-    note: 'Voice-led pre-auth entry is still only partially modeled.',
-    epics: ['E01', 'E05'],
-    forcedScore: 0.45,
+    note: 'Voice-led pre-auth entry is partially modeled today; the full public concierge, tier selection, and handoff flow is now a dedicated closure-pass epic.',
+    epics: ['E13'],
+    tasks: ['MTL-15'],
+    minimumScore: 0.45,
   },
   {
     id: 'CC-06',
     lane: 'Journey OS',
     title: 'Concierge scheduling + booking ops',
     source: 'Jim',
-    note: 'Calendar/date-time onboarding remains the clearest uncovered baseline.',
-    forcedScore: 0,
+    note: 'Calendar/date-time onboarding and booking visibility now have explicit backlog scope, but the implementation is still fully queued.',
+    epics: ['E13'],
+    tasks: ['MTL-15'],
   },
   {
     id: 'CC-07',
@@ -858,6 +983,15 @@ const CHARTER_CHECKPOINTS: CharterCheckpoint[] = [
     note: 'Stay on the Firebase / Cloud Run / Gemini path rather than re-platforming.',
     epics: ['E09', 'E10'],
     tasks: ['MTL-11', 'MTL-12'],
+  },
+  {
+    id: 'CC-12',
+    lane: 'Journey OS',
+    title: 'Lucid dashboard tile parity',
+    source: 'Lucid',
+    note: 'TV, Flash Cards, Events, Telescope, Team, and placeholder governance are now carried as one explicit expansion epic.',
+    epics: ['E12'],
+    tasks: ['MTL-14'],
   },
 ];
 
@@ -950,12 +1084,11 @@ export const RoadmapView: React.FC = () => {
   const taskStatus = Object.fromEntries(MASTER_TASKLIST.map((task) => [task.id, task.status])) as Record<string, DeliveryStatus>;
   const average = (values: number[]) => (values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0);
   const getLinkedScore = (checkpoint: CharterCheckpoint) => {
-    if (typeof checkpoint.forcedScore === 'number') return checkpoint.forcedScore;
     const linkedScores = [
       ...(checkpoint.epics ?? []).map((id) => progressScore[epicStatus[id] ?? 'queued']),
       ...(checkpoint.tasks ?? []).map((id) => progressScore[taskStatus[id] ?? 'queued']),
     ];
-    return average(linkedScores);
+    return Math.max(checkpoint.minimumScore ?? 0, average(linkedScores));
   };
 
   const charterRows = CHARTER_CHECKPOINTS.map((checkpoint) => {

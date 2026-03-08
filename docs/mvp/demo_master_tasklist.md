@@ -37,6 +37,8 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 | `MTL-11` Content Director media orchestration + reusable library pipeline | In Progress | Phase A planning seed, taxonomy-guided tagging, starter-library seeding, resolver, and persisted media jobs/manifests are live; dedicated worker execution, fuller lineage, and admin pipeline ops remain | `E09-S01`, `E09-S02`, `E09-S03`, `E09-S04`, `E09-S05`, `E09-S06`, `E09-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-12` Agentic staff operating model + orchestration control plane | Queued | Formalize the staff roster, handoff graph, memory/evidence model, and admin orchestration console without re-platforming the current OS | `E10-S01`, `E10-S02`, `E10-S03`, `E10-S04`, `E10-S05`, `E10-S06`, `E10-S07` | `TU1`, `TU2`, `TU3`, `TU4` |
 | `MTL-13` Sample persona test harness + quick-switch ops | Queued | Let operators launch, reset, and validate seeded demo users without manual auth and state wrangling | `E11-S01`, `E11-S02`, `E11-S03` | `TU1`, `TU2`, `TU3`, `TU4` |
+| `MTL-14` Lucid tile parity + expansion modules | Queued | Turn Jim's added Lucid tiles into real client-safe modules with entitlement rules, AC, and negative tests instead of leaving them as implied placeholders | `E12-S01`, `E12-S02`, `E12-S03`, `E12-S04`, `E12-S05`, `E12-S06` | `TU1`, `TU2`, `TU3`, `TU4` |
+| `MTL-15` Public AI Concierge onboarding + booking ops | Queued | Close the remaining red baseline gap around pre-auth AI Concierge entry, Smart Start scheduling, and operator booking visibility | `E13-S01`, `E13-S02`, `E13-S03`, `E13-S04` | `TU1`, `TU2`, `TU3`, `TU4` |
 
 ## Acceptance Mapping (Test Spec -> Backlog)
 
@@ -111,6 +113,22 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 - `AC-2`: Operator can reset and reseed a sample persona without touching unrelated data -> `E11-S02`, `MTL-13`
 - `AC-3`: Validation surface links launch, reset, and proof-capture steps per persona -> `E11-S03`, `MTL-13`
 
+### Lucid Module Expansion Validation
+
+- `AC-1`: `SkillSync AI TV` opens a dedicated editorial video library with at least one personalized rail and correct free-tier gating -> `E12-S01`, `MTL-14`
+- `AC-2`: `Flash Cards` creates or loads decks from current plan themes or recent episode history and persists review state -> `E12-S02`, `MTL-14`
+- `AC-3`: `Events & Networking` surfaces relevant events plus bookmark or request-help actions without implying unsupported external RSVP state -> `E12-S03`, `MTL-14`
+- `AC-4`: `Telescope` frames `now`, `near`, and `later` opportunity horizons and links back into Plan, Episodes, or CJS -> `E12-S04`, `MTL-14`
+- `AC-5`: `SkillSync AI Team` explains support roles and premium handoff posture without exposing admin prompts, runs, or policies -> `E12-S05`, `MTL-14`
+- `AC-6`: placeholder tiles are hidden, operator-only, or clearly marked upcoming so the grid numbering and trust stay intact -> `E12-S06`, `MTL-14`
+
+### Public AI Concierge + Booking Validation
+
+- `AC-1`: public AI Concierge entry captures tier, identity basics, optional resume, and hands off cleanly into the suite intake -> `E13-S01`, `MTL-15`
+- `AC-2`: Smart Start scheduling supports date/time selection and persists booking state for operator review -> `E13-S02`, `MTL-15`
+- `AC-3`: paid journeys make human-versus-AI concierge handoff semantics explicit -> `E13-S03`, `MTL-15`
+- `AC-4`: admin can inspect booking status, intake progress, and concierge handoff state in one operating surface -> `E13-S04`, `MTL-15`
+
 ## Execution Order for Demo Readiness
 
 1. Complete `MTL-01` fixtures to lock repeatable test runs.
@@ -125,6 +143,8 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 10. Implement `MTL-11` so media planning, reuse, and bespoke generation happen through a library-first pipeline instead of ad hoc per-episode generation.
 11. Implement `MTL-12` so the agentic staff model, orchestration governance, and admin control plane are explicit before staff sprawl or channel expansion.
 12. Implement `MTL-13` so persona rehearsal and investor-demo testing no longer depend on manual login, reset, and state-recovery steps.
+13. Implement `MTL-15` so the public AI Concierge and Smart Start booking flow stop dragging baseline confidence below target.
+14. Implement `MTL-14` so the Lucid-added tiles become real modules with acceptance coverage instead of unresolved dashboard promises.
 
 ## Current Implementation Notes
 
@@ -137,6 +157,8 @@ Deliver end-to-end journeys for all four test users with evidence-backed accepta
 - `MTL-11`: `E09-S01` through `E09-S05` are now in flight, with `E09-S02`/`E09-S03` done and initial `E09-S04`/`E09-S05` persistence shipped. Media-pack generation now writes `media_jobs` and `media_manifests`, stores generated image binaries in Cloud Storage when available, and writes video-status updates back into Firestore. Dedicated worker execution, richer lineage, and admin media ops remain queued.
 - `MTL-12`: queued staffing/orchestration architecture is defined in `docs/mvp/agentic_staff_operating_model_spec.md`; implementation has not started.
 - `MTL-13`: queued operator-testing harness is required so seeded personas can be launched and reset quickly during QA and demos.
+- `MTL-14`: queued scope is formalized in `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`; direct module names came from Lucid, but most detailed AC are newly formalized there.
+- `MTL-15`: queued scope closes the last true red baseline gap from the charter: public AI Concierge onboarding plus booking/scheduling operations.
 
 ## Definition of Done
 

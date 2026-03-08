@@ -8,6 +8,9 @@ Operator guide. This document is the final baseline audit and execution charter 
 - `docs/mvp/Jim's Notes - Key Requirements Extracted.md`
 - current roadmap, backlog, and staffing specs under `docs/mvp/`
 
+The confidence scores below are the March 6, 2026 audit snapshot.
+The live roadmap module now recalculates confidence from current epic/task state, and the closure path to `90%+` now lives in `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`.
+
 ## Executive Read
 
 ### Confidence Score
