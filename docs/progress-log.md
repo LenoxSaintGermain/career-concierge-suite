@@ -218,7 +218,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 | E07 Editorial Grid Brand OS | In Progress | Shared brand config and Brand Studio shipped; deeper artifact-body copy harmonization is still open. |
 | E08 Client-Facing Cinematic Episodes Player | Done | Client-facing cinematic player shipped; admin/operator BTS controls are now separated behind explicit operator mode. |
 | E09 Content Director Media Pipeline | In Progress | Phase A planning trigger, starter library seeding, resolver, and persisted media jobs/manifests are live; dedicated worker execution, richer lineage, and admin media ops remain. |
-| E10 Agentic Staff Operating Model | Queued | Canonical staffing spec and roadmap now exist; implementation has not started. |
+| E10 Agentic Staff Operating Model | In Progress | Registry expansion, policy graph, run records, and admin governance surface are live; escalation depth and evaluator telemetry remain. |
 | E11 Sample Persona Test Harness | Queued | Fast persona launch, reset, and proof capture are still needed for repeatable demo execution confidence. |
 | E12 Lucid Module Expansion | Queued | The Lucid-added tiles now have committed backlog scope, acceptance criteria, and negative-test coverage targets. |
 | E13 AI Concierge Onboarding + Booking | Queued | Public concierge entry, scheduling, and booking-state visibility are now explicit roadmap work instead of an audit footnote. |
@@ -226,7 +226,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 ### Next Implementation Priority
 
 1. Continue `MTL-11` with dedicated worker execution, richer lineage, and admin media ops now that the first persisted media-pipeline layer is live.
-2. Start `MTL-12` so the staff roster, handoff graph, admin operating section, and evidence model are explicit before orchestration scope expands.
+2. Continue `MTL-12` by deepening escalation discipline and evaluator telemetry now that the staff control plane is live.
 3. Implement `MTL-13` so sample-persona launch, reset, and proof capture stop depending on manual recovery steps.
 4. Implement `MTL-15` to close the public AI Concierge and scheduling gap that still suppresses baseline confidence.
 5. Implement `MTL-14` so the Lucid-added tiles become real validated modules instead of unresolved dashboard promises.
@@ -322,3 +322,31 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - recent manifests
   - retry and review actions
 - Updated validation docs so operator QA now covers retry/review behavior and the client boundary directly.
+
+### Delivery: Staff Registry Expansion + Orchestration Control Plane
+
+- Activated the first live `E10` implementation layer.
+- Expanded the staff registry to include:
+  - Intake Concierge
+  - Artifact Composer Pack
+  - MyConcierge Guide
+  - Episode Showrunner
+  - Media Librarian
+  - Media Pipeline Worker
+  - Evaluator
+  - Human Concierge Coach
+  - Admin Operator
+- Added a default orchestration policy with:
+  - intent routes
+  - paid/free role sets
+  - approval triggers
+  - current-stack anchors
+  - evaluation signals
+- Chief of Staff and Content Director runs now persist richer Firestore records, including:
+  - summary
+  - confidence
+  - evidence refs
+  - artifact refs
+  - next roles
+  - approval state
+- Admin governance now includes an orchestration control-plane panel showing policy, recent runs, and confidence-bearing staff activity.

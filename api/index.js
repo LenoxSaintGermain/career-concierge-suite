@@ -351,6 +351,51 @@ app.post('/v1/admin/media-pipeline/manifests/:clientUid/:manifestId/review', req
   }
 });
 
+app.get('/v1/admin/orchestration-control-plane', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    await ensureGovernanceDocs();
+    const clientsSnap = await db.collection('clients').select('display_name', 'email').get();
+    const runs = [];
+
+    for (const clientSnap of clientsSnap.docs) {
+      const uid = clientSnap.id;
+      const clientData = clientSnap.data() ?? {};
+      try {
+        const runsSnap = await clientOrchestrationRunsRef(uid).orderBy('updated_at', 'desc').limit(4).get();
+        runsSnap.docs.forEach((runSnap) => {
+          runs.push(serializeAdminOrchestrationRun({ uid, clientData, runData: runSnap.data() ?? {} }));
+        });
+      } catch (error) {
+        console.warn('orchestration_runs_unavailable', uid, sanitizeError(error, 'orchestration_runs_unavailable'));
+      }
+    }
+
+    runs.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+    const visibleRuns = runs.slice(0, 18);
+    const averageConfidence = visibleRuns.length
+      ? visibleRuns.reduce((sum, run) => sum + Number(run.confidence || 0), 0) / visibleRuns.length
+      : 0;
+
+    return res.json({
+      generated_at: new Date().toISOString(),
+      summary: {
+        role_count: AGENT_REGISTRY.length,
+        run_count: runs.length,
+        average_confidence: Number(averageConfidence.toFixed(2)),
+        approval_required_runs: visibleRuns.filter((run) => run.approval_state !== 'not_required').length,
+      },
+      policy: DEFAULT_ORCHESTRATION_POLICY,
+      registry: AGENT_REGISTRY,
+      runs: visibleRuns,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_orchestration_overview_failed',
+      detail: sanitizeError(error, 'admin_orchestration_overview_failed'),
+    });
+  }
+});
+
 app.put('/v1/admin/config', requireAuth, requireAdmin, async (req, res) => {
   const next = normalizeConfig(req.body?.config ?? {});
   await configRef().set(
@@ -1156,6 +1201,8 @@ const seedContentDirectorPlanning = async ({ uid, intent, preferences, answers, 
   const seeds = buildContentDirectorSeeds({ intent, preferences, answers, artifacts, meta });
   const now = new Date();
   const runId = 'content_director_phase_a';
+  const nextRoles = ['media_librarian', 'media_pipeline_worker', 'evaluator'];
+  const tier = inferTierFromSignal({ answers, preferences });
 
   await Promise.all([
     clientLearningPlansRef(uid).doc('content_director_phase_a').set(
@@ -1175,18 +1222,35 @@ const seedContentDirectorPlanning = async ({ uid, intent, preferences, answers, 
     clientOrchestrationRunsRef(uid).doc(runId).set(
       {
         run_id: runId,
+        client_uid: uid,
         agent_role: 'content_director',
+        started_by_role: 'content_director',
         phase: 'phase_a',
         status: 'seeded',
         trigger: 'suite_generate',
         signal_threshold: 'intake_plus_first_order_artifacts',
         intent,
+        tier,
         preferences,
+        summary: `Content Director seeded a reusable-first episode plan for the ${intent} journey.`,
+        confidence: 0.78,
+        approval_state: tier === 'free_foundation' ? 'not_required' : 'operator_review_available',
+        evidence_refs: [
+          `clients/${uid}`,
+          `clients/${uid}/artifacts/brief`,
+          `clients/${uid}/artifacts/profile`,
+          `clients/${uid}/artifacts/gaps`,
+        ],
+        artifact_refs: ['brief', 'plan', 'profile', 'ai_profile', 'gaps'].map((key) => `clients/${uid}/artifacts/${key}`),
+        next_roles: nextRoles,
         generated_at: meta.generated_at || now.toISOString(),
+        created_at: now,
         updated_at: now,
         learning_plan_ref: `clients/${uid}/learning_plans/content_director_phase_a`,
         episode_plan_ref: `clients/${uid}/episode_plans/content_director_phase_a`,
         source_artifacts: ['brief', 'plan', 'profile', 'ai_profile', 'gaps'],
+        policy_version: DEFAULT_ORCHESTRATION_POLICY.version,
+        source_meta: meta,
       },
       { merge: true }
     ),
@@ -1602,7 +1666,146 @@ const AGENT_REGISTRY = [
     access_model: 'read_write_scoped',
     policy_version: '2026-03-06.1',
   },
+  {
+    role_id: 'intake_concierge',
+    title: 'Intake Concierge',
+    objective: 'Normalize intake signal into intent, modality, and constraints for downstream staff.',
+    reads: ['clients/{uid}', 'clients/{uid}/interactions/*'],
+    writes: ['clients/{uid}', 'clients/{uid}/orchestration_runs/*'],
+    approval_required: false,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-08.1',
+  },
+  {
+    role_id: 'artifact_composer_pack',
+    title: 'Artifact Composer Pack',
+    objective: 'Generate the core suite artifacts without splitting every artifact into a separate autonomous role.',
+    reads: ['clients/{uid}', 'clients/{uid}/artifacts/*'],
+    writes: ['clients/{uid}/artifacts/*', 'clients/{uid}/orchestration_runs/*'],
+    approval_required: false,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-08.1',
+  },
+  {
+    role_id: 'myconcierge_guide',
+    title: 'MyConcierge Guide',
+    objective: 'Answer directional questions using the user artifact stack and current journey intent.',
+    reads: ['clients/{uid}', 'clients/{uid}/artifacts/*', 'clients/{uid}/interactions/*'],
+    writes: ['clients/{uid}/interactions/*'],
+    approval_required: false,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-08.1',
+  },
+  {
+    role_id: 'episode_showrunner',
+    title: 'Episode Showrunner',
+    objective: 'Convert learning context into narrative episode beats, overlays, and challenge structure.',
+    reads: ['clients/{uid}', 'clients/{uid}/learning_plans/*', 'clients/{uid}/episode_plans/*'],
+    writes: ['clients/{uid}/episode_plans/*', 'clients/{uid}/orchestration_runs/*'],
+    approval_required: false,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-08.1',
+  },
+  {
+    role_id: 'media_librarian',
+    title: 'Media Librarian',
+    objective: 'Curate, tag, and govern reusable concept media before bespoke generation is requested.',
+    reads: ['system/media_library/*', 'clients/{uid}/episode_plans/*', 'clients/{uid}/orchestration_runs/*'],
+    writes: ['system/media_library/*', 'clients/{uid}/orchestration_runs/*'],
+    approval_required: true,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-08.1',
+  },
+  {
+    role_id: 'media_pipeline_worker',
+    title: 'Media Pipeline Worker',
+    objective: 'Execute long-running image and video generation jobs and persist results to storage and manifests.',
+    reads: ['clients/{uid}/media_jobs/*', 'clients/{uid}/media_manifests/*'],
+    writes: ['clients/{uid}/media_jobs/*', 'clients/{uid}/media_manifests/*'],
+    approval_required: false,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-08.1',
+  },
+  {
+    role_id: 'evaluator',
+    title: 'Evaluator',
+    objective: 'Score confidence, policy compliance, and evidence sufficiency for orchestration outputs.',
+    reads: ['clients/{uid}/orchestration_runs/*', 'clients/{uid}/artifacts/*', 'clients/{uid}/interactions/*'],
+    writes: ['clients/{uid}/orchestration_runs/*'],
+    approval_required: false,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-08.1',
+  },
+  {
+    role_id: 'human_concierge_coach',
+    title: 'Human Concierge Coach',
+    objective: 'Handle premium-touch escalations and sensitive guidance moments that should not auto-resolve.',
+    reads: ['clients/{uid}', 'clients/{uid}/artifacts/*', 'clients/{uid}/interactions/*', 'clients/{uid}/orchestration_runs/*'],
+    writes: ['clients/{uid}/interactions/*', 'clients/{uid}/orchestration_runs/*'],
+    approval_required: true,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-08.1',
+  },
+  {
+    role_id: 'admin_operator',
+    title: 'Admin Operator',
+    objective: 'Configure policy, inspect runs, manage failures, and keep the operating system healthy.',
+    reads: ['system/*', 'clients/{uid}/orchestration_runs/*', 'clients/{uid}/interactions/*', 'clients/{uid}/media_jobs/*'],
+    writes: ['system/*', 'clients/{uid}/interactions/*', 'clients/{uid}/media_jobs/*', 'clients/{uid}/media_manifests/*'],
+    approval_required: true,
+    access_model: 'read_write_scoped',
+    policy_version: '2026-03-08.1',
+  },
 ];
+
+const DEFAULT_ORCHESTRATION_POLICY = {
+  policy_id: 'default',
+  version: '2026-03-08.1',
+  current_stack: ['web_os', 'express_api', 'cloud_run', 'firestore', 'cloud_storage', 'gemini'],
+  paid_roles: [
+    'chief_of_staff',
+    'intake_concierge',
+    'artifact_composer_pack',
+    'myconcierge_guide',
+    'resume_reviewer',
+    'search_strategist',
+    'episode_showrunner',
+    'content_director',
+    'media_librarian',
+    'media_pipeline_worker',
+    'evaluator',
+    'human_concierge_coach',
+  ],
+  free_roles: ['intake_concierge', 'artifact_composer_pack', 'episode_showrunner'],
+  approval_triggers: [
+    'outbound_message',
+    'employer_specific_claim',
+    'sensitive_bespoke_media',
+    'premium_human_handoff',
+    'publish_state_change',
+  ],
+  evaluation_signals: ['confidence', 'approval_state', 'evidence_refs', 'policy_flags'],
+  intent_routes: [
+    {
+      intent: 'current_role',
+      primary_roles: ['chief_of_staff', 'artifact_composer_pack', 'episode_showrunner'],
+      handoff_order: ['chief_of_staff', 'artifact_composer_pack', 'episode_showrunner', 'content_director'],
+      premium_human_handoff: false,
+    },
+    {
+      intent: 'target_role',
+      primary_roles: ['chief_of_staff', 'artifact_composer_pack', 'search_strategist', 'resume_reviewer'],
+      handoff_order: ['chief_of_staff', 'artifact_composer_pack', 'search_strategist', 'resume_reviewer', 'content_director'],
+      premium_human_handoff: true,
+    },
+    {
+      intent: 'not_sure',
+      primary_roles: ['chief_of_staff', 'artifact_composer_pack', 'myconcierge_guide', 'episode_showrunner'],
+      handoff_order: ['chief_of_staff', 'artifact_composer_pack', 'myconcierge_guide', 'episode_showrunner', 'content_director'],
+      premium_human_handoff: true,
+    },
+  ],
+};
 
 const toIso = (value) => {
   if (!value) return null;
@@ -1627,6 +1830,87 @@ const clientEpisodePlansRef = (uid) => clientRef(uid).collection('episode_plans'
 const clientOrchestrationRunsRef = (uid) => clientRef(uid).collection('orchestration_runs');
 const clientMediaJobsRef = (uid) => clientRef(uid).collection('media_jobs');
 const clientMediaManifestsRef = (uid) => clientRef(uid).collection('media_manifests');
+
+const ensureGovernanceDocs = async () => {
+  await Promise.all([
+    db.collection('system').doc('agent-registry').set(
+      {
+        items: AGENT_REGISTRY,
+        updated_at: new Date().toISOString(),
+      },
+      { merge: true }
+    ),
+    db.collection('system').doc('orchestration-policies').set(
+      {
+        default: DEFAULT_ORCHESTRATION_POLICY,
+        updated_at: new Date().toISOString(),
+      },
+      { merge: true }
+    ),
+    db.collection('system').doc('evaluation-policies').set(
+      {
+        default: {
+          version: '2026-03-08.1',
+          signals: DEFAULT_ORCHESTRATION_POLICY.evaluation_signals,
+          gate_when_confidence_below: 0.6,
+        },
+        updated_at: new Date().toISOString(),
+      },
+      { merge: true }
+    ),
+  ]);
+};
+
+const inferTierFromSignal = ({ answers, preferences }) => {
+  const raw = [
+    nonEmpty(answers?.account_type),
+    nonEmpty(answers?.tier),
+    nonEmpty(answers?.package_name),
+    nonEmpty(preferences?.tier),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  if (raw.includes('free')) return 'free_foundation';
+  return 'paid';
+};
+
+const nextRolesForIntent = (intent) =>
+  DEFAULT_ORCHESTRATION_POLICY.intent_routes.find((route) => route.intent === intent)?.handoff_order ?? [
+    'chief_of_staff',
+    'artifact_composer_pack',
+  ];
+
+const recordChiefOfStaffRun = async ({ uid, intent, preferences, answers, meta, artifacts, status }) => {
+  const now = new Date();
+  const runId = `chief_of_staff_${now.getTime().toString(36)}`;
+  const artifactKeys = Object.keys(artifacts ?? {});
+  const nextRoles = nextRolesForIntent(intent);
+  const confidence = meta?.fallback ? 0.58 : 0.86;
+  await clientOrchestrationRunsRef(uid).doc(runId).set(
+    {
+      run_id: runId,
+      client_uid: uid,
+      started_by_role: 'chief_of_staff',
+      trigger: 'suite_generate',
+      status,
+      intent,
+      tier: inferTierFromSignal({ answers, preferences }),
+      summary: `Chief of Staff routed a ${intent} journey into ${nextRoles.slice(1, 3).join(' + ')}.`,
+      confidence,
+      approval_state: 'not_required',
+      evidence_refs: ['clients/{uid}', 'clients/{uid}/artifacts/brief', 'clients/{uid}/artifacts/plan'],
+      artifact_refs: artifactKeys.map((key) => `clients/${uid}/artifacts/${key}`),
+      next_roles: nextRoles,
+      policy_version: DEFAULT_ORCHESTRATION_POLICY.version,
+      source_meta: meta,
+      created_at: now,
+      updated_at: now,
+    },
+    { merge: true }
+  );
+  return { run_id: runId, confidence };
+};
 
 const parseDataUrl = (input) => {
   const raw = nonEmpty(input);
@@ -1903,6 +2187,25 @@ const serializeAdminMediaManifest = ({ uid, clientData, manifestData, resolution
     assets: Array.isArray(manifestData?.assets) ? manifestData.assets.map(serializeAdminMediaAsset) : [],
   };
 };
+
+const serializeAdminOrchestrationRun = ({ uid, clientData, runData }) => ({
+  client_uid: uid,
+  client_name: nonEmpty(clientData?.display_name) || toDisplayName({ email: clientData?.email }) || uid,
+  client_email: nonEmpty(clientData?.email),
+  run_id: nonEmpty(runData?.run_id),
+  started_by_role: nonEmpty(runData?.started_by_role) || nonEmpty(runData?.agent_role),
+  trigger: nonEmpty(runData?.trigger),
+  status: nonEmpty(runData?.status) || 'unknown',
+  intent: nonEmpty(runData?.intent),
+  tier: nonEmpty(runData?.tier) || 'unknown',
+  summary: nonEmpty(runData?.summary),
+  confidence: Number(runData?.confidence || 0),
+  approval_state: nonEmpty(runData?.approval_state) || 'not_required',
+  next_roles: Array.isArray(runData?.next_roles) ? runData.next_roles.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
+  evidence_refs: Array.isArray(runData?.evidence_refs) ? runData.evidence_refs.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
+  artifact_refs: Array.isArray(runData?.artifact_refs) ? runData.artifact_refs.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
+  updated_at: toIso(runData?.updated_at),
+});
 
 const readClientProfile = async (uid) => {
   const snap = await clientRef(uid).get();
@@ -2682,6 +2985,21 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
     });
     const artifacts = withArtifactMeta(buildSuiteFallback(answers), meta);
     let contentDirector = { status: 'skipped' };
+    let chiefOfStaff = { status: 'skipped' };
+    try {
+      chiefOfStaff = await recordChiefOfStaffRun({
+        uid,
+        intent,
+        preferences,
+        answers,
+        meta,
+        artifacts,
+        status: 'fallback_completed',
+      });
+    } catch (orchestrationError) {
+      console.error('chief_of_staff_run_error', orchestrationError);
+      chiefOfStaff = { status: 'error', detail: sanitizeError(orchestrationError, 'chief_of_staff_run_failed') };
+    }
     try {
       contentDirector = await seedContentDirectorPlanning({ uid, intent, preferences, answers, artifacts, meta });
     } catch (planningError) {
@@ -2692,6 +3010,7 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       meta,
       artifacts,
       orchestration: {
+        chief_of_staff: chiefOfStaff,
         content_director: contentDirector,
       },
     });
@@ -2724,6 +3043,21 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
     const meta = baseMeta('gemini', false, { uid, intent, preferences, model: suiteModel });
     const responseArtifacts = withArtifactMeta(artifacts, meta);
     let contentDirector = { status: 'skipped' };
+    let chiefOfStaff = { status: 'skipped' };
+    try {
+      chiefOfStaff = await recordChiefOfStaffRun({
+        uid,
+        intent,
+        preferences,
+        answers,
+        meta,
+        artifacts: responseArtifacts,
+        status: 'completed',
+      });
+    } catch (orchestrationError) {
+      console.error('chief_of_staff_run_error', orchestrationError);
+      chiefOfStaff = { status: 'error', detail: sanitizeError(orchestrationError, 'chief_of_staff_run_failed') };
+    }
     try {
       contentDirector = await seedContentDirectorPlanning({
         uid,
@@ -2741,6 +3075,7 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       meta,
       artifacts: responseArtifacts,
       orchestration: {
+        chief_of_staff: chiefOfStaff,
         content_director: contentDirector,
       },
     });
@@ -2754,6 +3089,21 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
     });
     const artifacts = withArtifactMeta(buildSuiteFallback(answers), meta);
     let contentDirector = { status: 'skipped' };
+    let chiefOfStaff = { status: 'skipped' };
+    try {
+      chiefOfStaff = await recordChiefOfStaffRun({
+        uid,
+        intent,
+        preferences,
+        answers,
+        meta,
+        artifacts,
+        status: 'fallback_completed',
+      });
+    } catch (orchestrationError) {
+      console.error('chief_of_staff_run_error', orchestrationError);
+      chiefOfStaff = { status: 'error', detail: sanitizeError(orchestrationError, 'chief_of_staff_run_failed') };
+    }
     try {
       contentDirector = await seedContentDirectorPlanning({ uid, intent, preferences, answers, artifacts, meta });
     } catch (planningError) {
@@ -2764,6 +3114,7 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       meta,
       artifacts,
       orchestration: {
+        chief_of_staff: chiefOfStaff,
         content_director: contentDirector,
       },
     });
@@ -2827,13 +3178,7 @@ app.get('/v1/media/library', requireAuth, async (req, res) => {
 
 app.get('/v1/agents/registry', requireAuth, async (_req, res) => {
   try {
-    await db.collection('system').doc('agent-registry').set(
-      {
-        agents: AGENT_REGISTRY,
-        updated_at: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+    await ensureGovernanceDocs();
   } catch (error) {
     console.error('agent_registry_write_error', error);
   }

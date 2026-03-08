@@ -1,6 +1,7 @@
 import { auth } from './firebase';
 import {
   AdminMediaPipelineOverview,
+  AdminOrchestrationOverview,
   AdminSystemOverview,
   AppConfig,
   BrandBodyDensity,
@@ -435,6 +436,15 @@ export const fetchAdminMediaPipelineOverview = async (): Promise<AdminMediaPipel
   }, 'Admin media pipeline error');
 
   return (await resp.json()) as AdminMediaPipelineOverview;
+};
+
+export const fetchAdminOrchestrationOverview = async (): Promise<AdminOrchestrationOverview> => {
+  const resp = await adminRequest('/v1/admin/orchestration-control-plane', {
+    method: 'GET',
+    headers: await authHeaders(),
+  }, 'Admin orchestration overview error');
+
+  return (await resp.json()) as AdminOrchestrationOverview;
 };
 
 export const requestAdminMediaRetry = async (clientUid: string, jobId: string): Promise<void> => {

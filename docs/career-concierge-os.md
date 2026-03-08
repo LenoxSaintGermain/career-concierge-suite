@@ -112,6 +112,7 @@ It uses:
 The operating surface still comes first, but it now behaves like a structured backstage OS instead of a stacked settings page.
 Brand Studio is now part of that write surface and is the canonical place to tune the editorial grid shell.
 The next planned admin expansion is a dedicated orchestration operating section for staff registry visibility, run monitoring, handoff-policy control, approvals, and evaluation state.
+That orchestration operating section is now partially live in `Governance`: operators can inspect the expanded staff registry, the default intent/tier policy graph, and recent confidence-bearing orchestration runs without leaving Admin.
 For demo/operator continuity, admin access now accepts Firebase `admin` or `staff` claims, allowlisted `ADMIN_EMAILS`, and a baked-in operator fallback for `operator@thirdsignal.ai` plus `gws@conciergecareerservices.com`.
 The suite header now shows a visible `Admin Locked` state instead of silently hiding the control when the current account fails the admin check.
 The admin API client now retries transient `502`/`503`/`504` and network fetch failures before surfacing a save/load error to the operator.

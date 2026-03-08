@@ -193,3 +193,19 @@ Use this checklist for in-product validation before production demos. Each perso
 1. Confirm non-admin users cannot load the admin media-pipeline controls.
 2. Confirm client-facing `Episodes` never shows prompt lineage, manifest review state, or retry controls.
 3. Confirm the admin pipeline console does not erase curated-library configuration when only retry/review actions are used.
+
+## Admin Orchestration Control Plane Pass
+
+### Positive Path
+
+1. Login as an admin user and open `Admin` -> `Governance`.
+2. Confirm the `Orchestration control plane` panel loads active-role counts, run counts, approval-linked run counts, and average confidence.
+3. Verify the `Current stack` chips list the current web OS path rather than alternate channel/runtime architecture.
+4. Confirm recent run cards show `started_by_role`, `intent`, `tier`, `confidence`, `next roles`, and approval state.
+5. Verify the `Agent registry` includes the expanded staff roster beyond just Chief of Staff, Resume Reviewer, and Search Strategist.
+
+### Negative Guards
+
+1. Confirm the governance view does not expose raw prompt bodies or unrelated client PII beyond the operator-safe summary fields.
+2. Confirm free-tier policy is represented in the orchestration policy and not routed through premium-only roles by default.
+3. Confirm the control plane remains inside Admin and does not appear as a client-facing module.

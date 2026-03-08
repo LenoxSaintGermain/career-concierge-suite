@@ -246,6 +246,25 @@ Quick operator check:
 4. Mark one manifest `approved` and one `needs_review`.
 5. Confirm the updated review state persists across refresh.
 
+## Admin Orchestration Control Plane
+
+Operator endpoint:
+
+- `GET /v1/admin/orchestration-control-plane`
+
+Expected behavior:
+
+- returns the expanded staff registry
+- returns the default intent/tier orchestration policy
+- returns recent orchestration runs with summary, confidence, approval state, evidence refs, and next-role data
+
+Quick operator check:
+
+1. Open `Admin` -> `Governance`.
+2. Confirm `Orchestration control plane` loads without blocking the rest of the admin console.
+3. Verify the current-stack chips reflect the existing web OS + Cloud Run + Firestore posture.
+4. Verify recent run cards show confidence and next-role fields.
+
 ## Starter Library Seeding
 
 Admin now includes a one-click starter pack inside the `Media` section.

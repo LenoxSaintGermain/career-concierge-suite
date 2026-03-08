@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned enhancement. This is the canonical staffing and orchestration spec for Career Concierge OS.
+Partially implemented. This is the canonical staffing and orchestration spec for Career Concierge OS. Registry expansion, policy graph, run records, and the first admin control-plane layer are now live; escalation depth and evaluator maturity remain open.
 
 ## Purpose
 

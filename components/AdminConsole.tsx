@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CLIENT_INTENTS, FOCUS_PREFS, PACE_PREFS } from '../constants';
 import {
   AdminMediaPipelineOverview,
+  AdminOrchestrationOverview,
   AdminSystemOverview,
   AppConfig,
   CuratedMediaItem,
@@ -13,6 +14,7 @@ import {
 import {
   fetchAdminConfig,
   fetchAdminMediaPipelineOverview,
+  fetchAdminOrchestrationOverview,
   fetchAdminSystemOverview,
   getAdminApiOrigin,
   requestAdminMediaRetry,
@@ -426,6 +428,8 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   const [mediaPipeline, setMediaPipeline] = useState<AdminMediaPipelineOverview | null>(null);
   const [mediaPipelineError, setMediaPipelineError] = useState<string | null>(null);
   const [mediaPipelineBusyKey, setMediaPipelineBusyKey] = useState<string | null>(null);
+  const [orchestrationOverview, setOrchestrationOverview] = useState<AdminOrchestrationOverview | null>(null);
+  const [orchestrationError, setOrchestrationError] = useState<string | null>(null);
   const [showAdvancedVoice, setShowAdvancedVoice] = useState(false);
   const [activeSection, setActiveSection] = useState<AdminSectionId>('summary');
   const [expandedMediaId, setExpandedMediaId] = useState<string | null>(null);
@@ -440,16 +444,19 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     setError(null);
     setSuccess(null);
     setMediaPipelineError(null);
+    setOrchestrationError(null);
     setShowAdvancedVoice(false);
     try {
-      const [cfg, nextOverview, nextPipeline] = await Promise.all([
+      const [cfg, nextOverview, nextPipeline, nextOrchestration] = await Promise.all([
         fetchAdminConfig(),
         fetchAdminSystemOverview(),
         fetchAdminMediaPipelineOverview(),
+        fetchAdminOrchestrationOverview(),
       ]);
       setConfig(cfg);
       setOverview(nextOverview);
       setMediaPipeline(nextPipeline);
+      setOrchestrationOverview(nextOrchestration);
       setBaselineFingerprint(JSON.stringify(cfg));
       setExpandedMediaId(cfg.media.curated_library[0]?.id ?? null);
     } catch (e: any) {
@@ -572,12 +579,14 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
       const nextConfig = cloneConfig(saved);
       setConfig(nextConfig);
       setBaselineFingerprint(JSON.stringify(nextConfig));
-      const [nextOverview, nextPipeline] = await Promise.all([
+      const [nextOverview, nextPipeline, nextOrchestration] = await Promise.all([
         fetchAdminSystemOverview(),
         fetchAdminMediaPipelineOverview(),
+        fetchAdminOrchestrationOverview(),
       ]);
       setOverview(nextOverview);
       setMediaPipeline(nextPipeline);
+      setOrchestrationOverview(nextOrchestration);
       setSuccess('Configuration saved.');
       onSaved?.();
     } catch (e: any) {
@@ -594,6 +603,16 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
       setMediaPipeline(next);
     } catch (e: any) {
       setMediaPipelineError(e?.message ?? 'Unable to load media pipeline.');
+    }
+  };
+
+  const refreshOrchestrationOverview = async () => {
+    setOrchestrationError(null);
+    try {
+      const next = await fetchAdminOrchestrationOverview();
+      setOrchestrationOverview(next);
+    } catch (e: any) {
+      setOrchestrationError(e?.message ?? 'Unable to load orchestration control plane.');
     }
   };
 
@@ -2006,6 +2025,152 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
         </Panel>
 
         <div className="grid gap-5">
+          <Panel
+            title="Orchestration control plane"
+            eyebrow="Staff policy"
+            meta={`${orchestrationOverview?.summary.run_count ?? 0} tracked runs`}
+          >
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3 border border-black/10 bg-[#f8faf8] p-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Operating posture</div>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-black/60">
+                    This is the governed staff layer: policy, routes, recent runs, and confidence signals for the current
+                    web OS stack.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={refreshOrchestrationOverview}
+                  className="border border-black/15 px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal"
+                >
+                  Refresh control plane
+                </button>
+              </div>
+
+              {orchestrationError ? (
+                <div className="border border-red-500/20 bg-red-50 px-4 py-3 text-sm text-red-700">{orchestrationError}</div>
+              ) : null}
+
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  {
+                    label: 'Active roles',
+                    value: orchestrationOverview?.summary.role_count ?? 0,
+                    meta: `${(orchestrationOverview?.policy.current_stack ?? []).length} stack anchors`,
+                  },
+                  {
+                    label: 'Tracked runs',
+                    value: orchestrationOverview?.summary.run_count ?? 0,
+                    meta: `${orchestrationOverview?.summary.approval_required_runs ?? 0} approval-linked`,
+                  },
+                  {
+                    label: 'Avg confidence',
+                    value: `${Math.round((orchestrationOverview?.summary.average_confidence ?? 0) * 100)}%`,
+                    meta: 'from recent orchestration runs',
+                  },
+                  {
+                    label: 'Free-tier guard',
+                    value: orchestrationOverview?.policy.free_roles.length ?? 0,
+                    meta: 'roles allowed on free journeys',
+                  },
+                ].map((card) => (
+                  <div key={card.label} className="border border-black/10 bg-[#fbfcfa] p-4">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">{card.label}</div>
+                    <div className="mt-3 text-3xl font-editorial italic leading-none text-[#09161a]">{card.value}</div>
+                    <div className="mt-2 text-xs text-black/55">{card.meta}</div>
+                  </div>
+                ))}
+              </div>
+
+              {orchestrationOverview ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="border border-black/10 bg-[#fbfcfa] p-4 space-y-3">
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Approval triggers</div>
+                      <div className="flex flex-wrap gap-2">
+                        {orchestrationOverview.policy.approval_triggers.map((trigger) => (
+                          <span
+                            key={trigger}
+                            className="border border-amber-500/20 bg-amber-50 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-800"
+                          >
+                            {labelize(trigger)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="border border-black/10 bg-[#fbfcfa] p-4 space-y-3">
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Current stack</div>
+                      <div className="flex flex-wrap gap-2">
+                        {orchestrationOverview.policy.current_stack.map((entry) => (
+                          <span
+                            key={entry}
+                            className="border border-brand-teal/25 bg-brand-soft px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-brand-teal"
+                          >
+                            {labelize(entry)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {orchestrationOverview.runs.length === 0 ? (
+                      <div className="border border-dashed border-black/15 bg-[#fbfcfa] p-6 text-sm text-black/55">
+                        No orchestration runs recorded yet.
+                      </div>
+                    ) : (
+                      orchestrationOverview.runs.map((run) => (
+                        <article key={`${run.client_uid}-${run.run_id}`} className="space-y-3 border border-black/10 bg-[#fbfcfa] p-4">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-1">
+                              <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">
+                                {run.client_name || 'Client'} · {run.intent || 'unknown intent'} · {run.tier || 'unknown tier'}
+                              </div>
+                              <div className="text-lg font-editorial italic leading-tight text-[#09161a]">
+                                {run.started_by_role || 'staff'} · {run.run_id}
+                              </div>
+                              <div className="text-xs text-black/55">{run.summary || 'No summary recorded.'}</div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${mediaPipelineTone(run.status)}`}>
+                                {run.status.replace(/_/g, ' ')}
+                              </span>
+                              <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${mediaPipelineTone(run.approval_state)}`}>
+                                {run.approval_state.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-2 md:grid-cols-4 text-xs text-black/60">
+                            <div>Confidence {Math.round((run.confidence || 0) * 100)}%</div>
+                            <div>{run.trigger || 'unknown trigger'}</div>
+                            <div>{run.next_roles.length} next roles</div>
+                            <div>{run.updated_at ? new Date(run.updated_at).toLocaleString() : 'No update time'}</div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Next roles</div>
+                            <div className="flex flex-wrap gap-2">
+                              {run.next_roles.map((role) => (
+                                <span
+                                  key={role}
+                                  className="border border-brand-teal/25 bg-brand-soft px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-brand-teal"
+                                >
+                                  {labelize(role)}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </Panel>
+
           <Panel title="Approval rail" eyebrow="Queue" meta={`${overview.queue.pending_count} pending`}>
             <div className="space-y-3">
               {overview.queue.warning ? (

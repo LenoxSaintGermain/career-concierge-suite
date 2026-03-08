@@ -52,13 +52,13 @@ Source of truth backlog:
 | E09-S05 Cloud Storage + Firestore Metadata Model | E09 | P1 | In Progress | Generated image binaries and media metadata now persist to Cloud Storage/Firestore; fuller video persistence and richer lineage indexing remain. |
 | E09-S06 Operator Lineage vs Client Output Boundary | E09 | P1 | Done | Client-facing media now stays on final assembled output while resolver lineage, prompts, retry state, and review posture are kept in operator/admin surfaces only. |
 | E09-S07 Admin Media-Pipeline Console | E09 | P1 | Done | Admin now exposes media-pipeline monitoring, prompt lineage, retry requests, review actions, and pipeline summary in the Media section. |
-| E10-S01 Canonical Staff Registry + Contracts | E10 | P1 | Queued | Every MVP staff role should have explicit trigger, scope, IO, and approval rules. |
-| E10-S02 Intent/Tier Handoff Graph | E10 | P1 | Queued | The orchestrator should explain which downstream staff roles were selected and why. |
-| E10-S03 Firestore Orchestration Memory Model | E10 | P1 | Queued | Orchestration runs, evidence, and evaluation state should live in Firestore before optional vector infrastructure. |
-| E10-S04 Admin Orchestration Control Plane | E10 | P1 | Queued | Admin should expose staff roster, orchestration runs, policies, and evaluation state in one operating section. |
-| E10-S05 Human Escalation + Approval Discipline | E10 | P1 | Queued | Sensitive outbound and bespoke actions should route into role-aware approval and escalation flows. |
-| E10-S06 Current-Stack Channel/Runtime Policy | E10 | P1 | Queued | Staffing roadmap should stay aligned to web OS + GCP/Firebase rather than imported multi-channel architecture. |
-| E10-S07 Staff Effectiveness Telemetry | E10 | P1 | Queued | Operators should be able to inspect confidence and evaluation signals across staff outputs. |
+| E10-S01 Canonical Staff Registry + Contracts | E10 | P1 | Done | The live registry now covers the broader staff roster with explicit role contracts, scope, and policy versioning. |
+| E10-S02 Intent/Tier Handoff Graph | E10 | P1 | Done | Default orchestration policy now encodes intent routes, paid/free role sets, and handoff order. |
+| E10-S03 Firestore Orchestration Memory Model | E10 | P1 | In Progress | Chief of Staff and Content Director now write richer run records with confidence, evidence refs, artifact refs, and next-role data; evaluation depth is still maturing. |
+| E10-S04 Admin Orchestration Control Plane | E10 | P1 | Done | Admin governance now shows policy, staff roster, and recent orchestration runs in one operating section. |
+| E10-S05 Human Escalation + Approval Discipline | E10 | P1 | In Progress | Approval triggers and premium human handoff policy are encoded, but deeper user-facing escalation flows still need implementation. |
+| E10-S06 Current-Stack Channel/Runtime Policy | E10 | P1 | Done | The orchestration control plane now explicitly anchors to the current web OS + GCP/Firebase stack. |
+| E10-S07 Staff Effectiveness Telemetry | E10 | P1 | In Progress | Recent orchestration runs now carry confidence fields in admin; fuller evaluation/policy flagging remains open. |
 | E11-S01 One-Click Sample Persona Launch | E11 | P1 | Queued | Admin should let operators launch seeded sample users quickly without manual credential wrangling. |
 | E11-S02 Persona Reset + Reseed Controls | E11 | P1 | Queued | Operators should be able to reset sample-user state and reseed deterministic fixtures for repeatable demos. |
 | E11-S03 Persona-Aware Validation Shortcuts | E11 | P1 | Queued | Roadmap/validation should link launch, reset, and proof-capture steps per sample persona. |
@@ -106,7 +106,7 @@ Current task pulse:
 | MTL-09 Editorial grid brand OS + workflow label sync | In Progress | All personas + operator/admin |
 | MTL-10 Client-facing cinematic Episodes player | Done | All personas, especially TU1/TU3/TU4 + investor demo narrative |
 | MTL-11 Content Director media orchestration + reusable library pipeline | In Progress | Episodes platform, operator/admin, future investor demos |
-| MTL-12 Agentic staff operating model + orchestration control plane | Queued | All personas + operator/admin + roadmap coherence |
+| MTL-12 Agentic staff operating model + orchestration control plane | In Progress | All personas + operator/admin + roadmap coherence |
 | MTL-13 Sample persona test harness + quick-switch ops | Queued | All personas + operator/admin + demo rehearsal |
 | MTL-14 Lucid tile parity + expansion modules | Queued | All personas + suite-home parity + roadmap confidence closure |
 | MTL-15 Public AI Concierge onboarding + booking ops | Queued | All personas + operator/admin + closure of the largest remaining baseline gap |
@@ -139,6 +139,7 @@ Current task pulse:
 | 2026-03-07 01:30:00Z | E09-S04/E09-S05 pipeline persistence | Added persisted media jobs/manifests, Cloud Storage image saves, Firestore metadata/state writes, and video-status writeback for generated episode media. | Done | `api/index.js`, `types.ts`, `services/bingeApi.ts`, `components/BingeFeedView.tsx`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-08 04:30:00Z | E12/E13/MTL-14/MTL-15 planning | Added the 90% confidence-closure pass, formalized Lucid tile expansion stories, and mapped the missing AI Concierge onboarding/booking baseline into committed roadmap, backlog, and acceptance docs. | Done | `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`, `components/RoadmapView.tsx`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`, `docs/career-concierge-os.md` |
 | 2026-03-08 05:35:00Z | E09-S06/E09-S07 media ops | Added operator-only lineage storage, a dedicated admin media-pipeline console, retry/review controls, and client-versus-operator media boundary enforcement. | Done | `api/index.js`, `components/AdminConsole.tsx`, `components/BingeFeedView.tsx`, `services/adminApi.ts`, `types.ts`, `docs/operations-runbook.md`, `docs/mvp/demo_validation_checklist.md`, `docs/progress-log.md` |
+| 2026-03-08 06:30:00Z | E10 control-plane activation | Expanded the live staff registry, added default orchestration policy + recent run monitoring, and exposed the staff control plane in Admin governance with confidence-bearing run records. | Done | `api/index.js`, `components/AdminConsole.tsx`, `services/adminApi.ts`, `types.ts`, `components/RoadmapView.tsx`, `docs/mvp/agentic_staff_operating_model_spec.md`, `docs/progress-log.md` |
 
 ## Update Protocol
 

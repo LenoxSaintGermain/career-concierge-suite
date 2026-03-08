@@ -590,6 +590,56 @@ export interface AdminMediaPipelineOverview {
   warnings: string[];
 }
 
+export interface OrchestrationIntentRoute {
+  intent: ClientIntent;
+  primary_roles: string[];
+  handoff_order: string[];
+  premium_human_handoff: boolean;
+}
+
+export interface OrchestrationPolicy {
+  policy_id: string;
+  version: string;
+  current_stack: string[];
+  paid_roles: string[];
+  free_roles: string[];
+  approval_triggers: string[];
+  evaluation_signals: string[];
+  intent_routes: OrchestrationIntentRoute[];
+}
+
+export interface AdminOrchestrationRunSummary {
+  client_uid: string;
+  client_name: string;
+  client_email: string;
+  run_id: string;
+  started_by_role: string;
+  trigger: string;
+  status: string;
+  intent: string;
+  tier: string;
+  summary: string;
+  confidence: number;
+  approval_state: string;
+  next_roles: string[];
+  evidence_refs: string[];
+  artifact_refs: string[];
+  updated_at: string | null;
+}
+
+export interface AdminOrchestrationOverview {
+  generated_at: string;
+  summary: {
+    role_count: number;
+    run_count: number;
+    average_confidence: number;
+    approval_required_runs: number;
+  };
+  policy: OrchestrationPolicy;
+  registry: AgentDefinition[];
+  runs: AdminOrchestrationRunSummary[];
+}
+
 export interface VoiceSynthesisResponse {
   provider: 'sesame' | 'gemini_live';
   mime_type: string;
