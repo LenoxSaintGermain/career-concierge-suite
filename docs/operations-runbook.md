@@ -153,6 +153,17 @@ gcloud auth application-default login
 Production admin access depends on API-side `ADMIN_EMAILS` and any future claims strategy.
 Keep `ADMIN_EMAILS` populated in the API env file.
 
+Optional external-lane envs in the API deploy file:
+
+- `ELEVENLABS_API_KEY`
+- `ELEVENLABS_AGENT_ID`
+- `ELEVENLABS_AGENT_BRANCH_ID`
+- `MANUS_API_KEY`
+- `MANUS_API_URL`
+
+These currently stage Cloud Run runtime metadata and admin readiness visibility only.
+They do not make ElevenLabs or Manus selectable live voice providers until adapter work ships.
+
 Current default admin list in the deploy template includes:
 
 - `lenox.paris@outlook.com`
@@ -467,6 +478,8 @@ Use the reset workflow instead of repeating blind imports.
 - Gemini Live should remain the active real-time voice provider for demo readiness
 - Sesame should remain feature-flagged off until its dedicated Cloud Run service exists
 - SkillSync AI TV should render an actual staged viewing surface in client mode, not only metadata cards
+- if no curated library has been saved yet, the API should fall back to the shipped starter pack, which now includes local Veo-generated clips under `public/demo-media/`
+- Gemini API Veo requests should omit unsupported Gemini-API-only fields such as `generateAudio` and `enhancePrompt`
 - CJS upload/review/strategy flow
 - free-tier dashboard should only expose Intake, Episodes, and AI Readiness
 - Assets ledger summary + decision flow

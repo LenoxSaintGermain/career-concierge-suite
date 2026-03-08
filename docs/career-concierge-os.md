@@ -115,6 +115,7 @@ It uses:
 - one active workspace at a time for generation, media, brand, voice, or governance edits
 - a single-column editorial content stack so controls do not compress or overlap on medium-width laptop views
 - a lane-readiness voice studio that treats Gemini Live as the active rail, Sesame as explicitly gated off, and ElevenLabs/Manus as planned future lanes
+- Cloud Run API env staging for Manus credentials plus ElevenLabs agent metadata so Admin can report external-lane readiness without mislabeling those lanes as live providers
 - a top-command admin layout instead of a permanent desktop side rail so the operating canvas scales on laptop-width modals
 - a top-command client module shell instead of the old split left-rail modal so episodes, TV, and artifact modules have a wider presentation canvas
 - a persistent save rail with explicit unsaved-state feedback
@@ -193,6 +194,7 @@ The Express API under `api/` handles:
 - shared sample-persona password reset on auth create/reseed for direct manual testing
 - operator speed-run intake autofill so seeded persona context can prefill or directly prepare a suite without hand-entering every intake field
 - SkillSync AI TV now stages a real client-safe viewing surface with embed/direct-video support and a placeholder hero when no published reel exists
+- the starter curated-media library now ships with local Veo-generated TV clips and auto-fills the runtime library whenever no saved curated library exists yet
 
 ## Architecture Summary
 

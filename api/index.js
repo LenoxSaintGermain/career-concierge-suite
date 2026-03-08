@@ -28,6 +28,7 @@ import {
   GEMINI_LIVE_MODEL_OPTIONS,
   GEMINI_LIVE_VOICE_OPTIONS,
 } from '../config/voiceRuntime.js';
+import { STARTER_MEDIA_LIBRARY_PACK } from '../config/starterMediaLibrary.js';
 
 const app = express();
 
@@ -203,6 +204,11 @@ app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res
         storage_bucket: storageBucketName || '',
         gemini_configured: Boolean(geminiApiKey),
         sesame_configured: Boolean(sesameApiKey),
+        elevenlabs_api_configured: Boolean(elevenlabsApiKey),
+        elevenlabs_agent_configured: Boolean(elevenlabsAgentId),
+        elevenlabs_branch_configured: Boolean(elevenlabsAgentBranchId),
+        manus_configured: Boolean(manusApiKey),
+        manus_api_url: manusApiUrl,
         admin_email_mode: adminEmailSet.size > 0 ? 'allowlist' : 'open',
         admin_email_count: adminEmailSet.size,
         rom_version: ROM_VERSION,
@@ -776,6 +782,11 @@ app.put('/v1/admin/config', requireAuth, requireAdmin, async (req, res) => {
 
 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || null;
 const sesameApiKey = process.env.SESAME_API_KEY || null;
+const elevenlabsApiKey = process.env.ELEVENLABS_API_KEY || null;
+const elevenlabsAgentId = process.env.ELEVENLABS_AGENT_ID || null;
+const elevenlabsAgentBranchId = process.env.ELEVENLABS_AGENT_BRANCH_ID || null;
+const manusApiKey = process.env.MANUS_API_KEY || null;
+const manusApiUrl = process.env.MANUS_API_URL || 'https://open.manus.ai';
 const sesameAuthHeader = process.env.SESAME_AUTH_HEADER || 'Authorization';
 const sesameAuthPrefix = process.env.SESAME_AUTH_PREFIX || 'Bearer ';
 const fastTextModel = process.env.GEMINI_MODEL_FAST || 'gemini-3-flash-preview';
@@ -863,10 +874,10 @@ const DEFAULT_APP_CONFIG = {
     video_generate_audio: false,
     auto_generate_on_episode: false,
     external_media_enabled: true,
-    curated_library: [],
+    curated_library: JSON.parse(JSON.stringify(STARTER_MEDIA_LIBRARY_PACK)),
   },
   voice: {
-    enabled: false,
+    enabled: true,
     provider: 'gemini_live',
     sesame_enabled: false,
     api_url: process.env.SESAME_API_URL || '',
@@ -1169,6 +1180,14 @@ const normalizeConfig = (input = {}) => {
   const safety = source.safety && typeof source.safety === 'object' ? source.safety : {};
   const brand = source.brand && typeof source.brand === 'object' ? source.brand : {};
 
+  const normalizedCuratedLibrary = Array.isArray(media.curated_library)
+    ? media.curated_library.map((entry, index) => normalizeCuratedMediaItem(entry, index))
+    : [];
+  const fallbackCuratedLibrary =
+    normalizedCuratedLibrary.length > 0
+      ? normalizedCuratedLibrary
+      : DEFAULT_APP_CONFIG.media.curated_library.map((entry, index) => normalizeCuratedMediaItem(entry, index));
+
   return {
     generation: {
       suite_model: nonEmpty(generation.suite_model) || DEFAULT_APP_CONFIG.generation.suite_model,
@@ -1218,7 +1237,7 @@ const normalizeConfig = (input = {}) => {
         media.video_duration_seconds,
         DEFAULT_APP_CONFIG.media.video_duration_seconds,
         4,
-        12
+        8
       ),
       video_generate_audio:
         typeof media.video_generate_audio === 'boolean'
@@ -1232,11 +1251,7 @@ const normalizeConfig = (input = {}) => {
         typeof media.external_media_enabled === 'boolean'
           ? media.external_media_enabled
           : DEFAULT_APP_CONFIG.media.external_media_enabled,
-      curated_library: Array.isArray(media.curated_library)
-        ? media.curated_library.map((entry, index) => normalizeCuratedMediaItem(entry, index))
-        : DEFAULT_APP_CONFIG.media.curated_library.map((entry, index) =>
-            normalizeCuratedMediaItem(entry, index)
-          ),
+      curated_library: fallbackCuratedLibrary,
     },
     voice: {
       enabled: typeof voice.enabled === 'boolean' ? voice.enabled : DEFAULT_APP_CONFIG.voice.enabled,
@@ -3904,8 +3919,6 @@ const generateVideoAsset = async ({ runtimeConfig, direction }) => {
         numberOfVideos: 1,
         aspectRatio: runtimeConfig.media.video_aspect_ratio,
         durationSeconds: runtimeConfig.media.video_duration_seconds,
-        generateAudio: runtimeConfig.media.video_generate_audio,
-        enhancePrompt: true,
       },
     });
 
