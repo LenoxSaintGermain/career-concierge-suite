@@ -266,12 +266,14 @@ The admin modal is intentionally structured as an operator workspace now:
 - left rail for section switching
 - control-tower summary for runtime and queue visibility
 - one active edit surface at a time
+- single-column section layouts so controls do not compress on laptop-width views
 - persistent save rail with unsaved-state feedback
 - collapsible media-library editing for lower scroll overhead
 - taxonomy shortcut chips for faster structured media tagging
 
 If the console regresses into a single stacked form, treat that as a UX bug, not a cosmetic preference.
 While a save request is in flight, the active edit surface is now locked to prevent silent overwrite of later keystrokes, and reload now explicitly confirms before discarding unsaved admin edits.
+The admin API client now retries transient `502`/`503`/`504` and browser-level fetch failures before surfacing an operator error.
 
 ## Brand Studio Operating Notes
 

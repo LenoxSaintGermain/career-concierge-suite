@@ -276,3 +276,8 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - `clients/{uid}/media_manifests/{manifestId}`
 - Generated image binaries now save to Cloud Storage when a bucket is configured.
 - Video-status polling can now update the same persisted job/manifest pair when the caller includes `job_id`.
+
+### Delivery: Admin Save Retry + Single-Column Layout
+
+- Flattened the admin section content into a single-column editorial stack so medium-width laptop views no longer feel cramped or overlap.
+- Added transient retry handling to admin config/overview fetches and saves for `502`/`503`/`504` plus browser fetch failures.

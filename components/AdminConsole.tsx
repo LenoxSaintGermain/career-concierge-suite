@@ -667,7 +667,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3">
               {overviewCards.map((card) => (
                 <MetricCard
                   key={card.eyebrow}
@@ -682,9 +682,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </div>
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid gap-5">
           <Panel title="Runtime identity" eyebrow="Environment" meta={`ROM ${overview.runtime.rom_version}`}>
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4">
               <div className="space-y-3 border border-black/10 bg-[#f8faf8] p-4">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">API origin</div>
                 <div className="break-all font-mono text-xs text-gray-700">{apiOrigin}</div>
@@ -746,7 +746,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </Panel>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-5">
           <Panel title="Approval rail preview" eyebrow="Admin Queue" meta={`${overview.queue.items.length} visible items`}>
             <div className="space-y-3">
               {overview.queue.warning ? (
@@ -822,9 +822,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     if (!config) return null;
     return (
       <SectionShell {...sectionCopy.experience}>
-        <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <div className="grid gap-5">
           <Panel title="Generation routing" eyebrow="Models" meta="Primary rails">
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5">
               <TextField
                 label="Suite model"
                 value={config.generation.suite_model}
@@ -865,7 +865,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </Panel>
 
           <Panel title="Client-facing toggles" eyebrow="Surface posture" meta="Immediate switches">
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3">
               <ToggleField
                 checked={config.ui.show_prologue}
                 onChange={(checked) =>
@@ -909,7 +909,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
         </div>
 
         <Panel title="Prompt overlays" eyebrow="Prompt stack" meta="Appendices">
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-5">
             <TextAreaField
               label="Suite prompt appendix"
               value={config.prompts.suite_appendix}
@@ -966,9 +966,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     if (!config) return null;
     return (
       <SectionShell {...sectionCopy.media}>
-        <div className="grid gap-5 xl:grid-cols-[0.88fr_1.12fr]">
+        <div className="grid gap-5">
           <Panel title="Media routing stack" eyebrow="Generation" meta="Primary configuration">
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5">
               <TextField
                 label="Image model"
                 value={config.media.image_model}
@@ -1026,7 +1026,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </Panel>
 
           <Panel title="Media posture" eyebrow="Operator switches" meta={`${config.media.curated_library.length} library items`}>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3">
               <ToggleField
                 checked={config.media.enabled}
                 onChange={(checked) =>
@@ -1070,7 +1070,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
         </div>
 
         <Panel title="Style direction" eyebrow="Art direction" meta="Narrative language">
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-5">
             <TextAreaField
               label="Image style direction"
               value={config.media.image_style}
@@ -1176,7 +1176,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                           </button>
                         </div>
 
-                        <div className="grid gap-5 xl:grid-cols-2">
+                        <div className="grid gap-5">
                           <div className="space-y-5">
                             <ToggleField
                               checked={item.enabled}
@@ -1200,7 +1200,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                               onChange={(value) => updateMediaItem(index, (prev) => ({ ...prev, source_url: value }))}
                               placeholder="https://www.youtube.com/watch?v=... or playlist URL"
                             />
-                            <div className="grid gap-5 md:grid-cols-2">
+                            <div className="grid gap-5">
                               <SelectField
                                 label="Platform"
                                 value={item.platform}
@@ -1498,9 +1498,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </div>
         </Panel>
 
-        <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <div className="grid gap-5">
           <Panel title="Provider and transport" eyebrow="Runtime" meta={config.voice.provider}>
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5">
               <ToggleField
                 checked={config.voice.enabled}
                 onChange={(checked) =>
@@ -1549,7 +1549,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </Panel>
 
           <Panel title="Voice identity" eyebrow="Narration" meta={config.voice.gemini_live_model}>
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5">
               <TextField
                 label="Speaker"
                 value={config.voice.speaker}
@@ -1609,7 +1609,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             </button>
 
             {showAdvancedVoice ? (
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-5">
                 <TextField
                   label="Voice temperature"
                   type="number"
@@ -1710,7 +1710,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     return (
       <SectionShell {...sectionCopy.governance}>
         <Panel title="Access and entitlements" eyebrow="Operator policy" meta="Commercial posture">
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-5">
             <ToggleField
               checked={config.operations.onboarding_email_enabled}
               onChange={(checked) =>
@@ -1747,7 +1747,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </div>
         </Panel>
 
-        <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid gap-5">
           <Panel title="Approval rail" eyebrow="Queue" meta={`${overview.queue.pending_count} pending`}>
             <div className="space-y-3">
               {overview.queue.warning ? (
@@ -2008,7 +2008,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             </div>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-6 md:py-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 pb-10 md:px-6 md:py-6 md:pb-12">
             {loading ? (
               <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Loading…</div>
             ) : null}

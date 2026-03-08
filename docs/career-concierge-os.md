@@ -96,6 +96,7 @@ It uses:
 - a left-rail navigation for section switching
 - a control-tower summary as the read-only operating surface
 - one active workspace at a time for generation, media, brand, voice, or governance edits
+- a single-column editorial content stack so controls do not compress or overlap on medium-width laptop views
 - a persistent save rail with explicit unsaved-state feedback
 - collapsible media-library editing so large libraries do not overwhelm the modal
 - taxonomy shortcut chips inside the media-library editor so reusable media can be tagged consistently instead of relying only on free-form tag entry
@@ -107,6 +108,7 @@ Brand Studio is now part of that write surface and is the canonical place to tun
 The next planned admin expansion is a dedicated orchestration operating section for staff registry visibility, run monitoring, handoff-policy control, approvals, and evaluation state.
 For demo/operator continuity, admin access now accepts Firebase `admin` or `staff` claims, allowlisted `ADMIN_EMAILS`, and a baked-in operator fallback for `operator@thirdsignal.ai` plus `gws@conciergecareerservices.com`.
 The suite header now shows a visible `Admin Locked` state instead of silently hiding the control when the current account fails the admin check.
+The admin API client now retries transient `502`/`503`/`504` and network fetch failures before surfacing a save/load error to the operator.
 
 ### Progress Log Discipline
 

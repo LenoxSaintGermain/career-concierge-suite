@@ -284,6 +284,42 @@ const authHeaders = async () => {
   };
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const adminRequest = async (path: string, init: RequestInit, label: string): Promise<Response> => {
+  const origin = resolveApiOrigin();
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const resp = await fetch(`${origin}${path}`, init);
+      if (resp.ok) return resp;
+
+      const txt = await resp.text().catch(() => '');
+      const error = new Error(`${label} (${resp.status}): ${txt || resp.statusText}`);
+      if (![502, 503, 504].includes(resp.status) || attempt === 2) {
+        throw error;
+      }
+      lastError = error;
+    } catch (error: any) {
+      const message = String(error?.message ?? '');
+      const isTransientNetworkFailure =
+        error instanceof TypeError ||
+        message.includes('Failed to fetch') ||
+        message.includes('Load failed') ||
+        message.includes('NetworkError');
+      if (!isTransientNetworkFailure || attempt === 2) {
+        throw error instanceof Error ? error : new Error(`${label}: ${message || 'request_failed'}`);
+      }
+      lastError = error instanceof Error ? error : new Error(`${label}: ${message || 'request_failed'}`);
+    }
+
+    await sleep(350 * (attempt + 1));
+  }
+
+  throw lastError ?? new Error(`${label}: request_failed`);
+};
+
 const normalizeAdminConfig = (input: any): AppConfig => {
   const source = input && typeof input === 'object' ? input : {};
   return {
@@ -373,32 +409,20 @@ export const fetchPublicConfig = async (): Promise<PublicConfig> => {
 };
 
 export const fetchAdminConfig = async (): Promise<AppConfig> => {
-  const origin = resolveApiOrigin();
-  const resp = await fetch(`${origin}/v1/admin/config`, {
+  const resp = await adminRequest('/v1/admin/config', {
     method: 'GET',
     headers: await authHeaders(),
-  });
-
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => '');
-    throw new Error(`Admin config error (${resp.status}): ${txt || resp.statusText}`);
-  }
+  }, 'Admin config error');
 
   const data = await resp.json();
   return normalizeAdminConfig(data.config);
 };
 
 export const fetchAdminSystemOverview = async (): Promise<AdminSystemOverview> => {
-  const origin = resolveApiOrigin();
-  const resp = await fetch(`${origin}/v1/admin/system-overview`, {
+  const resp = await adminRequest('/v1/admin/system-overview', {
     method: 'GET',
     headers: await authHeaders(),
-  });
-
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => '');
-    throw new Error(`Admin overview error (${resp.status}): ${txt || resp.statusText}`);
-  }
+  }, 'Admin overview error');
 
   return (await resp.json()) as AdminSystemOverview;
 };
@@ -418,17 +442,11 @@ export const canAccessAdminConfig = async (): Promise<boolean> => {
 };
 
 export const saveAdminConfig = async (config: AppConfig): Promise<AppConfig> => {
-  const origin = resolveApiOrigin();
-  const resp = await fetch(`${origin}/v1/admin/config`, {
+  const resp = await adminRequest('/v1/admin/config', {
     method: 'PUT',
     headers: await authHeaders(),
     body: JSON.stringify({ config }),
-  });
-
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => '');
-    throw new Error(`Save config error (${resp.status}): ${txt || resp.statusText}`);
-  }
+  }, 'Save config error');
 
   const data = await resp.json();
   return normalizeAdminConfig(data.config);
