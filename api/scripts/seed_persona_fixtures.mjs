@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import admin from 'firebase-admin';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { DEMO_PERSONA_SHARED_PASSWORD } from '../../config/voiceRuntime.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,16 +42,11 @@ const projectId = getArgValue('project') || process.env.GOOGLE_CLOUD_PROJECT || 
 const databaseId = getArgValue('database-id') || process.env.FIRESTORE_DATABASE_ID || 'career-concierge';
 const enableAuth = hasFlag('auth');
 const dryRun = hasFlag('dry-run');
-const sharedPassword = getArgValue('password') || '';
+const sharedPassword = getArgValue('password') || DEMO_PERSONA_SHARED_PASSWORD;
 const seedArtifacts = !hasFlag('no-artifacts');
 const seedAssets = !hasFlag('no-assets');
 const seedInteractions = !hasFlag('no-interactions');
 const markIntroSeen = !hasFlag('no-intro-seen');
-
-if (enableAuth && !sharedPassword) {
-  console.error('When using --auth you must provide --password "<temporary-password>".');
-  process.exit(1);
-}
 
 const loadFixtures = async (filePath) => {
   const raw = await fs.readFile(filePath, 'utf8');

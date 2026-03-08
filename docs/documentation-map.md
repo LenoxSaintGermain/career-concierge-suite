@@ -19,6 +19,8 @@
 - `docs/mvp/agentic_staffing_roadmap.md`: distilled implementation order for the staffing/orchestration model
 - `docs/mvp/agentic_execution_charter.md`: operator-facing baseline audit, confidence score, gap analysis, and deployable staff guide
 - `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`: committed path to 90% confidence plus the new Lucid tile/module scope, AC, and tests
+- `docs/mvp/google_workspace_operator_automation_spec.md`: deferred operator-side Gmail, Calendar, Docs, and Sheets automation via Google Workspace CLI
+- `docs/mvp/voice_runtime_hardening_and_external_lanes_spec.md`: Gemini Live hardening decisions, Sesame gating, sample-persona password policy, and queued ElevenLabs/Manus lanes
 - `docs/documentation-map.md`: update matrix for future work
 
 ## Update Matrix
@@ -141,6 +143,12 @@
 - Lucid tile/module scope changes
 - new Lucid overlays add or remove client modules
 - acceptance criteria for TV, Flash Cards, Events, Telescope, Team, or onboarding/booking change
+
+### Update `docs/mvp/google_workspace_operator_automation_spec.md` when
+
+- deferred Workspace automation moves into active scope
+- Gmail/Calendar/Docs/Sheets use cases change materially
+- dry-run or admin-governance rules for Workspace automation change
 
 ## Code-to-Docs Mapping
 

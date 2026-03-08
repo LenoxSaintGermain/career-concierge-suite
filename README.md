@@ -142,8 +142,9 @@ Write full hydrated Firestore records:
 
 - `npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge`
 
-Write hydrated Firestore + create/update Auth users (shared temporary password):
+Write hydrated Firestore + create/update Auth users (defaults to shared demo password `CareerDemo!2026` unless overridden):
 
+- `npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge --auth`
 - `npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge --auth --password '<temporary-password>'`
 
 Optional flags:

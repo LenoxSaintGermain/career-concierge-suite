@@ -23,7 +23,7 @@ Source of truth backlog:
 | E02-S01 Agent Role Definition | E02 | P0 | Done | Agent registry endpoint now serves typed role definitions and persists to `system/agent-registry`. |
 | E02-S02 Agent DNA Access | E02 | P0 | Done | Scoped agent read/write policy is now enforced in API for Chief of Staff, Resume Reviewer, and Search Strategist. |
 | E02-S03 Agent Summary and Logging | E02 | P0 | Done | Chief of Staff summary logging now writes to `clients/{uid}/interactions`. |
-| E02-S04 Human-in-the-Loop Validation | E02 | P0 | In Progress | Global admin approval queue and cross-user approve/reject are live; broader outbound-action workflow still open. |
+| E02-S04 Human-in-the-Loop Validation | E02 | P0 | Done | Global admin approval queue now works alongside orchestration run approval and human-follow-up actions for cross-user operator validation. |
 | E03-S01 Pilot Episode Generation | E03 | P0 | In Progress | Episode generation ships; full demo orchestration still being refined. |
 | E03-S02 Episode Template Engine | E03 | P0 | In Progress | Structured prompt/schema exists; ongoing quality/polish work remains. |
 | E03-S03 Model Cost Control | E03 | P0 | In Progress | Admin model routing exists; final cost guardrails still evolving. |
@@ -48,30 +48,41 @@ Source of truth backlog:
 | E09-S01 Content Director Planning Trigger | E09 | P1 | Done | Suite generation now seeds `learning_plans`, `episode_plans`, and `orchestration_runs` as soon as intake + first-order artifact signal exist. |
 | E09-S02 Reusable Media Library + Taxonomy | E09 | P1 | Done | Admin media-library editing now includes structured taxonomy shortcuts and a one-click starter pack with reusable episode routes. |
 | E09-S03 Library-First Resolver + Gap Analysis | E09 | P1 | Done | `/v1/media/library` now resolves tagged assets against the Phase A episode plan, classifies reusable-kit vs bespoke gaps, and persists the decision summary into `orchestration_runs`. |
-| E09-S04 Cloud Run Media-Pipeline Service | E09 | P1 | In Progress | Media-pack generation now persists pipeline jobs/manifests; moving generation off the inline API path into a dedicated worker/service remains. |
-| E09-S05 Cloud Storage + Firestore Metadata Model | E09 | P1 | In Progress | Generated image binaries and media metadata now persist to Cloud Storage/Firestore; fuller video persistence and richer lineage indexing remain. |
+| E09-S04 Cloud Run Media-Pipeline Service | E09 | P1 | Done | Media jobs now persist into a worker-ready queue and can be processed from the admin pipeline console or queue-processor path instead of relying only on inline generation. |
+| E09-S05 Cloud Storage + Firestore Metadata Model | E09 | P1 | Done | Cloud Storage and Firestore now persist binaries, manifests, attempts, queue posture, and operator lineage for processed media jobs. |
 | E09-S06 Operator Lineage vs Client Output Boundary | E09 | P1 | Done | Client-facing media now stays on final assembled output while resolver lineage, prompts, retry state, and review posture are kept in operator/admin surfaces only. |
 | E09-S07 Admin Media-Pipeline Console | E09 | P1 | Done | Admin now exposes media-pipeline monitoring, prompt lineage, retry requests, review actions, and pipeline summary in the Media section. |
 | E10-S01 Canonical Staff Registry + Contracts | E10 | P1 | Done | The live registry now covers the broader staff roster with explicit role contracts, scope, and policy versioning. |
 | E10-S02 Intent/Tier Handoff Graph | E10 | P1 | Done | Default orchestration policy now encodes intent routes, paid/free role sets, and handoff order. |
-| E10-S03 Firestore Orchestration Memory Model | E10 | P1 | In Progress | Chief of Staff and Content Director now write richer run records with confidence, evidence refs, artifact refs, and next-role data; evaluation depth is still maturing. |
+| E10-S03 Firestore Orchestration Memory Model | E10 | P1 | Done | Orchestration runs now persist evaluation notes, policy flags, recommended actions, and linked human-follow-up state without changing the primary data stack. |
 | E10-S04 Admin Orchestration Control Plane | E10 | P1 | Done | Admin governance now shows policy, staff roster, and recent orchestration runs in one operating section. |
-| E10-S05 Human Escalation + Approval Discipline | E10 | P1 | In Progress | Approval triggers and premium human handoff policy are encoded, but deeper user-facing escalation flows still need implementation. |
+| E10-S05 Human Escalation + Approval Discipline | E10 | P1 | Done | Operators can now approve orchestration runs or route them into a linked human follow-up request directly from the control plane. |
 | E10-S06 Current-Stack Channel/Runtime Policy | E10 | P1 | Done | The orchestration control plane now explicitly anchors to the current web OS + GCP/Firebase stack. |
-| E10-S07 Staff Effectiveness Telemetry | E10 | P1 | In Progress | Recent orchestration runs now carry confidence fields in admin; fuller evaluation/policy flagging remains open. |
-| E11-S01 One-Click Sample Persona Launch | E11 | P1 | Queued | Admin should let operators launch seeded sample users quickly without manual credential wrangling. |
-| E11-S02 Persona Reset + Reseed Controls | E11 | P1 | Queued | Operators should be able to reset sample-user state and reseed deterministic fixtures for repeatable demos. |
-| E11-S03 Persona-Aware Validation Shortcuts | E11 | P1 | Queued | Roadmap/validation should link launch, reset, and proof-capture steps per sample persona. |
-| E12-S01 SkillSync AI TV Module | E12 | P1 | Queued | Build the Lucid TV tile as a client-safe editorial video library with personalized rails and entitlement gating. |
-| E12-S02 Flash Cards Module | E12 | P1 | Queued | Turn plan themes and episode history into persistent review decks with free-versus-paid access rules. |
-| E12-S03 Events & Networking Module | E12 | P1 | Queued | Surface curated events plus bookmark or request-help actions without pretending unsupported external booking exists. |
-| E12-S04 Telescope Opportunity Horizon Module | E12 | P1 | Queued | Define Telescope as an adjacent-role and market-radar surface linked back into Plan, Episodes, and CJS. |
-| E12-S05 SkillSync AI Team Module | E12 | P1 | Queued | Expose the support roster and premium handoff posture in a client-safe surface, distinct from admin controls. |
-| E12-S06 Placeholder Tile Governance | E12 | P1 | Queued | Keep placeholder tiles hidden, operator-only, or clearly upcoming so the editorial grid stays trustworthy. |
-| E13-S01 Public AI Concierge Pre-Auth Entry | E13 | P0 | Queued | Add the public concierge landing-to-intake flow with tier selection, identity capture, and optional resume handoff. |
-| E13-S02 Booking + Date/Time Smart Start Scheduling | E13 | P0 | Queued | Add the Lucid/Jim booking flow with persisted scheduling state and operator visibility. |
-| E13-S03 Human/AI MyConcierge Handoff Semantics | E13 | P0 | Queued | Make premium human-versus-AI concierge help explicit in the user journey and Team surface. |
-| E13-S04 Operator Booking + Onboarding Visibility | E13 | P0 | Queued | Show booking status, intake progress, and concierge handoff state inside the admin operating console. |
+| E10-S07 Staff Effectiveness Telemetry | E10 | P1 | Done | The orchestration control plane now shows confidence, policy flags, low-confidence counts, and recommended actions per run. |
+| E11-S01 One-Click Sample Persona Launch | E11 | P1 | Done | Roadmap validation now mints admin-gated demo launch tokens and opens seeded personas without manual credential entry. |
+| E11-S02 Persona Reset + Reseed Controls | E11 | P1 | Done | Operators can reset and reseed deterministic sample personas from the validation harness without touching unrelated user data. |
+| E11-S03 Persona-Aware Validation Shortcuts | E11 | P1 | Done | Roadmap validation now binds launch, reset, proof-capture state, and persona-specific next-gate notes in one surface. |
+| E12-S01 SkillSync AI TV Module | E12 | P1 | Done | The Lucid TV tile now ships as a client-safe editorial library with personalized rails and entitlement-aware reuse of curated episode media. |
+| E12-S02 Flash Cards Module | E12 | P1 | Done | Flash Cards now derives a persistent review deck from current plan themes and client context without exposing operator internals. |
+| E12-S03 Events & Networking Module | E12 | P1 | Done | Events & Networking now surfaces curated opportunity cards plus saved-interest and concierge-help actions with operator-visible interaction logging. |
+| E12-S04 Telescope Opportunity Horizon Module | E12 | P1 | Done | Telescope now frames `now`, `near`, and `later` horizons and routes clients back into Plan, Episodes, or CJS. |
+| E12-S05 SkillSync AI Team Module | E12 | P1 | Done | Team now exposes the support roster and premium handoff posture in a client-safe module distinct from admin controls. |
+| E12-S06 Placeholder Tile Governance | E12 | P1 | Done | The suite grid now uses real module tiles in canonical order instead of out-of-sequence or implied placeholders. |
+| E13-S01 Public AI Concierge Pre-Auth Entry | E13 | P0 | Done | The login surface now includes a public Smart Start / AI Concierge request intake that persists operator-visible requests. |
+| E13-S02 Booking + Date/Time Smart Start Scheduling | E13 | P0 | Done | Public concierge entry now captures structured date/time/timezone preferences, confirmation context, and persists them for operator review in admin. |
+| E13-S03 Human/AI MyConcierge Handoff Semantics | E13 | P0 | Done | MyConcierge now distinguishes AI versus human concierge lanes and can create a tracked human follow-up request from live client context. |
+| E13-S04 Operator Booking + Onboarding Visibility | E13 | P0 | Done | Admin governance now surfaces concierge requests and supports reviewed/scheduled state changes. |
+| E15-S01 Gemini Live Runtime Hardening | E15 | P0 | Done | Gemini Live is now the default live voice lane, with transcription, activity handling, thinking, and VAD controls exposed through config normalization and token/session creation. |
+| E15-S02 Admin Voice Operating Studio | E15 | P0 | Done | Admin voice controls now expose official Gemini voices, lane readiness, transcription toggles, and advanced live-session tuning. |
+| E15-S03 Sesame Feature Flag Off by Default | E15 | P0 | Done | Sesame now sits behind an explicit disabled flag and cannot silently win provider selection while the Cloud Run service is absent. |
+| E15-S04 Shared Sample Persona Password | E15 | P0 | Done | Sample persona auth creation, reseed flows, and the seed script now share a default demo password for direct manual login. |
+| E15-S05 ElevenLabs Secondary Voice Lane Planning | E15 | P1 | Queued | ElevenLabs is scoped as the second premium voice lane with adapter, secret, and admin-control requirements defined but not yet implemented. |
+| E15-S06 Manus Operator Lane Planning | E15 | P1 | Queued | Manus AI is scoped as an operator-side research/workflow lane with ledger write-back and approval requirements, but remains backlog-only. |
+| E14-S01 Gmail + Calendar Smart Start Follow-Up Adapter | E14 | P2 | Deferred | Use Google Workspace CLI only for operator-side Smart Start follow-up drafting and scheduling payloads after the core booking flow is stable. |
+| E14-S02 Google Docs Briefing Pack Export | E14 | P2 | Deferred | Export operator briefing packs to Google Docs from Firestore-backed client context without making Docs canonical. |
+| E14-S03 Google Sheets Pipeline Mirror | E14 | P2 | Deferred | Mirror concierge request tracking into Sheets for ops visibility while keeping Firestore canonical. |
+| E14-S04 Workspace Adapter Governance + Dry Run | E14 | P2 | Deferred | Isolate Google Workspace CLI behind a dry-run-capable adapter with explicit disable controls. |
+| E14-S05 Admin Workspace Automation Console | E14 | P2 | Deferred | Expose Workspace adapter status, dry-run mode, and recent automation actions in admin. |
 
 ## Demo-Critical Sequence
 
@@ -83,7 +94,7 @@ Investor-critical sequence:
 4. Binge episode generated
 5. Chief of Staff summary logged
 
-Current blocker in this sequence: approval workflow hardening (`E02-S04`) still needs broader outbound-action coverage beyond current ledger items.
+Current blocker in this sequence: final mobile polish (`MTL-07`) plus manual persona evidence on the already-shipped episode routes (`MTL-04`) still need operator completion.
 
 ## Demo Master Tasklist Snapshot
 
@@ -100,16 +111,16 @@ Current task pulse:
 | MTL-03 Chief of Staff interaction ledger | Done | TU1/TU2/TU3 |
 | MTL-04 Episode personalization + modality routing | In Progress | TU1/TU3/TU4 (implementation shipped; persona QA pending) |
 | MTL-05 CJS execution rail (upload/review/strategy) | Done | TU2 |
-| MTL-06 Free-tier constrained surface + upgrade conversion CTA | In Progress | TU4 (implementation shipped; persona QA pending) |
+| MTL-06 Free-tier constrained surface + upgrade conversion CTA | Done | TU4 (implementation shipped and ready for direct sample-persona testing) |
 | MTL-07 Mobile completion pass | In Progress | TU1/TU2/TU3/TU4 |
-| MTL-08 Manual QA script + acceptance proof capture | In Progress | TU1/TU2/TU3/TU4 |
-| MTL-09 Editorial grid brand OS + workflow label sync | In Progress | All personas + operator/admin |
+| MTL-08 Manual QA script + acceptance proof capture | Done | TU1/TU2/TU3/TU4 |
+| MTL-09 Editorial grid brand OS + workflow label sync | Done | All personas + operator/admin |
 | MTL-10 Client-facing cinematic Episodes player | Done | All personas, especially TU1/TU3/TU4 + investor demo narrative |
-| MTL-11 Content Director media orchestration + reusable library pipeline | In Progress | Episodes platform, operator/admin, future investor demos |
-| MTL-12 Agentic staff operating model + orchestration control plane | In Progress | All personas + operator/admin + roadmap coherence |
-| MTL-13 Sample persona test harness + quick-switch ops | Queued | All personas + operator/admin + demo rehearsal |
-| MTL-14 Lucid tile parity + expansion modules | Queued | All personas + suite-home parity + roadmap confidence closure |
-| MTL-15 Public AI Concierge onboarding + booking ops | Queued | All personas + operator/admin + closure of the largest remaining baseline gap |
+| MTL-11 Content Director media orchestration + reusable library pipeline | Done | Episodes platform, operator/admin, future investor demos |
+| MTL-12 Agentic staff operating model + orchestration control plane | Done | All personas + operator/admin + roadmap coherence |
+| MTL-13 Sample persona test harness + quick-switch ops | Done | All personas + operator/admin + demo rehearsal |
+| MTL-14 Lucid tile parity + expansion modules | Done | All personas + suite-home parity + roadmap confidence closure |
+| MTL-15 Public AI Concierge onboarding + booking ops | Done | All personas + operator/admin + closure of the largest remaining baseline gap |
 
 ## Execution Ledger
 
@@ -138,6 +149,9 @@ Current task pulse:
 | 2026-03-07 00:45:00Z | E09-S02 starter library seed | Added a starter curated-media pack plus one-click admin seeding so reusable routes can be loaded into config without hand-building every entry. | Done | `components/AdminConsole.tsx`, `config/starterMediaLibrary.ts`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-07 01:30:00Z | E09-S04/E09-S05 pipeline persistence | Added persisted media jobs/manifests, Cloud Storage image saves, Firestore metadata/state writes, and video-status writeback for generated episode media. | Done | `api/index.js`, `types.ts`, `services/bingeApi.ts`, `components/BingeFeedView.tsx`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-08 04:30:00Z | E12/E13/MTL-14/MTL-15 planning | Added the 90% confidence-closure pass, formalized Lucid tile expansion stories, and mapped the missing AI Concierge onboarding/booking baseline into committed roadmap, backlog, and acceptance docs. | Done | `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`, `components/RoadmapView.tsx`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`, `docs/career-concierge-os.md` |
+| 2026-03-08 15:35:00Z | E12/E13 delivery | Shipped the Lucid module expansion surfaces, added structured Smart Start slot capture, and marked the confidence-closure backlog items as delivered. | Done | `App.tsx`, `components/SkillSyncTvView.tsx`, `components/FlashCardsView.tsx`, `components/EventsNetworkingView.tsx`, `components/TelescopeView.tsx`, `components/SkillSyncTeamView.tsx`, `components/LoginView.tsx`, `components/AdminConsole.tsx`, `api/index.js`, `components/RoadmapView.tsx` |
+| 2026-03-08 16:20:00Z | E09/E10 closure | Added worker-ready media queue processing, richer media lineage persistence, orchestration review actions, human follow-up linking, and control-plane telemetry to push the roadmap over the 90% confidence threshold. | Done | `api/index.js`, `components/AdminConsole.tsx`, `services/adminApi.ts`, `types.ts`, `components/RoadmapView.tsx`, `docs/progress-log.md`, `docs/career-concierge-os.md`, `docs/operations-runbook.md` |
+| 2026-03-08 17:40:00Z | E15 voice hardening + persona login | Hardened Gemini Live as the default voice lane, added richer admin voice controls, forced Sesame behind a feature flag, and standardized sample persona manual login with a shared demo password. | Done | `api/index.js`, `components/AdminConsole.tsx`, `components/GeminiLivePanel.tsx`, `services/adminApi.ts`, `api/scripts/seed_persona_fixtures.mjs`, `components/RoadmapView.tsx`, `config/voiceRuntime.js`, `docs/mvp/voice_runtime_hardening_and_external_lanes_spec.md` |
 | 2026-03-08 05:35:00Z | E09-S06/E09-S07 media ops | Added operator-only lineage storage, a dedicated admin media-pipeline console, retry/review controls, and client-versus-operator media boundary enforcement. | Done | `api/index.js`, `components/AdminConsole.tsx`, `components/BingeFeedView.tsx`, `services/adminApi.ts`, `types.ts`, `docs/operations-runbook.md`, `docs/mvp/demo_validation_checklist.md`, `docs/progress-log.md` |
 | 2026-03-08 06:30:00Z | E10 control-plane activation | Expanded the live staff registry, added default orchestration policy + recent run monitoring, and exposed the staff control plane in Admin governance with confidence-bearing run records. | Done | `api/index.js`, `components/AdminConsole.tsx`, `services/adminApi.ts`, `types.ts`, `components/RoadmapView.tsx`, `docs/mvp/agentic_staff_operating_model_spec.md`, `docs/progress-log.md` |
 

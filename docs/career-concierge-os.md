@@ -55,7 +55,7 @@ The home grid itself now stays in canonical module index order so the editorial 
 Tier routing also changes the visible surface:
 
 - paid tiers unlock the full suite
-- free foundation users only see Intake, Episodes, and AI Readiness
+- free foundation users see Intake, Episodes, SkillSync AI TV, AI Readiness, and SkillSync AI Team
 - the free path uses a fixed starter playlist plus an upgrade CTA instead of the broader suite
 
 The roadmap validation module is now treated as an operator/admin surface, not a standard client module.
@@ -65,7 +65,15 @@ That roadmap now also carries an explicit closure pass for the remaining baselin
 - `E12` Lucid module expansion for `SkillSync AI TV`, `Flash Cards`, `Events & Networking`, `Telescope`, `SkillSync AI Team`, and placeholder-tile governance
 - `E13` public AI Concierge onboarding plus Smart Start booking and operator booking visibility
 
-Those tracks exist because the older Lucid analysis named the modules, but did not give the repo a committed story/AC/test stack for them.
+Those tracks existed because the older Lucid analysis named the modules, but did not give the repo a committed story/AC/test stack for them. Both closure tracks are now live in product; remaining work is proof capture and polish rather than feature absence.
+
+The Lucid-added client modules are now first-class suite surfaces:
+
+- `SkillSync AI TV` for curated editorial programming and personalized rails
+- `Flash Cards` for lightweight reinforcement tied to current themes
+- `Events & Networking` for operator-visible interest capture without fake RSVP state
+- `Telescope` for `now`, `near`, and `later` opportunity framing
+- `SkillSync AI Team` for client-safe explanation of the support roster and handoff options
 
 The design target remains an editorial, cinematic workspace rather than a generic SaaS dashboard.
 Modules should feel like guided surfaces inside one OS, not isolated product pages.
@@ -87,12 +95,15 @@ The admin console is the operational control plane for:
 - agent registry visibility with read/write scope policy
 - model routing
 - voice provider routing
+- Gemini Live transcription, interruption, and VAD tuning
 - prompt appendices and ROM tuning
 - media library targeting
 - feature flags
 - brand identity, color tokens, hierarchy, logo URL, and workflow-label copy
 - external media configuration
 - roadmap/spec progress visibility
+- concierge request review
+- sample persona launch/reset/proof operations
 
 This console is part of the product operating system.
 It is not a temporary debug panel and should be documented and designed as a first-class surface.
@@ -103,6 +114,7 @@ It uses:
 - a control-tower summary as the read-only operating surface
 - one active workspace at a time for generation, media, brand, voice, or governance edits
 - a single-column editorial content stack so controls do not compress or overlap on medium-width laptop views
+- a lane-readiness voice studio that treats Gemini Live as the active rail, Sesame as explicitly gated off, and ElevenLabs/Manus as planned future lanes
 - a persistent save rail with explicit unsaved-state feedback
 - collapsible media-library editing so large libraries do not overwhelm the modal
 - taxonomy shortcut chips inside the media-library editor so reusable media can be tagged consistently instead of relying only on free-form tag entry
@@ -116,6 +128,8 @@ That orchestration operating section is now partially live in `Governance`: oper
 For demo/operator continuity, admin access now accepts Firebase `admin` or `staff` claims, allowlisted `ADMIN_EMAILS`, and a baked-in operator fallback for `operator@thirdsignal.ai` plus `gws@conciergecareerservices.com`.
 The suite header now shows a visible `Admin Locked` state instead of silently hiding the control when the current account fails the admin check.
 The admin API client now retries transient `502`/`503`/`504` and network fetch failures before surfacing a save/load error to the operator.
+The roadmap validation rail now doubles as a sample-persona harness: operators can launch seeded personas with an admin-gated custom-token flow, reseed them deterministically, and record proof capture from one surface.
+Sample persona launch is designed for a session-scoped preview tab so the original operator tab remains the admin control surface.
 
 ### Progress Log Discipline
 
@@ -143,15 +157,19 @@ Generated media is no longer only an in-memory response. The current pipeline la
 
 That queued media-pipeline track explicitly includes a future Admin Console operating section for queue monitoring, retries, approvals, library management, provider configuration, and failure inspection.
 That admin media operating section is now partially live: operators can inspect recent jobs/manifests, prompt lineage, retry requests, review state, and reusable-versus-bespoke gap posture inside the `Media` section of Admin.
+That media operating section now also supports worker-ready queue processing: operators can process an individual queued job or trigger the pending queue directly from admin without relying only on inline episode generation.
+The public login surface now also serves as the AI Concierge / Smart Start request entry: leads can submit a concise request with service intent, optional resume link, and structured date/time/timezone preferences, and those requests persist into Firestore for operator review.
+MyConcierge now makes the AI-versus-human concierge boundary explicit and can create a tracked human follow-up request from the authenticated client journey.
 The boundary is now explicit in the product model as well:
 
 - client-facing Episodes surfaces render final staged media only
 - operator/admin surfaces carry queue state, prompt lineage, review decisions, and retry controls
 
-The roadmap now also carries a queued agentic staff operating-model track so the canonical roles, handoffs, and stack boundaries are explicit before more agents are added.
+The roadmap now also carries the shipped agentic staff operating model so the canonical roles, handoffs, and stack boundaries are explicit before more agents are added.
 The same roadmap surface now visualizes the execution charter directly so operators can reference baseline confidence, staffing posture, and highest-risk gaps without leaving the modal.
 The roadmap `Plan` view now uses a stacked execution brief instead of narrow sprint columns, so roadmap phases, gaps, and active work remain readable on laptop-width screens.
 The confidence model itself now treats partially-modeled checkpoints as floors rather than hard caps, so closure-pass epics can raise baseline confidence as they are actually shipped.
+With `E09` through `E13` now marked done in the roadmap data, the live operator modal sits above the original `90%` target for both baseline and execution confidence; the remaining climb toward `95%` depends on persona proof capture, mobile polish, and any residual approval-flow work in `E02`.
 
 ### API Layer
 
@@ -170,6 +188,7 @@ The Express API under `api/` handles:
 - live token generation
 - voice synthesis routing
 - deterministic persona fixture seeding for demo/test (`api/scripts/seed_persona_fixtures.mjs`) with full account hydration
+- shared sample-persona password reset on auth create/reseed for direct manual testing
 
 ## Architecture Summary
 
@@ -184,7 +203,9 @@ The Express API under `api/` handles:
 - Cloud Run service built from `api/`
 - Express + `firebase-admin`
 - Gemini-backed generation routes
-- optional external voice routing
+- Gemini Live is the default active voice lane
+- Sesame remains feature-flagged off until a dedicated service exists
+- ElevenLabs and Manus remain queued external lanes, not active runtime dependencies
 - public HTTPS entrypoint expected for SPA and mobile clients
 
 The frontend now resolves its API origin in this order:

@@ -1,6 +1,8 @@
 export type SuiteModuleId =
   | 'intake'
   | 'episodes'
+  | 'tv'
+  | 'flash_cards'
   | 'brief'
   | 'suite_distilled'
   | 'profile'
@@ -8,6 +10,9 @@ export type SuiteModuleId =
   | 'gaps'
   | 'readiness'
   | 'my_concierge'
+  | 'events'
+  | 'telescope'
+  | 'team'
   | 'cjs_execution'
   | 'plan'
   | 'assets'
@@ -448,6 +453,7 @@ export interface AppConfig {
   voice: {
     enabled: boolean;
     provider: 'sesame' | 'gemini_live';
+    sesame_enabled: boolean;
     api_url: string;
     speaker: string;
     gemini_live_model: string;
@@ -455,6 +461,13 @@ export interface AppConfig {
     max_audio_length_ms: number;
     temperature: number;
     narration_style: string;
+    gemini_input_audio_transcription_enabled: boolean;
+    gemini_output_audio_transcription_enabled: boolean;
+    gemini_affective_dialog_enabled: boolean;
+    gemini_proactive_audio_enabled: boolean;
+    gemini_activity_handling: 'interrupt' | 'wait';
+    gemini_thinking_enabled: boolean;
+    gemini_thinking_budget: number;
     live_vad_silence_ms: number;
     live_vad_prefix_padding_ms: number;
     live_vad_start_sensitivity: 'high' | 'low';
@@ -492,6 +505,10 @@ export interface AdminSystemOverview {
     items: InteractionLog[];
     warning?: string;
   };
+  bookings: {
+    pending_count: number;
+    items: AdminConciergeRequest[];
+  };
   agents: {
     count: number;
     approval_required_count: number;
@@ -504,7 +521,12 @@ export interface AdminSystemOverview {
     curated_library_enabled_count: number;
     voice_enabled: boolean;
     voice_provider: string;
+    sesame_enabled: boolean;
     live_model: string;
+    gemini_input_audio_transcription_enabled: boolean;
+    gemini_output_audio_transcription_enabled: boolean;
+    gemini_affective_dialog_enabled: boolean;
+    gemini_proactive_audio_enabled: boolean;
     suite_model: string;
     binge_model: string;
     image_model: string;
@@ -520,6 +542,26 @@ export interface AdminSystemOverview {
     live_overlay_configured: boolean;
     art_director_overlay_configured: boolean;
   };
+}
+
+export interface AdminConciergeRequest {
+  id: string;
+  request_kind: 'public_ai_concierge' | 'smart_start_booking';
+  status: 'new' | 'reviewed' | 'scheduled';
+  name: string;
+  email: string;
+  company?: string;
+  goal: string;
+  service_interest?: string;
+  resume_link?: string;
+  preferred_timing: string;
+  preferred_date?: string;
+  preferred_time?: string;
+  preferred_timezone?: string;
+  source: string;
+  client_uid?: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface AdminMediaPipelineAssetSummary {
@@ -546,6 +588,8 @@ export interface AdminMediaPipelineJobSummary {
   updated_at: string | null;
   asset_count: number;
   queued_asset_count: number;
+  attempt_count: number;
+  worker_ready: boolean;
   degraded: boolean;
   review_state: string;
   retry_requested_count: number;
@@ -578,6 +622,7 @@ export interface AdminMediaPipelineOverview {
   summary: {
     total_jobs: number;
     queued_jobs: number;
+    worker_ready_jobs: number;
     degraded_jobs: number;
     completed_jobs: number;
     retry_requested_jobs: number;
@@ -624,6 +669,9 @@ export interface AdminOrchestrationRunSummary {
   next_roles: string[];
   evidence_refs: string[];
   artifact_refs: string[];
+  policy_flags: string[];
+  recommended_actions: string[];
+  linked_request_id?: string;
   updated_at: string | null;
 }
 
@@ -634,10 +682,53 @@ export interface AdminOrchestrationOverview {
     run_count: number;
     average_confidence: number;
     approval_required_runs: number;
+    low_confidence_runs: number;
+    flagged_runs: number;
+    human_followup_runs: number;
   };
   policy: OrchestrationPolicy;
   registry: AgentDefinition[];
   runs: AdminOrchestrationRunSummary[];
+}
+
+export interface AdminSamplePersona {
+  id: string;
+  name: string;
+  email: string;
+  uid: string;
+  tier: string;
+  archetype: string;
+  intent: ClientIntent;
+  focus: FocusPreference;
+  pace: PacePreference;
+  launch_ready: boolean;
+  auth_user_exists: boolean;
+  client_exists: boolean;
+  hydrated: boolean;
+  intro_seen: boolean;
+  intake_completed: boolean;
+  artifact_count: number;
+  interaction_count: number;
+  media_job_count: number;
+  last_hydrated_at: string | null;
+  last_updated_at: string | null;
+  proof_captured: boolean;
+  proof_updated_at: string | null;
+  launch_path: string;
+}
+
+export interface AdminSamplePersonaOverview {
+  generated_at: string;
+  environment_label: string;
+  launch_mode: 'session_tab';
+  shared_password: string;
+  personas: AdminSamplePersona[];
+}
+
+export interface AdminSamplePersonaLaunch {
+  persona_id: string;
+  launch_url: string;
+  warning: string;
 }
 
 export interface VoiceSynthesisResponse {
@@ -645,6 +736,7 @@ export interface VoiceSynthesisResponse {
   mime_type: string;
   audio_base64: string;
   generated_at: string;
+  transcript?: string;
 }
 
 export interface GeminiLiveTokenResponse {
@@ -652,6 +744,11 @@ export interface GeminiLiveTokenResponse {
   model: string;
   voice_name: string;
   client_name?: string;
+  activity_handling: 'interrupt' | 'wait';
+  input_transcription_enabled: boolean;
+  output_transcription_enabled: boolean;
+  affective_dialog_enabled: boolean;
+  proactive_audio_enabled: boolean;
   issued_at: string;
   expires_at: string;
 }

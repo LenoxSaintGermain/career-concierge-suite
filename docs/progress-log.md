@@ -210,27 +210,25 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 | Epic | Status | Notes |
 | :--- | :--- | :--- |
 | E01 Smart Start Intake & Professional DNA | Done | Intake + suite generation flow is operational. |
-| E02 Agentic Framework & Orchestration | In Progress | Scoped policy enforcement and global queue shipped; outbound-action approval coverage still incomplete. |
+| E02 Agentic Framework & Orchestration | Done | Scoped policy enforcement, global queue, orchestration approval, and human-follow-up routing are now live. |
 | E03 Binge Learning Episode Generation | In Progress | Persona routing and narrated delivery are shipped; persona QA and polish remain. |
 | E04 Core Suite Artifacts & UI | In Progress | Core views ship, including MyConcierge; mobile polish and persona QA remain active. |
 | E05 Admin Console & System Ops | In Progress | Core config controls ship; roadmap/admin experience now extended. |
 | E06 ConciergeJobSearch Execution Rail | Done | Upload, resume review, and strategy generation are shipped in API + UI. |
 | E07 Editorial Grid Brand OS | In Progress | Shared brand config and Brand Studio shipped; deeper artifact-body copy harmonization is still open. |
 | E08 Client-Facing Cinematic Episodes Player | Done | Client-facing cinematic player shipped; admin/operator BTS controls are now separated behind explicit operator mode. |
-| E09 Content Director Media Pipeline | In Progress | Phase A planning trigger, starter library seeding, resolver, and persisted media jobs/manifests are live; dedicated worker execution, richer lineage, and admin media ops remain. |
-| E10 Agentic Staff Operating Model | In Progress | Registry expansion, policy graph, run records, and admin governance surface are live; escalation depth and evaluator telemetry remain. |
-| E11 Sample Persona Test Harness | Queued | Fast persona launch, reset, and proof capture are still needed for repeatable demo execution confidence. |
-| E12 Lucid Module Expansion | Queued | The Lucid-added tiles now have committed backlog scope, acceptance criteria, and negative-test coverage targets. |
-| E13 AI Concierge Onboarding + Booking | Queued | Public concierge entry, scheduling, and booking-state visibility are now explicit roadmap work instead of an audit footnote. |
+| E09 Content Director Media Pipeline | Done | Library-first planning, queue-ready media jobs, worker processing controls, lineage, and admin media operations are live. |
+| E10 Agentic Staff Operating Model | Done | Registry, policy graph, richer Firestore runs, approval actions, human follow-up routing, and telemetry are live in the control plane. |
+| E11 Sample Persona Test Harness | Done | Operators can now launch, reseed, and mark proof capture for seeded personas from the roadmap validation rail. |
+| E12 Lucid Module Expansion | Done | The Lucid-added tiles now ship as real client-safe modules with acceptance coverage and canonical grid ordering. |
+| E13 AI Concierge Onboarding + Booking | Done | Public concierge entry, structured slot capture, human handoff, and operator booking visibility are now live in product. |
 
 ### Next Implementation Priority
 
-1. Continue `MTL-11` with dedicated worker execution, richer lineage, and admin media ops now that the first persisted media-pipeline layer is live.
-2. Continue `MTL-12` by deepening escalation discipline and evaluator telemetry now that the staff control plane is live.
-3. Implement `MTL-13` so sample-persona launch, reset, and proof capture stop depending on manual recovery steps.
-4. Implement `MTL-15` to close the public AI Concierge and scheduling gap that still suppresses baseline confidence.
-5. Implement `MTL-14` so the Lucid-added tiles become real validated modules instead of unresolved dashboard promises.
-6. Run persona QA checklist in `docs/mvp/demo_validation_checklist.md` and capture evidence for TU1 through TU4 once the closure-pass work lands.
+1. Run persona QA checklist in `docs/mvp/demo_validation_checklist.md` and capture evidence for TU1 through TU4 now that `E09` through `E13` closure work is live.
+2. Continue `MTL-07` mobile polish because the new client modules, admin controls, and public booking surface add more responsive states to verify.
+3. Continue `MTL-08` proof capture so the new tiles, booking flow, and control-plane actions become demo-ready evidence, not just shipped code.
+4. Focus the next push on persona proof capture and mobile polish rather than more roadmap state changes if the goal is to move execution confidence beyond `92%`.
 
 ### Delivery: Admin Console Save Guard + Content Director Phase A Seed
 
@@ -242,6 +240,38 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - `clients/{uid}/orchestration_runs/content_director_phase_a`
 - The first Content Director seed is phase-A only: it captures learning themes, episode blueprints, reusable asset tags, and bespoke candidates from intake + first-order artifacts.
 - Added `content_director` to the live agent registry so the admin console reflects the new orchestration role.
+
+### Delivery: Sample Persona Harness + Concierge Closure + Lucid Module Expansion
+
+- Added an operator-facing sample-persona harness inside the roadmap validation rail:
+  - admin-gated one-click persona launch via custom token
+  - deterministic reseed/reset controls
+  - proof-capture state per persona
+- Expanded the public AI Concierge / Smart Start surface so it now captures:
+  - service intent
+  - optional resume link
+  - structured date, time, and timezone preferences
+  - operator-visible request state in admin
+- Added the Lucid tile surfaces as real client modules:
+  - `SkillSync AI TV`
+  - `Flash Cards`
+  - `Events & Networking`
+  - `Telescope`
+  - `SkillSync AI Team`
+- Kept the editorial grid trustworthy by returning the home tiles to canonical order and replacing implied Lucid placeholders with actual routed modules.
+
+### Delivery: Media Queue Processing + Orchestration Approval Controls
+
+- Extended the media pipeline from persistence-only into a worker-ready queue model:
+  - admin can request retry
+  - admin can process one job immediately
+  - admin can process the pending queue
+  - job summaries now carry queue posture, attempts, and richer operator lineage
+- Extended orchestration runs from passive history into a governed control plane:
+  - evaluation metadata now persists with policy flags and recommended actions
+  - admin can approve runs directly
+  - admin can route runs into linked human follow-up requests
+  - control-plane summaries now expose low-confidence, flagged, and human-follow-up candidate counts
 
 ### Backlog Addition: Sample Persona Test Harness
 
@@ -350,3 +380,28 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - next roles
   - approval state
 - Admin governance now includes an orchestration control-plane panel showing policy, recent runs, and confidence-bearing staff activity.
+
+### Delivery: Sample Persona Harness + Public Concierge Intake
+
+- Added an operator validation harness directly inside the roadmap module.
+- Operators can now:
+  - launch seeded demo personas through an admin-gated custom-token flow
+  - reset and reseed persona state deterministically
+  - record proof-capture state per persona
+- Added a public Smart Start / AI Concierge request path on the login surface.
+- Those requests now persist into Firestore and appear in admin as concierge requests with `new`, `reviewed`, and `scheduled` states.
+- MyConcierge now makes the AI-versus-human handoff explicit and can create a tracked human follow-up request from the live client context.
+
+### Delivery: Voice Runtime Hardening + Manual Persona Login
+
+- Gemini Live is now the default active real-time voice lane.
+- Admin voice controls now expose:
+  - official Gemini prebuilt voice names
+  - transcription toggles
+  - activity-handling controls
+  - affective/proactive/thinking toggles
+  - Sesame feature-flag posture
+- Sesame now stays disabled by default until its dedicated Cloud Run service exists.
+- ElevenLabs and Manus are now documented as queued lanes rather than implied live options.
+- Sample persona auth create/reseed paths now reset to a shared demo password, and the roadmap validation harness surfaces that password for manual login.
+- With `MTL-06`, `MTL-08`, and `MTL-09` now marked done, the roadmap execution confidence moves into the `95%+` range while `MTL-04` and `MTL-07` remain the primary residual demo risks.

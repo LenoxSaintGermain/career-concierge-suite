@@ -2,6 +2,8 @@ import { auth } from './firebase';
 import {
   AdminMediaPipelineOverview,
   AdminOrchestrationOverview,
+  AdminSamplePersonaLaunch,
+  AdminSamplePersonaOverview,
   AdminSystemOverview,
   AppConfig,
   BrandBodyDensity,
@@ -31,6 +33,7 @@ import {
   BRAND_TILE_EMPHASES,
   DEFAULT_BRAND_CONFIG,
 } from '../config/brandSystem.js';
+import { GEMINI_LIVE_MODEL_OPTIONS } from '../config/voiceRuntime.js';
 import { resolveApiOrigin } from './apiOrigin';
 
 export const getAdminApiOrigin = () => resolveApiOrigin();
@@ -324,6 +327,7 @@ const adminRequest = async (path: string, init: RequestInit, label: string): Pro
 
 const normalizeAdminConfig = (input: any): AppConfig => {
   const source = input && typeof input === 'object' ? input : {};
+  const defaultGeminiLiveModel = GEMINI_LIVE_MODEL_OPTIONS[0]?.id || 'gemini-2.5-flash-native-audio-preview-12-2025';
   return {
     generation: {
       suite_model: String(source?.generation?.suite_model ?? 'gemini-3-flash-preview'),
@@ -370,14 +374,29 @@ const normalizeAdminConfig = (input: any): AppConfig => {
     },
     voice: {
       enabled: Boolean(source?.voice?.enabled ?? false),
-      provider: source?.voice?.provider === 'gemini_live' ? 'gemini_live' : 'sesame',
+      sesame_enabled: Boolean(source?.voice?.sesame_enabled ?? false),
+      provider:
+        source?.voice?.provider === 'sesame' && Boolean(source?.voice?.sesame_enabled)
+          ? 'sesame'
+          : 'gemini_live',
       api_url: String(source?.voice?.api_url ?? ''),
-      speaker: String(source?.voice?.speaker ?? 'Maya'),
-      gemini_live_model: String(source?.voice?.gemini_live_model ?? 'gemini-2.5-flash-native-audio-preview-12-2025'),
+      speaker: String(source?.voice?.speaker ?? 'Concierge'),
+      gemini_live_model: String(source?.voice?.gemini_live_model ?? defaultGeminiLiveModel),
       gemini_voice_name: String(source?.voice?.gemini_voice_name ?? 'Aoede'),
       max_audio_length_ms: Number(source?.voice?.max_audio_length_ms ?? 12000),
       temperature: Number(source?.voice?.temperature ?? 0.9),
       narration_style: String(source?.voice?.narration_style ?? 'Calm concierge narration with subtle human hesitations.'),
+      gemini_input_audio_transcription_enabled: Boolean(
+        source?.voice?.gemini_input_audio_transcription_enabled ?? true
+      ),
+      gemini_output_audio_transcription_enabled: Boolean(
+        source?.voice?.gemini_output_audio_transcription_enabled ?? true
+      ),
+      gemini_affective_dialog_enabled: Boolean(source?.voice?.gemini_affective_dialog_enabled ?? false),
+      gemini_proactive_audio_enabled: Boolean(source?.voice?.gemini_proactive_audio_enabled ?? false),
+      gemini_activity_handling: source?.voice?.gemini_activity_handling === 'wait' ? 'wait' : 'interrupt',
+      gemini_thinking_enabled: Boolean(source?.voice?.gemini_thinking_enabled ?? false),
+      gemini_thinking_budget: Math.max(0, Math.min(1024, Number(source?.voice?.gemini_thinking_budget ?? 0) || 0)),
       live_vad_silence_ms: Number(source?.voice?.live_vad_silence_ms ?? 380),
       live_vad_prefix_padding_ms: Number(source?.voice?.live_vad_prefix_padding_ms ?? 120),
       live_vad_start_sensitivity: source?.voice?.live_vad_start_sensitivity === 'low' ? 'low' : 'high',
@@ -447,6 +466,66 @@ export const fetchAdminOrchestrationOverview = async (): Promise<AdminOrchestrat
   return (await resp.json()) as AdminOrchestrationOverview;
 };
 
+export const fetchAdminSamplePersonas = async (): Promise<AdminSamplePersonaOverview> => {
+  const resp = await adminRequest('/v1/admin/sample-personas', {
+    method: 'GET',
+    headers: await authHeaders(),
+  }, 'Admin sample personas error');
+
+  return (await resp.json()) as AdminSamplePersonaOverview;
+};
+
+export const launchAdminSamplePersona = async (personaId: string): Promise<AdminSamplePersonaLaunch> => {
+  const resp = await adminRequest(
+    `/v1/admin/sample-personas/${encodeURIComponent(personaId)}/launch`,
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+    },
+    'Sample persona launch error'
+  );
+
+  return (await resp.json()) as AdminSamplePersonaLaunch;
+};
+
+export const reseedAdminSamplePersona = async (personaId: string): Promise<void> => {
+  await adminRequest(
+    `/v1/admin/sample-personas/${encodeURIComponent(personaId)}/reseed`,
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+    },
+    'Sample persona reseed error'
+  );
+};
+
+export const markAdminSamplePersonaProof = async (personaId: string, captured: boolean): Promise<void> => {
+  await adminRequest(
+    `/v1/admin/sample-personas/${encodeURIComponent(personaId)}/proof`,
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ captured }),
+    },
+    'Sample persona proof error'
+  );
+};
+
+export const updateAdminConciergeRequestStatus = async (
+  requestId: string,
+  status: 'new' | 'reviewed' | 'scheduled'
+): Promise<void> => {
+  await adminRequest(
+    `/v1/admin/concierge-requests/${encodeURIComponent(requestId)}/status`,
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ status }),
+    },
+    'Concierge request status error'
+  );
+};
+
 export const requestAdminMediaRetry = async (clientUid: string, jobId: string): Promise<void> => {
   await adminRequest(
     `/v1/admin/media-pipeline/jobs/${encodeURIComponent(clientUid)}/${encodeURIComponent(jobId)}/retry`,
@@ -455,6 +534,29 @@ export const requestAdminMediaRetry = async (clientUid: string, jobId: string): 
       headers: await authHeaders(),
     },
     'Admin media retry error'
+  );
+};
+
+export const processAdminMediaJob = async (clientUid: string, jobId: string): Promise<void> => {
+  await adminRequest(
+    `/v1/admin/media-pipeline/jobs/${encodeURIComponent(clientUid)}/${encodeURIComponent(jobId)}/process`,
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+    },
+    'Admin media process error'
+  );
+};
+
+export const processAdminMediaQueue = async (limit = 1): Promise<void> => {
+  await adminRequest(
+    '/v1/admin/media-pipeline/process-pending',
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ limit }),
+    },
+    'Admin media queue process error'
   );
 };
 
@@ -486,6 +588,22 @@ export const canAccessAdminConfig = async (): Promise<boolean> => {
   } catch {
     return false;
   }
+};
+
+export const reviewAdminOrchestrationRun = async (
+  clientUid: string,
+  runId: string,
+  decision: 'approved' | 'needs_review' | 'request_human_followup'
+): Promise<void> => {
+  await adminRequest(
+    `/v1/admin/orchestration-runs/${encodeURIComponent(clientUid)}/${encodeURIComponent(runId)}/review`,
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ decision }),
+    },
+    'Admin orchestration review error'
+  );
 };
 
 export const saveAdminConfig = async (config: AppConfig): Promise<AppConfig> => {

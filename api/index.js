@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
-import { EndSensitivity, GoogleGenAI, Modality, StartSensitivity } from '@google/genai';
+import { readFile } from 'node:fs/promises';
+import { ActivityHandling, EndSensitivity, GoogleGenAI, Modality, StartSensitivity } from '@google/genai';
 import {
   CONCIERGE_ROM_SYSTEM,
   EPISODE_SCHEMA,
@@ -22,6 +23,11 @@ import {
   BRAND_TILE_EMPHASES,
   DEFAULT_BRAND_CONFIG,
 } from './config/brandSystem.js';
+import {
+  DEMO_PERSONA_SHARED_PASSWORD,
+  GEMINI_LIVE_MODEL_OPTIONS,
+  GEMINI_LIVE_VOICE_OPTIONS,
+} from '../config/voiceRuntime.js';
 
 const app = express();
 
@@ -76,6 +82,63 @@ app.get('/v1/public/config', async (_req, res) => {
   });
 });
 
+app.post('/v1/public/concierge-request', async (req, res) => {
+  try {
+    const name = personaText(req.body?.name);
+    const email = personaText(req.body?.email).toLowerCase();
+    const goal = personaText(req.body?.goal);
+    const preferredTiming = personaText(req.body?.preferred_timing);
+    const preferredDate = personaText(req.body?.preferred_date);
+    const preferredTime = personaText(req.body?.preferred_time);
+    const preferredTimezone = personaText(req.body?.preferred_timezone);
+    const company = personaText(req.body?.company);
+    const requestKind = personaText(req.body?.request_kind, 'public_ai_concierge');
+    const source = personaText(req.body?.source, 'public_login');
+    const clientUid = personaText(req.body?.client_uid);
+    const serviceInterest = personaText(req.body?.service_interest);
+    const resumeLink = personaText(req.body?.resume_link);
+
+    if (!name || !email || !goal) {
+      return res.status(400).json({ error: 'missing_required_fields' });
+    }
+
+    const now = new Date();
+    const ref = conciergeRequestsRef().doc();
+    await ref.set({
+      id: ref.id,
+      request_kind: requestKind === 'smart_start_booking' ? 'smart_start_booking' : 'public_ai_concierge',
+      status: 'new',
+      name,
+      email,
+      company: company || '',
+      goal,
+      service_interest: serviceInterest || '',
+      resume_link: resumeLink || '',
+      preferred_timing:
+        composePreferredTimingLabel({
+          preferredDate,
+          preferredTime,
+          preferredTimezone,
+          fallback: preferredTiming,
+        }) || '',
+      preferred_date: preferredDate || '',
+      preferred_time: preferredTime || '',
+      preferred_timezone: preferredTimezone || '',
+      source,
+      client_uid: clientUid || '',
+      created_at: now,
+      updated_at: now,
+    });
+
+    return res.json({ ok: true, request_id: ref.id });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'public_concierge_request_failed',
+      detail: sanitizeError(error, 'public_concierge_request_failed'),
+    });
+  }
+});
+
 app.get('/v1/admin/config', requireAuth, requireAdmin, async (_req, res) => {
   const config = await loadAppConfig();
   return res.json({ config });
@@ -88,6 +151,7 @@ app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res
     const queueClientIds = new Set();
     let hydratedAccountCount = 0;
     let queueWarning = '';
+    let bookingItems = [];
 
     try {
       const clientsSnap = await db
@@ -112,6 +176,13 @@ app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res
     } catch (error) {
       queueWarning = sanitizeError(error, 'admin_queue_unavailable');
       console.warn('admin_system_overview_queue_unavailable', queueWarning);
+    }
+
+    try {
+      const bookingSnap = await conciergeRequestsRef().orderBy('updated_at', 'desc').limit(6).get();
+      bookingItems = bookingSnap.docs.map((snap) => serializeConciergeRequest(snap));
+    } catch (error) {
+      console.warn('admin_booking_overview_unavailable', sanitizeError(error, 'admin_booking_overview_unavailable'));
     }
 
     pendingRows.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
@@ -143,6 +214,10 @@ app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res
         items: pendingRows.slice(0, limit),
         warning: queueWarning,
       },
+      bookings: {
+        pending_count: bookingItems.filter((item) => item.status === 'new').length,
+        items: bookingItems,
+      },
       agents: {
         count: AGENT_REGISTRY.length,
         approval_required_count: AGENT_REGISTRY.filter((agent) => agent.approval_required).length,
@@ -156,8 +231,13 @@ app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res
           ? config.media.curated_library.filter((item) => item?.enabled !== false).length
           : 0,
         voice_enabled: Boolean(config.voice?.enabled),
-        voice_provider: nonEmpty(config.voice?.provider) || 'sesame',
+        voice_provider: nonEmpty(config.voice?.provider) || 'gemini_live',
+        sesame_enabled: Boolean(config.voice?.sesame_enabled),
         live_model: nonEmpty(config.voice?.gemini_live_model) || geminiLiveModelDefault,
+        gemini_input_audio_transcription_enabled: Boolean(config.voice?.gemini_input_audio_transcription_enabled),
+        gemini_output_audio_transcription_enabled: Boolean(config.voice?.gemini_output_audio_transcription_enabled),
+        gemini_affective_dialog_enabled: Boolean(config.voice?.gemini_affective_dialog_enabled),
+        gemini_proactive_audio_enabled: Boolean(config.voice?.gemini_proactive_audio_enabled),
         suite_model: nonEmpty(config.generation?.suite_model) || fastTextModel,
         binge_model: nonEmpty(config.generation?.binge_model) || fastTextModel,
         image_model: nonEmpty(config.media?.image_model) || imageModelDefault,
@@ -178,6 +258,32 @@ app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res
     return res.status(500).json({
       error: 'admin_system_overview_failed',
       detail: sanitizeError(error, 'admin_system_overview_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/concierge-requests/:requestId/status', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const status = personaText(req.body?.status, 'new');
+    if (!['new', 'reviewed', 'scheduled'].includes(status)) {
+      return res.status(400).json({ error: 'invalid_concierge_request_status' });
+    }
+    const requestRef = conciergeRequestsRef().doc(personaText(req.params.requestId));
+    const snap = await requestRef.get();
+    if (!snap.exists) return res.status(404).json({ error: 'concierge_request_not_found' });
+    await requestRef.set(
+      {
+        status,
+        updated_at: new Date(),
+        reviewed_by: req.user?.email || req.user?.uid || 'admin',
+      },
+      { merge: true }
+    );
+    return res.json({ ok: true, request_id: snap.id, status });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_concierge_request_status_failed',
+      detail: sanitizeError(error, 'admin_concierge_request_status_failed'),
     });
   }
 });
@@ -240,6 +346,7 @@ app.get('/v1/admin/media-pipeline', requireAuth, requireAdmin, async (_req, res)
       summary: {
         total_jobs: jobs.length,
         queued_jobs: jobs.filter((job) => job.status === 'queued').length,
+        worker_ready_jobs: jobs.filter((job) => job.worker_ready).length,
         degraded_jobs: jobs.filter((job) => job.status === 'degraded').length,
         completed_jobs: jobs.filter((job) => job.status === 'completed').length,
         retry_requested_jobs: jobs.filter((job) => Number(job.retry_requested_count || 0) > 0).length,
@@ -275,9 +382,11 @@ app.post('/v1/admin/media-pipeline/jobs/:clientUid/:jobId/retry', requireAuth, r
 
     await jobRef.set(
       {
+        status: 'queued',
         retry_requested_count: nextRetryCount,
         retry_requested_at: now,
         retry_requested_by: req.user.email ?? req.user.uid,
+        worker_ready: true,
         review_state: 'needs_review',
         updated_at: now,
       },
@@ -301,6 +410,82 @@ app.post('/v1/admin/media-pipeline/jobs/:clientUid/:jobId/retry', requireAuth, r
     return res.status(500).json({
       error: 'admin_media_retry_failed',
       detail: sanitizeError(error, 'admin_media_retry_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/media-pipeline/jobs/:clientUid/:jobId/process', requireAuth, requireAdmin, async (req, res) => {
+  const clientUid = nonEmpty(req.params?.clientUid);
+  const jobId = nonEmpty(req.params?.jobId);
+  if (!clientUid || !jobId) return res.status(400).json({ error: 'missing_job_ref' });
+
+  try {
+    const jobSnap = await clientMediaJobsRef(clientUid).doc(jobId).get();
+    if (!jobSnap.exists) return res.status(404).json({ error: 'job_not_found' });
+    const jobData = jobSnap.data() ?? {};
+    const manifestId = nonEmpty(jobData?.manifest_id) || nonEmpty(jobData?.episode_id);
+    if (!manifestId) return res.status(400).json({ error: 'manifest_ref_missing' });
+    const manifestSnap = await clientMediaManifestsRef(clientUid).doc(manifestId).get();
+    if (!manifestSnap.exists) return res.status(404).json({ error: 'manifest_not_found' });
+    const direction = manifestSnap.data()?.direction;
+    const runtimeConfig = await loadAppConfig();
+    const result = await executeMediaPipelineJob({
+      uid: clientUid,
+      jobId,
+      manifestId,
+      direction,
+      runtimeConfig,
+      trigger: 'admin_process',
+    });
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_media_process_failed',
+      detail: sanitizeError(error, 'admin_media_process_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/media-pipeline/process-pending', requireAuth, requireAdmin, async (req, res) => {
+  const limit = Math.max(1, Math.min(5, Number(req.body?.limit || 1)));
+
+  try {
+    const clientsSnap = await db.collection('clients').select('display_name').get();
+    const runtimeConfig = await loadAppConfig();
+    const processed = [];
+
+    for (const clientSnap of clientsSnap.docs) {
+      if (processed.length >= limit) break;
+      const jobsSnap = await clientMediaJobsRef(clientSnap.id)
+        .orderBy('updated_at', 'desc')
+        .limit(Math.max(4, limit * 2))
+        .get();
+      for (const jobSnap of jobsSnap.docs) {
+        if (processed.length >= limit) break;
+        const jobData = jobSnap.data() ?? {};
+        if (!jobData?.worker_ready) continue;
+        const manifestId = nonEmpty(jobData?.manifest_id) || nonEmpty(jobData?.episode_id);
+        if (!manifestId) continue;
+        const manifestSnap = await clientMediaManifestsRef(clientSnap.id).doc(manifestId).get();
+        if (!manifestSnap.exists) continue;
+        const direction = manifestSnap.data()?.direction;
+        const result = await executeMediaPipelineJob({
+          uid: clientSnap.id,
+          jobId: jobSnap.id,
+          manifestId,
+          direction,
+          runtimeConfig,
+          trigger: 'queue_processor',
+        });
+        processed.push({ client_uid: clientSnap.id, job_id: jobSnap.id, manifest_id: manifestId, status: result.pipeline_status });
+      }
+    }
+
+    return res.json({ ok: true, processed_count: processed.length, processed });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_media_queue_process_failed',
+      detail: sanitizeError(error, 'admin_media_queue_process_failed'),
     });
   }
 });
@@ -375,6 +560,7 @@ app.get('/v1/admin/orchestration-control-plane', requireAuth, requireAdmin, asyn
     const averageConfidence = visibleRuns.length
       ? visibleRuns.reduce((sum, run) => sum + Number(run.confidence || 0), 0) / visibleRuns.length
       : 0;
+    const flaggedRuns = visibleRuns.filter((run) => Array.isArray(run.policy_flags) && run.policy_flags.length > 0);
 
     return res.json({
       generated_at: new Date().toISOString(),
@@ -383,6 +569,11 @@ app.get('/v1/admin/orchestration-control-plane', requireAuth, requireAdmin, asyn
         run_count: runs.length,
         average_confidence: Number(averageConfidence.toFixed(2)),
         approval_required_runs: visibleRuns.filter((run) => run.approval_state !== 'not_required').length,
+        low_confidence_runs: visibleRuns.filter((run) => Number(run.confidence || 0) < 0.7).length,
+        flagged_runs: flaggedRuns.length,
+        human_followup_runs: visibleRuns.filter((run) =>
+          Array.isArray(run.policy_flags) ? run.policy_flags.includes('human_followup_recommended') : false
+        ).length,
       },
       policy: DEFAULT_ORCHESTRATION_POLICY,
       registry: AGENT_REGISTRY,
@@ -392,6 +583,180 @@ app.get('/v1/admin/orchestration-control-plane', requireAuth, requireAdmin, asyn
     return res.status(500).json({
       error: 'admin_orchestration_overview_failed',
       detail: sanitizeError(error, 'admin_orchestration_overview_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/orchestration-runs/:clientUid/:runId/review', requireAuth, requireAdmin, async (req, res) => {
+  const clientUid = nonEmpty(req.params?.clientUid);
+  const runId = nonEmpty(req.params?.runId);
+  const decision = personaText(req.body?.decision, 'needs_review');
+  if (!clientUid || !runId) return res.status(400).json({ error: 'missing_run_ref' });
+  if (!['approved', 'needs_review', 'request_human_followup'].includes(decision)) {
+    return res.status(400).json({ error: 'invalid_orchestration_review_decision' });
+  }
+
+  try {
+    const runRef = clientOrchestrationRunsRef(clientUid).doc(runId);
+    const runSnap = await runRef.get();
+    if (!runSnap.exists) return res.status(404).json({ error: 'orchestration_run_not_found' });
+
+    const runData = runSnap.data() ?? {};
+    const nextApprovalState =
+      decision === 'approved'
+        ? 'approved'
+        : decision === 'request_human_followup'
+          ? 'pending_human_followup'
+          : 'operator_review_available';
+    let linkedRequestId = personaText(runData?.linked_request_id);
+
+    if (decision === 'request_human_followup' && !linkedRequestId) {
+      const clientSnap = await clientRef(clientUid).get();
+      const clientData = clientSnap.exists ? clientSnap.data() ?? {} : {};
+      const requestRef = conciergeRequestsRef().doc();
+      const now = new Date();
+      await requestRef.set({
+        id: requestRef.id,
+        request_kind: 'smart_start_booking',
+        status: 'reviewed',
+        name:
+          nonEmpty(clientData?.display_name) ||
+          toDisplayName({ email: clientData?.email }) ||
+          `Client ${clientUid.slice(0, 6)}`,
+        email: nonEmpty(clientData?.email) || 'operator-followup@thirdsignal.ai',
+        company: '',
+        goal: `Human follow-up requested from orchestration run ${runId}: ${nonEmpty(runData?.summary) || 'No summary recorded.'}`,
+        preferred_timing: 'Operator to schedule follow-up',
+        source: 'admin_orchestration',
+        client_uid: clientUid,
+        linked_run_id: runId,
+        created_at: now,
+        updated_at: now,
+      });
+      linkedRequestId = requestRef.id;
+    }
+
+    const updatedRun = {
+      ...runData,
+      approval_state: nextApprovalState,
+      linked_request_id: linkedRequestId || runData?.linked_request_id || '',
+      reviewed_at: new Date(),
+      reviewed_by: req.user?.email || req.user?.uid || 'admin',
+    };
+
+    await runRef.set(
+      {
+        approval_state: updatedRun.approval_state,
+        linked_request_id: updatedRun.linked_request_id,
+        reviewed_at: updatedRun.reviewed_at,
+        reviewed_by: updatedRun.reviewed_by,
+        evaluation: buildOrchestrationEvaluation(updatedRun),
+        updated_at: new Date(),
+      },
+      { merge: true }
+    );
+
+    return res.json({
+      ok: true,
+      client_uid: clientUid,
+      run_id: runId,
+      approval_state: nextApprovalState,
+      linked_request_id: linkedRequestId || null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_orchestration_review_failed',
+      detail: sanitizeError(error, 'admin_orchestration_review_failed'),
+    });
+  }
+});
+
+app.get('/v1/admin/sample-personas', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const fixtures = await loadSamplePersonaFixtures();
+    const personas = await Promise.all(fixtures.map((persona) => summarizeSamplePersona(persona)));
+    return res.json({
+      generated_at: new Date().toISOString(),
+      environment_label: process.env.K_SERVICE || 'career-concierge-api',
+      launch_mode: 'session_tab',
+      shared_password: DEMO_PERSONA_SHARED_PASSWORD,
+      personas,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_sample_personas_failed',
+      detail: sanitizeError(error, 'admin_sample_personas_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/sample-personas/:personaId/reseed', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const fixtures = await loadSamplePersonaFixtures();
+    const persona = fixtures.find((entry) => personaText(entry.id) === personaText(req.params.personaId));
+    if (!persona) return res.status(404).json({ error: 'sample_persona_not_found' });
+    await seedSamplePersonaState(persona, { reset: true });
+    return res.json({ ok: true, persona_id: personaText(persona.id), reseeded_at: new Date().toISOString() });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'sample_persona_reseed_failed',
+      detail: sanitizeError(error, 'sample_persona_reseed_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/sample-personas/:personaId/proof', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const fixtures = await loadSamplePersonaFixtures();
+    const persona = fixtures.find((entry) => personaText(entry.id) === personaText(req.params.personaId));
+    if (!persona) return res.status(404).json({ error: 'sample_persona_not_found' });
+    const captured = req.body?.captured === true;
+    await samplePersonaHarnessRef().set(
+      {
+        proof_by_persona: {
+          [personaText(persona.id)]: {
+            captured,
+            updated_at: new Date().toISOString(),
+            updated_by: req.user?.email || req.user?.uid || 'admin',
+          },
+        },
+      },
+      { merge: true }
+    );
+    return res.json({ ok: true, persona_id: personaText(persona.id), captured });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'sample_persona_proof_failed',
+      detail: sanitizeError(error, 'sample_persona_proof_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/sample-personas/:personaId/launch', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const fixtures = await loadSamplePersonaFixtures();
+    const persona = fixtures.find((entry) => personaText(entry.id) === personaText(req.params.personaId));
+    if (!persona) return res.status(404).json({ error: 'sample_persona_not_found' });
+    const uid = await seedSamplePersonaState(persona);
+    const customToken = await admin.auth().createCustomToken(uid, {
+      demo_user: true,
+      persona_id: personaText(persona.id),
+      tier: personaText(persona.tier),
+    });
+    const origin = personaText(req.get('origin'));
+    const launchUrl = origin
+      ? `${origin}${buildSamplePersonaLaunchPath(persona)}${buildSamplePersonaLaunchPath(persona).includes('?') ? '&' : '?'}demo_persona=${encodeURIComponent(personaText(persona.id))}&demo_launch_token=${encodeURIComponent(customToken)}`
+      : `/?demo_persona=${encodeURIComponent(personaText(persona.id))}&demo_launch_token=${encodeURIComponent(customToken)}`;
+
+    return res.json({
+      persona_id: personaText(persona.id),
+      launch_url: launchUrl,
+      warning: 'Launch opens a session-scoped demo persona preview. Operator admin session should remain in the original tab.',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'sample_persona_launch_failed',
+      detail: sanitizeError(error, 'sample_persona_launch_failed'),
     });
   }
 });
@@ -417,13 +782,16 @@ const fastTextModel = process.env.GEMINI_MODEL_FAST || 'gemini-3-flash-preview';
 const imageModelDefault = process.env.GEMINI_MODEL_IMAGE || 'gemini-2.5-flash-image-preview';
 const videoModelDefault = process.env.GEMINI_MODEL_VIDEO || 'veo-3.1-generate-preview';
 const geminiLiveModelDefault =
-  process.env.GEMINI_MODEL_LIVE_VOICE || 'gemini-2.5-flash-native-audio-preview-12-2025';
+  process.env.GEMINI_MODEL_LIVE_VOICE ||
+  GEMINI_LIVE_MODEL_OPTIONS[0]?.id ||
+  'gemini-2.5-flash-native-audio-preview-12-2025';
+const geminiLiveVoiceDefault = process.env.GEMINI_VOICE_NAME || GEMINI_LIVE_VOICE_OPTIONS[7]?.name || 'Aoede';
 const geminiLiveVadSilenceMsDefault = Number(process.env.GEMINI_LIVE_VAD_SILENCE_MS || 380);
 const geminiLiveVadPrefixMsDefault = Number(process.env.GEMINI_LIVE_VAD_PREFIX_MS || 120);
 const geminiLiveVadStartDefault = String(process.env.GEMINI_LIVE_VAD_START || 'high').toLowerCase();
 const geminiLiveVadEndDefault = String(process.env.GEMINI_LIVE_VAD_END || 'high').toLowerCase();
 const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
-const liveTokenAi = geminiApiKey
+const liveAi = geminiApiKey
   ? new GoogleGenAI({ apiKey: geminiApiKey, httpOptions: { apiVersion: 'v1alpha' } })
   : null;
 
@@ -450,6 +818,8 @@ const adminEmailSet = new Set(
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
 );
+const SAMPLE_PERSONA_FIXTURE_URL = new URL('../config/demo/persona-fixtures.json', import.meta.url);
+let samplePersonaFixtureCache = null;
 
 const CONFIG_COLLECTION = 'system';
 const CONFIG_DOC = 'career-concierge-config';
@@ -497,14 +867,22 @@ const DEFAULT_APP_CONFIG = {
   },
   voice: {
     enabled: false,
-    provider: 'sesame',
+    provider: 'gemini_live',
+    sesame_enabled: false,
     api_url: process.env.SESAME_API_URL || '',
-    speaker: process.env.SESAME_SPEAKER || 'Maya',
+    speaker: process.env.SESAME_SPEAKER || 'Concierge',
     gemini_live_model: geminiLiveModelDefault,
-    gemini_voice_name: process.env.GEMINI_VOICE_NAME || 'Aoede',
+    gemini_voice_name: geminiLiveVoiceDefault,
     max_audio_length_ms: 12_000,
-    temperature: 0.9,
-    narration_style: 'Calm concierge narration with subtle human hesitations and restrained authority.',
+    temperature: 0.82,
+    narration_style: 'Calm, high-trust concierge interview cadence with precise follow-up questions and restrained warmth.',
+    gemini_input_audio_transcription_enabled: true,
+    gemini_output_audio_transcription_enabled: true,
+    gemini_affective_dialog_enabled: false,
+    gemini_proactive_audio_enabled: false,
+    gemini_activity_handling: 'interrupt',
+    gemini_thinking_enabled: false,
+    gemini_thinking_budget: 0,
     live_vad_silence_ms: Number.isFinite(geminiLiveVadSilenceMsDefault) ? geminiLiveVadSilenceMsDefault : 380,
     live_vad_prefix_padding_ms: Number.isFinite(geminiLiveVadPrefixMsDefault) ? geminiLiveVadPrefixMsDefault : 120,
     live_vad_start_sensitivity: geminiLiveVadStartDefault === 'low' ? 'low' : 'high',
@@ -536,6 +914,14 @@ const normalizeSensitivity = (value, fallback) => {
   const normalized = String(value ?? '').trim().toLowerCase();
   if (normalized === 'high' || normalized === 'low') return normalized;
   return fallback;
+};
+
+const normalizeGeminiVoiceName = (value, fallback) => {
+  const candidate = nonEmpty(value);
+  if (!candidate) return fallback;
+  const supported = GEMINI_LIVE_VOICE_OPTIONS.some((voice) => voice.name.toLowerCase() === candidate.toLowerCase());
+  if (!supported) return fallback;
+  return GEMINI_LIVE_VOICE_OPTIONS.find((voice) => voice.name.toLowerCase() === candidate.toLowerCase())?.name || fallback;
 };
 
 const MODULE_IDS = new Set(BRAND_MODULE_IDS);
@@ -854,11 +1240,22 @@ const normalizeConfig = (input = {}) => {
     },
     voice: {
       enabled: typeof voice.enabled === 'boolean' ? voice.enabled : DEFAULT_APP_CONFIG.voice.enabled,
-      provider: voice.provider === 'gemini_live' ? 'gemini_live' : 'sesame',
+      sesame_enabled:
+        typeof voice.sesame_enabled === 'boolean'
+          ? voice.sesame_enabled
+          : DEFAULT_APP_CONFIG.voice.sesame_enabled,
+      provider:
+        voice.provider === 'sesame' &&
+        (typeof voice.sesame_enabled === 'boolean' ? voice.sesame_enabled : DEFAULT_APP_CONFIG.voice.sesame_enabled)
+          ? 'sesame'
+          : 'gemini_live',
       api_url: nonEmpty(voice.api_url) || DEFAULT_APP_CONFIG.voice.api_url,
       speaker: nonEmpty(voice.speaker) || DEFAULT_APP_CONFIG.voice.speaker,
       gemini_live_model: nonEmpty(voice.gemini_live_model) || DEFAULT_APP_CONFIG.voice.gemini_live_model,
-      gemini_voice_name: nonEmpty(voice.gemini_voice_name) || DEFAULT_APP_CONFIG.voice.gemini_voice_name,
+      gemini_voice_name: normalizeGeminiVoiceName(
+        voice.gemini_voice_name,
+        DEFAULT_APP_CONFIG.voice.gemini_voice_name
+      ),
       max_audio_length_ms: clampInteger(
         voice.max_audio_length_ms,
         DEFAULT_APP_CONFIG.voice.max_audio_length_ms,
@@ -873,6 +1270,36 @@ const normalizeConfig = (input = {}) => {
         return number;
       })(),
       narration_style: String(voice.narration_style ?? DEFAULT_APP_CONFIG.voice.narration_style).trim(),
+      gemini_input_audio_transcription_enabled:
+        typeof voice.gemini_input_audio_transcription_enabled === 'boolean'
+          ? voice.gemini_input_audio_transcription_enabled
+          : DEFAULT_APP_CONFIG.voice.gemini_input_audio_transcription_enabled,
+      gemini_output_audio_transcription_enabled:
+        typeof voice.gemini_output_audio_transcription_enabled === 'boolean'
+          ? voice.gemini_output_audio_transcription_enabled
+          : DEFAULT_APP_CONFIG.voice.gemini_output_audio_transcription_enabled,
+      gemini_affective_dialog_enabled:
+        typeof voice.gemini_affective_dialog_enabled === 'boolean'
+          ? voice.gemini_affective_dialog_enabled
+          : DEFAULT_APP_CONFIG.voice.gemini_affective_dialog_enabled,
+      gemini_proactive_audio_enabled:
+        typeof voice.gemini_proactive_audio_enabled === 'boolean'
+          ? voice.gemini_proactive_audio_enabled
+          : DEFAULT_APP_CONFIG.voice.gemini_proactive_audio_enabled,
+      gemini_activity_handling:
+        voice.gemini_activity_handling === 'wait'
+          ? 'wait'
+          : DEFAULT_APP_CONFIG.voice.gemini_activity_handling,
+      gemini_thinking_enabled:
+        typeof voice.gemini_thinking_enabled === 'boolean'
+          ? voice.gemini_thinking_enabled
+          : DEFAULT_APP_CONFIG.voice.gemini_thinking_enabled,
+      gemini_thinking_budget: clampInteger(
+        voice.gemini_thinking_budget,
+        DEFAULT_APP_CONFIG.voice.gemini_thinking_budget,
+        0,
+        1024
+      ),
       live_vad_silence_ms: clampInteger(
         voice.live_vad_silence_ms,
         DEFAULT_APP_CONFIG.voice.live_vad_silence_ms,
@@ -953,6 +1380,214 @@ const isAdminUser = (user) => {
   const email = String(user?.email ?? '').trim().toLowerCase();
   if (!email) return false;
   return adminEmailSet.has(email);
+};
+
+const personaText = (value, fallback = '') => nonEmpty(value) || fallback;
+const personaList = (value) =>
+  Array.isArray(value) ? value.map((entry) => personaText(entry)).filter(Boolean) : [];
+const roleFromAnswers = (answers = {}) =>
+  personaText(answers.current_title, personaText(answers.current_or_target_job_title, 'Career Operator'));
+const targetFromAnswers = (answers = {}) =>
+  personaText(answers.target, personaText(answers.current_or_target_job_title, 'Next-level role'));
+const industryFromAnswers = (answers = {}) => personaText(answers.industry, 'Cross-industry');
+
+const SAMPLE_PERSONA_PROFILE_BY_ARCHETYPE = {
+  skill_sharpener: {
+    strengths: ['Structured operator under complexity', 'Strong cross-functional communication', 'Reliable strategic follow-through'],
+    patterns: ['Template-driven execution', 'High ownership in ambiguity', 'Responds well to clear operating systems'],
+    leverage: ['Translate AI capability into executive trust', 'Use reusable frameworks for velocity', 'Build visible internal impact proofs'],
+  },
+  career_accelerator: {
+    strengths: ['Promotion-focused execution', 'Business-case framing', 'Stakeholder influence through outcomes'],
+    patterns: ['Action bias toward measurable wins', 'Needs crisp ROI framing', 'Thrives with short execution cycles'],
+    leverage: ['Attach every initiative to KPI impact', 'Build internal sponsor map', 'Convert wins into advancement narrative'],
+  },
+  direction_seeker: {
+    strengths: ['Transferable project leadership', 'Collaborative operating style', 'High adaptability under change'],
+    patterns: ['Confidence rises with guided structure', 'Needs role-path clarity', 'Learns through interactive feedback'],
+    leverage: ['Translate current skills into tech language', 'Use concierge guidance for decision confidence', 'Build role-fit evidence quickly'],
+  },
+  free_course_user: {
+    strengths: ['High curiosity and learning momentum', 'Low-ego experimentation', 'Fast foundational uptake'],
+    patterns: ['Needs clear sequencing', 'Benefits from short practical modules', 'Responds to visible progression'],
+    leverage: ['Build foundational AI fluency rapidly', 'Create early portfolio signals', 'Use free track as upgrade runway'],
+  },
+};
+
+const composeSamplePersonaArtifacts = (persona) => {
+  const answers = persona.answers || {};
+  const target = targetFromAnswers(answers);
+  const constraints = personaText(answers.constraints, 'Time and competing priorities.');
+  const outcomes = personaList(answers.outcomes_goals);
+  const mappedProfile =
+    SAMPLE_PERSONA_PROFILE_BY_ARCHETYPE[personaText(persona.archetype, 'skill_sharpener')] ||
+    SAMPLE_PERSONA_PROFILE_BY_ARCHETYPE.skill_sharpener;
+
+  const brief = {
+    learned: [
+      `${persona.name} is operating as ${roleFromAnswers(answers)} in ${industryFromAnswers(answers)}.`,
+      `Primary direction is to move toward ${target}.`,
+      `Key pressure line: ${constraints}`,
+    ],
+    needle: [
+      outcomes[0] ? `Prioritize ${outcomes[0].toLowerCase()} through focused weekly execution.` : 'Prioritize visible weekly execution.',
+      'Use AI to compress planning-to-output cycle time under pressure.',
+      'Turn narrative quality into measurable career leverage.',
+    ],
+    next_72_hours: [
+      { id: 'n72-01', label: 'Clarify one role narrative and one measurable outcome.', done: false },
+      { id: 'n72-02', label: 'Ship one artifact that demonstrates strategic signal.', done: false },
+      { id: 'n72-03', label: 'Run one feedback loop with a trusted stakeholder.', done: false },
+    ],
+  };
+
+  return {
+    brief,
+    suite_distilled: {
+      what_i_learned: brief.learned,
+      what_needs_to_happen: brief.needle,
+      next_to_do: brief.next_72_hours,
+    },
+    plan: {
+      next_72_hours: [
+        { id: 'p72-01', label: `Define your "${target}" transition narrative in three bullets.`, done: false },
+        { id: 'p72-02', label: 'Refine one reusable AI workflow for your highest-friction task.', done: false },
+        { id: 'p72-03', label: 'Schedule two high-signal conversations tied to your target direction.', done: false },
+      ],
+      next_2_weeks: {
+        goal: `Build sustained momentum toward ${target}.`,
+        cadence: [
+          'Daily: 15-minute narrative + signal review.',
+          'Weekly: two high-signal outreach messages.',
+          'Bi-weekly: artifact quality review and iteration pass.',
+        ],
+      },
+      needs_from_you: [
+        'Keep constraints explicit so recommendations stay realistic.',
+        'Document one applied win each week.',
+        'Protect two focus blocks per week for execution.',
+      ],
+    },
+    profile: mappedProfile,
+    ai_profile: {
+      positioning: `${persona.name} should use AI as a decision and execution multiplier, not a replacement for judgment.`,
+      how_to_use_ai: [
+        'Turn vague problems into constrained prompts with explicit outputs.',
+        'Use AI for first drafts, then apply human editing for strategic precision.',
+        'Build repeatable workflows for recurring high-friction tasks.',
+      ],
+      guardrails: [
+        `Current usage pattern: ${personaText(answers.ai_usage_frequency, 'unknown').toLowerCase()}. Increase usage gradually with measurable outcomes.`,
+        'Never present unverified AI output as final stakeholder-ready truth.',
+        'Keep sensitive context scoped and intentionally redacted when needed.',
+      ],
+    },
+    gaps: {
+      near_term: [
+        'Sharpen strategic narrative for current and target role.',
+        'Increase consistency of AI-assisted execution rhythm.',
+        'Reduce context-switching by codifying weekly priorities.',
+      ],
+      for_target_role: [
+        `Demonstrate role-level signal expected for ${target}.`,
+        'Show evidence of systems thinking and stakeholder influence.',
+        'Operationalize decision support with measurable outcomes.',
+      ],
+      constraints: [constraints],
+    },
+    readiness: {
+      executive_overview: [
+        `${persona.name} currently operates with ${personaText(answers.ai_usage_frequency, 'unknown')} AI usage frequency.`,
+        `Career direction centers on ${target}.`,
+        `Primary leverage opportunity is ${personaText(answers.work_style, 'structured')} execution under constraint.`,
+      ],
+      from_awareness_to_action: [
+        'Convert goals into weekly measurable deliverables.',
+        'Apply one focused AI workflow per business-critical task lane.',
+        'Track outcomes and iterate narrative quality every week.',
+      ],
+      targeted_ai_development_priorities: [
+        'Prompt design under real-world constraints.',
+        'Decision-support workflow integration.',
+        'Stakeholder-ready communication with AI-assisted drafting.',
+      ],
+      technical_development_areas: [
+        'Model/tool selection by task type and risk profile.',
+        'Workflow instrumentation and signal tracking.',
+        'Artifact quality review loop for continuous improvement.',
+      ],
+      tier_recommendation: ['regularly', 'occasionally'].includes(personaText(answers.ai_usage_frequency).toLowerCase())
+        ? 'Select'
+        : personaText(answers.ai_usage_frequency).toLowerCase() === 'daily'
+          ? 'Premier'
+          : 'Foundation',
+    },
+    cjs_execution: {
+      intent_summary:
+        personaText(persona.intent) === 'target_role'
+          ? `Active transition toward ${target} with execution support.`
+          : `CJS visible for readiness, but primary focus remains ${roleFromAnswers(answers)} performance elevation.`,
+      stages: [
+        { step: 1, title: 'Resume Intake', status: personaText(persona.intent) === 'target_role' ? 'ready' : 'planned', description: 'Capture latest resume and target role context.' },
+        { step: 2, title: 'Role Narrative Alignment', status: personaText(persona.intent) === 'target_role' ? 'ready' : 'planned', description: 'Align role story to target responsibilities and business outcomes.' },
+        { step: 3, title: 'Search Strategy', status: personaText(persona.intent) === 'target_role' ? 'ready' : 'blocked', description: personaText(persona.intent) === 'target_role' ? 'Build outreach and opportunity pipeline across high-signal channels.' : 'Held until user switches into active transition mode.' },
+        { step: 4, title: 'Interview + Negotiation Prep', status: personaText(persona.intent) === 'target_role' ? 'planned' : 'blocked', description: 'Prepare scripts, response frameworks, and leverage narratives.' },
+      ],
+    },
+  };
+};
+
+const buildSamplePersonaAssets = (persona) => {
+  const answers = persona.answers || {};
+  const target = targetFromAnswers(answers);
+  const assets = [
+    {
+      id: 'asset-01-profile-narrative',
+      label: 'Profile Narrative v1',
+      type: 'narrative',
+      status: 'draft',
+      summary: `Core narrative for transition toward ${target}.`,
+    },
+    {
+      id: 'asset-02-weekly-plan',
+      label: 'Weekly Execution Plan',
+      type: 'plan',
+      status: 'active',
+      summary: 'Operational cadence for 72-hour and 2-week execution.',
+    },
+  ];
+
+  if (personaText(persona.id) === 'TU2') {
+    assets.push(
+      { id: 'asset-03-resume-core', label: 'Resume Core', type: 'resume', status: 'active', summary: 'Baseline resume for Director of Marketing positioning.' },
+      { id: 'asset-04-resume-vertical', label: 'Resume Vertical Variant', type: 'resume', status: 'draft', summary: 'Variant tailored to industry-specific Director roles.' },
+      { id: 'asset-05-resume-internal', label: 'Resume Internal Promotion Variant', type: 'resume', status: 'draft', summary: 'Variant optimized for internal promotion narrative.' }
+    );
+  }
+
+  return assets;
+};
+
+const buildSamplePersonaInteraction = (persona) => ({
+  id: `seed-${personaText(persona.id).toLowerCase()}`,
+  type: 'chief_of_staff_summary',
+  title: 'Seeded concierge summary',
+  status: 'logged',
+  requires_approval: false,
+  summary: `Seeded concierge summary for ${persona.name}. Target direction: ${targetFromAnswers(persona.answers || {})}.`,
+  next_actions: [
+    'Review The Brief for narrative alignment.',
+    'Execute first 72-hour action with evidence capture.',
+    'Return to update progress after first execution cycle.',
+  ],
+});
+
+const loadSamplePersonaFixtures = async () => {
+  if (samplePersonaFixtureCache) return samplePersonaFixtureCache;
+  const raw = await readFile(SAMPLE_PERSONA_FIXTURE_URL, 'utf8');
+  const parsed = JSON.parse(raw);
+  samplePersonaFixtureCache = Array.isArray(parsed?.personas) ? parsed.personas : [];
+  return samplePersonaFixtureCache;
 };
 
 const baseMeta = (mode, degraded, extra = {}) => ({
@@ -1220,7 +1855,8 @@ const seedContentDirectorPlanning = async ({ uid, intent, preferences, answers, 
       { merge: true }
     ),
     clientOrchestrationRunsRef(uid).doc(runId).set(
-      {
+      (() => {
+        const runPayload = {
         run_id: runId,
         client_uid: uid,
         agent_role: 'content_director',
@@ -1251,7 +1887,12 @@ const seedContentDirectorPlanning = async ({ uid, intent, preferences, answers, 
         source_artifacts: ['brief', 'plan', 'profile', 'ai_profile', 'gaps'],
         policy_version: DEFAULT_ORCHESTRATION_POLICY.version,
         source_meta: meta,
-      },
+        };
+        return {
+          ...runPayload,
+          evaluation: buildOrchestrationEvaluation(runPayload),
+        };
+      })(),
       { merge: true }
     ),
   ]);
@@ -1474,6 +2115,10 @@ const persistLibraryFirstResolution = async ({ uid, resolution }) => {
     await clientOrchestrationRunsRef(uid).doc(resolution.plan_id).set(
       {
         media_resolution: nextResolution,
+        evaluation: buildOrchestrationEvaluation({
+          ...(existingSnap.exists ? existingSnap.data() ?? {} : {}),
+          media_resolution: nextResolution,
+        }),
         updated_at: new Date(),
       },
       { merge: true }
@@ -1830,6 +2475,283 @@ const clientEpisodePlansRef = (uid) => clientRef(uid).collection('episode_plans'
 const clientOrchestrationRunsRef = (uid) => clientRef(uid).collection('orchestration_runs');
 const clientMediaJobsRef = (uid) => clientRef(uid).collection('media_jobs');
 const clientMediaManifestsRef = (uid) => clientRef(uid).collection('media_manifests');
+const samplePersonaHarnessRef = () => db.collection('system').doc('sample-persona-harness');
+const conciergeRequestsRef = () => db.collection('concierge_requests');
+
+const SAMPLE_PERSONA_COLLECTIONS = [
+  'artifacts',
+  'assets',
+  'interactions',
+  'learning_plans',
+  'episode_plans',
+  'orchestration_runs',
+  'media_jobs',
+  'media_manifests',
+];
+
+const getUserSafe = async (lookup) => {
+  try {
+    return await lookup();
+  } catch (error) {
+    if (error?.code === 'auth/user-not-found') return null;
+    throw error;
+  }
+};
+
+const ensureSamplePersonaAuthUser = async (persona) => {
+  const uid = personaText(persona.uid);
+  const email = personaText(persona.email).toLowerCase();
+  const displayName = personaText(persona.name);
+  let user = await getUserSafe(() => admin.auth().getUser(uid));
+
+  if (!user) {
+    user = await admin.auth().createUser({
+      uid,
+      email,
+      displayName,
+      emailVerified: true,
+      disabled: false,
+      password: DEMO_PERSONA_SHARED_PASSWORD,
+    });
+  } else {
+    await admin.auth().updateUser(uid, {
+      email,
+      displayName,
+      emailVerified: true,
+      disabled: false,
+      password: DEMO_PERSONA_SHARED_PASSWORD,
+    });
+    user = await admin.auth().getUser(uid);
+  }
+
+  await admin.auth().setCustomUserClaims(uid, {
+    ...(user.customClaims || {}),
+    demo_user: true,
+    persona_id: personaText(persona.id),
+    tier: personaText(persona.tier),
+  });
+
+  return uid;
+};
+
+const deleteCollectionDocs = async (ref) => {
+  const snap = await ref.get();
+  if (snap.empty) return 0;
+  const batch = db.batch();
+  snap.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+  await batch.commit();
+  return snap.size;
+};
+
+const clearSamplePersonaState = async (uid) => {
+  for (const collectionName of SAMPLE_PERSONA_COLLECTIONS) {
+    await deleteCollectionDocs(clientRef(uid).collection(collectionName));
+  }
+  await clientRef(uid).delete().catch(() => {});
+};
+
+const seedSamplePersonaState = async (persona, { reset = false } = {}) => {
+  const uid = await ensureSamplePersonaAuthUser(persona);
+  if (reset) {
+    await clearSamplePersonaState(uid);
+  }
+
+  const now = new Date();
+  const source = 'config/demo/persona-fixtures.json';
+  const answers = persona.answers || {};
+
+  await clientRef(uid).set(
+    {
+      uid,
+      email: personaText(persona.email).toLowerCase(),
+      display_name: personaText(persona.name),
+      intent: personaText(persona.intent, 'current_role'),
+      preferences: {
+        pace: personaText(persona?.preferences?.pace, 'standard'),
+        focus: personaText(persona?.preferences?.focus, 'skills'),
+      },
+      intro_seen_at: now,
+      intake: {
+        answers,
+        completed_at: now,
+        source,
+      },
+      demo_profile: {
+        id: personaText(persona.id),
+        name: personaText(persona.name),
+        archetype: personaText(persona.archetype),
+        tier: personaText(persona.tier),
+        hydrated: true,
+        hydrated_at: now.toISOString(),
+        source,
+      },
+      account: {
+        status: 'active',
+        tier: personaText(persona.tier),
+        hydrated: true,
+        hydrated_at: now.toISOString(),
+      },
+      updated_at: now,
+      created_at: now,
+    },
+    { merge: true }
+  );
+
+  const artifacts = composeSamplePersonaArtifacts(persona);
+  await Promise.all(
+    Object.entries(artifacts).map(async ([type, content]) => {
+      await clientArtifactsRef(uid).doc(type).set({
+        type,
+        title: type,
+        version: 1,
+        content,
+        updated_at: now,
+        created_at: now,
+        meta: {
+          seeded: true,
+          source,
+          seeded_at: now.toISOString(),
+        },
+      });
+    })
+  );
+
+  await Promise.all(
+    buildSamplePersonaAssets(persona).map(async (asset) => {
+      await clientAssetsRef(uid).doc(asset.id).set({
+        ...asset,
+        source,
+        updated_at: now,
+        created_at: now,
+      });
+    })
+  );
+
+  const interaction = buildSamplePersonaInteraction(persona);
+  await clientInteractionsRef(uid).doc(interaction.id).set({
+    ...interaction,
+    client_uid: uid,
+    client_email: personaText(persona.email).toLowerCase(),
+    client_name: personaText(persona.name),
+    source,
+    updated_at: now,
+    created_at: now,
+  });
+
+  return uid;
+};
+
+const buildSamplePersonaLaunchPath = (persona) => {
+  if (personaText(persona.intent) === 'not_sure') return '/?module=my_concierge';
+  if (personaText(persona.tier).toLowerCase() === 'free_foundation_access') return '/?module=episodes';
+  return '/?module=intake';
+};
+
+const summarizeSamplePersona = async (persona) => {
+  const uid = personaText(persona.uid);
+  const proofSnap = await samplePersonaHarnessRef().get().catch(() => null);
+  const proofMap = proofSnap?.data()?.proof_by_persona ?? {};
+  const proofState = proofMap?.[personaText(persona.id)] ?? {};
+  const [user, clientSnap, artifactsSnap, interactionsSnap, mediaJobsSnap] = await Promise.all([
+    getUserSafe(() => admin.auth().getUser(uid)),
+    clientRef(uid).get(),
+    clientArtifactsRef(uid).get().catch(() => ({ size: 0 })),
+    clientInteractionsRef(uid).get().catch(() => ({ size: 0 })),
+    clientMediaJobsRef(uid).get().catch(() => ({ size: 0 })),
+  ]);
+  const clientData = clientSnap.exists ? clientSnap.data() ?? {} : {};
+  return {
+    id: personaText(persona.id),
+    name: personaText(persona.name),
+    email: personaText(persona.email).toLowerCase(),
+    uid,
+    tier: personaText(persona.tier),
+    archetype: personaText(persona.archetype),
+    intent: personaText(persona.intent, 'current_role'),
+    focus: personaText(persona?.preferences?.focus, 'skills'),
+    pace: personaText(persona?.preferences?.pace, 'standard'),
+    launch_ready: Boolean(user && clientSnap.exists && clientData?.demo_profile?.hydrated),
+    auth_user_exists: Boolean(user),
+    client_exists: clientSnap.exists,
+    hydrated: Boolean(clientData?.demo_profile?.hydrated || clientData?.account?.hydrated),
+    intro_seen: Boolean(clientData?.intro_seen_at),
+    intake_completed: Boolean(clientData?.intake?.completed_at),
+    artifact_count: Number(artifactsSnap.size || 0),
+    interaction_count: Number(interactionsSnap.size || 0),
+    media_job_count: Number(mediaJobsSnap.size || 0),
+    last_hydrated_at: clientData?.demo_profile?.hydrated_at || clientData?.account?.hydrated_at || null,
+    last_updated_at: toIso(clientData?.updated_at),
+    proof_captured: proofState?.captured === true,
+    proof_updated_at: personaText(proofState?.updated_at) || null,
+    launch_path: buildSamplePersonaLaunchPath(persona),
+  };
+};
+
+const serializeConciergeRequest = (snapOrData) => {
+  const raw = typeof snapOrData?.data === 'function' ? snapOrData.data() ?? {} : snapOrData ?? {};
+  const id = snapOrData?.id || personaText(raw.id, 'request');
+  return {
+    id,
+    request_kind: personaText(raw.request_kind, 'public_ai_concierge'),
+    status: personaText(raw.status, 'new'),
+    name: personaText(raw.name, 'Unknown requester'),
+    email: personaText(raw.email),
+    company: personaText(raw.company) || undefined,
+    goal: personaText(raw.goal),
+    service_interest: personaText(raw.service_interest) || undefined,
+    resume_link: personaText(raw.resume_link) || undefined,
+    preferred_timing: personaText(raw.preferred_timing),
+    preferred_date: personaText(raw.preferred_date) || undefined,
+    preferred_time: personaText(raw.preferred_time) || undefined,
+    preferred_timezone: personaText(raw.preferred_timezone) || undefined,
+    source: personaText(raw.source, 'public'),
+    client_uid: personaText(raw.client_uid) || undefined,
+    created_at: toIso(raw.created_at),
+    updated_at: toIso(raw.updated_at),
+  };
+};
+
+const composePreferredTimingLabel = ({ preferredDate, preferredTime, preferredTimezone, fallback }) => {
+  const parts = [preferredDate, preferredTime, preferredTimezone].map((value) => personaText(value)).filter(Boolean);
+  if (parts.length > 0) return parts.join(' · ');
+  return personaText(fallback);
+};
+
+const buildOrchestrationEvaluation = (runData = {}) => {
+  const confidence = Number(runData?.confidence || 0);
+  const evidenceRefs = Array.isArray(runData?.evidence_refs) ? runData.evidence_refs.filter(Boolean) : [];
+  const artifactRefs = Array.isArray(runData?.artifact_refs) ? runData.artifact_refs.filter(Boolean) : [];
+  const nextRoles = Array.isArray(runData?.next_roles) ? runData.next_roles.filter(Boolean) : [];
+  const tier = personaText(runData?.tier);
+  const intent = personaText(runData?.intent);
+  const approvalState = personaText(runData?.approval_state, 'not_required');
+  const policyFlags = [];
+
+  if (confidence > 0 && confidence < 0.7) policyFlags.push('low_confidence');
+  if (approvalState !== 'not_required' && approvalState !== 'approved') policyFlags.push('approval_required');
+  if (evidenceRefs.length < 2) policyFlags.push('thin_evidence');
+  if (artifactRefs.length < 2) policyFlags.push('thin_artifacts');
+  if (intent === 'not_sure' && tier !== 'free_foundation') policyFlags.push('human_followup_recommended');
+  if (approvalState === 'pending_human_followup' || nonEmpty(runData?.linked_request_id)) {
+    policyFlags.push('human_followup_recommended');
+  }
+
+  const recommendedActions = [];
+  if (policyFlags.includes('low_confidence')) recommendedActions.push('Review supporting evidence before client-facing escalation.');
+  if (policyFlags.includes('thin_evidence')) recommendedActions.push('Add richer evidence refs to make the run auditable.');
+  if (policyFlags.includes('thin_artifacts')) recommendedActions.push('Attach artifact refs so the handoff can be reconstructed.');
+  if (policyFlags.includes('approval_required')) recommendedActions.push('Resolve approval state before outbound or premium follow-up.');
+  if (policyFlags.includes('human_followup_recommended')) recommendedActions.push('Route into a human concierge follow-up when premium context or ambiguity is high.');
+
+  return {
+    confidence_band: confidence >= 0.85 ? 'strong' : confidence >= 0.7 ? 'building' : 'watch',
+    policy_flags: [...new Set(policyFlags)],
+    recommended_actions: [...new Set(recommendedActions)],
+    evidence_count: evidenceRefs.length,
+    artifact_count: artifactRefs.length,
+    next_role_count: nextRoles.length,
+  };
+};
 
 const ensureGovernanceDocs = async () => {
   await Promise.all([
@@ -1887,25 +2809,29 @@ const recordChiefOfStaffRun = async ({ uid, intent, preferences, answers, meta, 
   const artifactKeys = Object.keys(artifacts ?? {});
   const nextRoles = nextRolesForIntent(intent);
   const confidence = meta?.fallback ? 0.58 : 0.86;
+  const runPayload = {
+    run_id: runId,
+    client_uid: uid,
+    started_by_role: 'chief_of_staff',
+    trigger: 'suite_generate',
+    status,
+    intent,
+    tier: inferTierFromSignal({ answers, preferences }),
+    summary: `Chief of Staff routed a ${intent} journey into ${nextRoles.slice(1, 3).join(' + ')}.`,
+    confidence,
+    approval_state: 'not_required',
+    evidence_refs: ['clients/{uid}', 'clients/{uid}/artifacts/brief', 'clients/{uid}/artifacts/plan'],
+    artifact_refs: artifactKeys.map((key) => `clients/${uid}/artifacts/${key}`),
+    next_roles: nextRoles,
+    policy_version: DEFAULT_ORCHESTRATION_POLICY.version,
+    source_meta: meta,
+    created_at: now,
+    updated_at: now,
+  };
   await clientOrchestrationRunsRef(uid).doc(runId).set(
     {
-      run_id: runId,
-      client_uid: uid,
-      started_by_role: 'chief_of_staff',
-      trigger: 'suite_generate',
-      status,
-      intent,
-      tier: inferTierFromSignal({ answers, preferences }),
-      summary: `Chief of Staff routed a ${intent} journey into ${nextRoles.slice(1, 3).join(' + ')}.`,
-      confidence,
-      approval_state: 'not_required',
-      evidence_refs: ['clients/{uid}', 'clients/{uid}/artifacts/brief', 'clients/{uid}/artifacts/plan'],
-      artifact_refs: artifactKeys.map((key) => `clients/${uid}/artifacts/${key}`),
-      next_roles: nextRoles,
-      policy_version: DEFAULT_ORCHESTRATION_POLICY.version,
-      source_meta: meta,
-      created_at: now,
-      updated_at: now,
+      ...runPayload,
+      evaluation: buildOrchestrationEvaluation(runPayload),
     },
     { merge: true }
   );
@@ -1998,6 +2924,8 @@ const persistMediaPipelineArtifacts = async ({ uid, episodeId, direction, pack }
         degraded: Boolean(pack.degraded),
         asset_count: persistedAssets.length,
         queued_asset_count: persistedAssets.filter((asset) => asset.status === 'queued').length,
+        attempt_count: 1,
+        worker_ready: pipelineStatus !== 'completed',
         review_state: reviewState,
         retry_requested_count: 0,
         retry_requested_at: null,
@@ -2025,6 +2953,7 @@ const persistMediaPipelineArtifacts = async ({ uid, episodeId, direction, pack }
         operator_lineage: {
           trigger: 'binge_media_pack',
           runner: 'inline_api',
+          attempt_count: 1,
           assets: persistedAssets,
           direction,
           generated_at: now,
@@ -2040,6 +2969,132 @@ const persistMediaPipelineArtifacts = async ({ uid, episodeId, direction, pack }
     job_id: jobId,
     manifest_id: manifestId,
     pipeline_status: pipelineStatus,
+    persisted_assets: persistedAssets,
+  };
+};
+
+const executeMediaPipelineJob = async ({ uid, jobId, manifestId, direction, runtimeConfig, trigger = 'admin_process' }) => {
+  const jobRef = clientMediaJobsRef(uid).doc(jobId);
+  const manifestRef = clientMediaManifestsRef(uid).doc(manifestId);
+  const [jobSnap, manifestSnap] = await Promise.all([jobRef.get(), manifestRef.get()]);
+  if (!jobSnap.exists || !manifestSnap.exists) {
+    throw new Error('persisted_media_job_not_found');
+  }
+
+  const jobData = jobSnap.data() ?? {};
+  const manifestData = manifestSnap.data() ?? {};
+  const episodeId = nonEmpty(jobData?.episode_id) || nonEmpty(manifestData?.episode_id) || manifestId;
+  const now = new Date();
+  const nextAttemptCount = Math.max(1, Number(jobData?.attempt_count || 0) + 1);
+  let pack;
+
+  if (!runtimeConfig.media.enabled) {
+    pack = buildMediaFallbackPack({
+      episodeId,
+      runtimeConfig,
+      direction,
+      reason: 'media_module_disabled',
+    });
+  } else if (!ai) {
+    pack = buildMediaFallbackPack({
+      episodeId,
+      runtimeConfig,
+      direction,
+      reason: 'missing_gemini_api_key',
+    });
+  } else {
+    try {
+      const [imageAsset, videoAsset] = await Promise.all([
+        generateImageAsset({ runtimeConfig, direction }),
+        generateVideoAsset({ runtimeConfig, direction }),
+      ]);
+      pack = {
+        episode_id: episodeId,
+        narrative: direction.narrative,
+        generated_at: now.toISOString(),
+        degraded: imageAsset.status !== 'generated' || videoAsset.status === 'unavailable',
+        assets: [imageAsset, videoAsset],
+      };
+    } catch (error) {
+      console.error('media_pipeline_job_error', error);
+      pack = buildMediaFallbackPack({
+        episodeId,
+        runtimeConfig,
+        direction,
+        reason: sanitizeError(error, 'media_pipeline_job_failed'),
+      });
+    }
+  }
+
+  const persistedAssets = await Promise.all(
+    (Array.isArray(pack.assets) ? pack.assets : []).map((asset) =>
+      persistMediaAssetRecord({ uid, jobId, asset, generatedAt: now })
+    )
+  );
+  const pipelineStatus = persistedAssets.some((asset) => asset.status === 'queued')
+    ? 'queued'
+    : pack.degraded
+      ? 'degraded'
+      : 'completed';
+  const reviewState = pipelineStatus === 'completed' && !pack.degraded ? 'approved' : 'needs_review';
+  const clientPayloadAssets = persistedAssets.map((asset) => ({
+    kind: asset.kind,
+    status: asset.status,
+    storage_provider: asset.storage_provider || 'none',
+    storage_path: asset.storage_path || '',
+    source_url: asset.source_url || '',
+  }));
+
+  await Promise.all([
+    jobRef.set(
+      {
+        status: pipelineStatus,
+        runner: 'pipeline_worker',
+        trigger,
+        generated_at: now,
+        updated_at: now,
+        narrative: pack.narrative,
+        degraded: Boolean(pack.degraded),
+        asset_count: persistedAssets.length,
+        queued_asset_count: persistedAssets.filter((asset) => asset.status === 'queued').length,
+        attempt_count: nextAttemptCount,
+        worker_ready: pipelineStatus !== 'completed',
+        review_state: reviewState,
+        assets: persistedAssets,
+      },
+      { merge: true }
+    ),
+    manifestRef.set(
+      {
+        generated_at: now,
+        updated_at: now,
+        narrative: pack.narrative,
+        pipeline_status: pipelineStatus,
+        review_state: reviewState,
+        client_payload: {
+          narrative: pack.narrative,
+          assets: clientPayloadAssets,
+        },
+        operator_lineage: {
+          trigger,
+          runner: 'pipeline_worker',
+          attempt_count: nextAttemptCount,
+          assets: persistedAssets,
+          direction,
+          generated_at: now,
+          updated_at: now,
+        },
+        assets: persistedAssets,
+      },
+      { merge: true }
+    ),
+  ]);
+
+  return {
+    job_id: jobId,
+    manifest_id: manifestId,
+    pipeline_status: pipelineStatus,
+    attempt_count: nextAttemptCount,
     persisted_assets: persistedAssets,
   };
 };
@@ -2086,6 +3141,7 @@ const updatePersistedVideoStatus = async ({ uid, jobId, operationName, done, vid
         status: nextStatus,
         updated_at: new Date(),
         review_state: nextReviewState,
+        worker_ready: nextStatus !== 'completed',
         assets: nextAssets,
       },
       { merge: true }
@@ -2140,6 +3196,8 @@ const serializeAdminMediaJob = ({ uid, clientData, jobData }) => ({
   updated_at: toIso(jobData?.updated_at),
   asset_count: Number(jobData?.asset_count || 0),
   queued_asset_count: Number(jobData?.queued_asset_count || 0),
+  attempt_count: Number(jobData?.attempt_count || 0),
+  worker_ready: Boolean(jobData?.worker_ready),
   degraded: Boolean(jobData?.degraded),
   review_state: nonEmpty(jobData?.review_state) || 'needs_review',
   retry_requested_count: Number(jobData?.retry_requested_count || 0),
@@ -2188,24 +3246,36 @@ const serializeAdminMediaManifest = ({ uid, clientData, manifestData, resolution
   };
 };
 
-const serializeAdminOrchestrationRun = ({ uid, clientData, runData }) => ({
-  client_uid: uid,
-  client_name: nonEmpty(clientData?.display_name) || toDisplayName({ email: clientData?.email }) || uid,
-  client_email: nonEmpty(clientData?.email),
-  run_id: nonEmpty(runData?.run_id),
-  started_by_role: nonEmpty(runData?.started_by_role) || nonEmpty(runData?.agent_role),
-  trigger: nonEmpty(runData?.trigger),
-  status: nonEmpty(runData?.status) || 'unknown',
-  intent: nonEmpty(runData?.intent),
-  tier: nonEmpty(runData?.tier) || 'unknown',
-  summary: nonEmpty(runData?.summary),
-  confidence: Number(runData?.confidence || 0),
-  approval_state: nonEmpty(runData?.approval_state) || 'not_required',
-  next_roles: Array.isArray(runData?.next_roles) ? runData.next_roles.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
-  evidence_refs: Array.isArray(runData?.evidence_refs) ? runData.evidence_refs.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
-  artifact_refs: Array.isArray(runData?.artifact_refs) ? runData.artifact_refs.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
-  updated_at: toIso(runData?.updated_at),
-});
+const serializeAdminOrchestrationRun = ({ uid, clientData, runData }) => {
+  const evaluation =
+    runData?.evaluation && typeof runData.evaluation === 'object'
+      ? runData.evaluation
+      : buildOrchestrationEvaluation(runData);
+  return {
+    client_uid: uid,
+    client_name: nonEmpty(clientData?.display_name) || toDisplayName({ email: clientData?.email }) || uid,
+    client_email: nonEmpty(clientData?.email),
+    run_id: nonEmpty(runData?.run_id),
+    started_by_role: nonEmpty(runData?.started_by_role) || nonEmpty(runData?.agent_role),
+    trigger: nonEmpty(runData?.trigger),
+    status: nonEmpty(runData?.status) || 'unknown',
+    intent: nonEmpty(runData?.intent),
+    tier: nonEmpty(runData?.tier) || 'unknown',
+    summary: nonEmpty(runData?.summary),
+    confidence: Number(runData?.confidence || 0),
+    approval_state: nonEmpty(runData?.approval_state) || 'not_required',
+    next_roles: Array.isArray(runData?.next_roles) ? runData.next_roles.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
+    evidence_refs: Array.isArray(runData?.evidence_refs) ? runData.evidence_refs.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
+    artifact_refs: Array.isArray(runData?.artifact_refs) ? runData.artifact_refs.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
+    policy_flags: Array.isArray(evaluation?.policy_flags) ? evaluation.policy_flags.map((entry) => nonEmpty(entry)).filter(Boolean) : [],
+    recommended_actions:
+      Array.isArray(evaluation?.recommended_actions)
+        ? evaluation.recommended_actions.map((entry) => nonEmpty(entry)).filter(Boolean)
+        : [],
+    linked_request_id: nonEmpty(runData?.linked_request_id) || undefined,
+    updated_at: toIso(runData?.updated_at),
+  };
+};
 
 const readClientProfile = async (uid) => {
   const snap = await clientRef(uid).get();
@@ -2602,14 +3672,22 @@ const synthesizeWithSesame = async ({ runtimeConfig, text }) => {
 };
 
 const synthesizeWithGeminiLive = async ({ runtimeConfig, text, clientName }) => {
-  if (!ai) {
+  if (!liveAi) {
     throw new Error('missing_gemini_api_key');
   }
 
   const timeoutMs = Number(process.env.GEMINI_LIVE_TIMEOUT_MS || 30000);
   const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
-  const voiceName = nonEmpty(runtimeConfig.voice.gemini_voice_name) || nonEmpty(runtimeConfig.voice.speaker) || 'Aoede';
+  const voiceName =
+    normalizeGeminiVoiceName(
+      runtimeConfig.voice.gemini_voice_name,
+      geminiLiveVoiceDefault
+    ) || nonEmpty(runtimeConfig.voice.speaker) || geminiLiveVoiceDefault;
   const instruction = liveSystemInstruction(runtimeConfig, clientName);
+  const activityHandling =
+    runtimeConfig.voice.gemini_activity_handling === 'wait'
+      ? ActivityHandling.NO_INTERRUPTION
+      : ActivityHandling.START_OF_ACTIVITY_INTERRUPTS;
 
   return await new Promise(async (resolve, reject) => {
     let session = null;
@@ -2632,11 +3710,21 @@ const synthesizeWithGeminiLive = async ({ runtimeConfig, text, clientName }) => 
     timer = setTimeout(() => fail(new Error('gemini_live_timeout')), timeoutMs);
 
     try {
-      session = await ai.live.connect({
+      session = await liveAi.live.connect({
         model,
         config: {
           responseModalities: [Modality.AUDIO],
           temperature: runtimeConfig.voice.temperature,
+          inputAudioTranscription: runtimeConfig.voice.gemini_input_audio_transcription_enabled ? {} : undefined,
+          outputAudioTranscription: runtimeConfig.voice.gemini_output_audio_transcription_enabled ? {} : undefined,
+          enableAffectiveDialog: runtimeConfig.voice.gemini_affective_dialog_enabled || undefined,
+          proactiveAudio: runtimeConfig.voice.gemini_proactive_audio_enabled || undefined,
+          thinkingConfig: runtimeConfig.voice.gemini_thinking_enabled
+            ? { thinkingBudget: runtimeConfig.voice.gemini_thinking_budget }
+            : undefined,
+          realtimeInputConfig: {
+            activityHandling,
+          },
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
@@ -2649,6 +3737,7 @@ const synthesizeWithGeminiLive = async ({ runtimeConfig, text, clientName }) => 
         callbacks: {
           onmessage: (message) => {
             const parts = message?.serverContent?.modelTurn?.parts || [];
+            const outputTranscript = nonEmpty(message?.serverContent?.outputTranscription?.text);
             for (const part of parts) {
               if (part?.inlineData?.data) {
                 chunks.push(String(part.inlineData.data).replace(/\s+/g, ''));
@@ -2678,6 +3767,7 @@ const synthesizeWithGeminiLive = async ({ runtimeConfig, text, clientName }) => 
               done({
                 provider: 'gemini_live',
                 ...output,
+                transcript: outputTranscript || undefined,
                 generated_at: new Date().toISOString(),
               });
             }
@@ -2850,12 +3940,19 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
   if (!runtimeConfig.voice.enabled) {
     return res.status(503).json({ error: 'voice_disabled' });
   }
-  if (!liveTokenAi) {
+  if (runtimeConfig.voice.provider !== 'gemini_live') {
+    return res.status(503).json({ error: 'voice_provider_unavailable', detail: 'gemini_live_required' });
+  }
+  if (!liveAi) {
     return res.status(503).json({ error: 'missing_gemini_api_key' });
   }
 
   const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
-  const voiceName = nonEmpty(runtimeConfig.voice.gemini_voice_name) || nonEmpty(runtimeConfig.voice.speaker) || 'Aoede';
+  const voiceName =
+    normalizeGeminiVoiceName(
+      runtimeConfig.voice.gemini_voice_name,
+      geminiLiveVoiceDefault
+    ) || nonEmpty(runtimeConfig.voice.speaker) || geminiLiveVoiceDefault;
   const clientName = toDisplayName(_req.user);
   const startSensitivity =
     runtimeConfig.voice.live_vad_start_sensitivity === 'low'
@@ -2865,12 +3962,16 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
     runtimeConfig.voice.live_vad_end_sensitivity === 'low'
       ? EndSensitivity.END_SENSITIVITY_LOW
       : EndSensitivity.END_SENSITIVITY_HIGH;
+  const activityHandling =
+    runtimeConfig.voice.gemini_activity_handling === 'wait'
+      ? ActivityHandling.NO_INTERRUPTION
+      : ActivityHandling.START_OF_ACTIVITY_INTERRUPTS;
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 45 * 60 * 1000);
   const newSessionExpireAt = new Date(issuedAt.getTime() + 4 * 60 * 1000);
 
   try {
-    const tokenClient = liveTokenAi.authTokens || liveTokenAi.tokens;
+    const tokenClient = liveAi.authTokens || liveAi.tokens;
     if (!tokenClient?.create) {
       throw new Error('live_token_client_unavailable');
     }
@@ -2886,7 +3987,15 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
             responseModalities: [Modality.AUDIO],
             systemInstruction: liveSystemInstruction(runtimeConfig, clientName),
             temperature: runtimeConfig.voice.temperature,
+            inputAudioTranscription: runtimeConfig.voice.gemini_input_audio_transcription_enabled ? {} : undefined,
+            outputAudioTranscription: runtimeConfig.voice.gemini_output_audio_transcription_enabled ? {} : undefined,
+            enableAffectiveDialog: runtimeConfig.voice.gemini_affective_dialog_enabled || undefined,
+            proactiveAudio: runtimeConfig.voice.gemini_proactive_audio_enabled || undefined,
+            thinkingConfig: runtimeConfig.voice.gemini_thinking_enabled
+              ? { thinkingBudget: runtimeConfig.voice.gemini_thinking_budget }
+              : undefined,
             realtimeInputConfig: {
+              activityHandling,
               automaticActivityDetection: {
                 startOfSpeechSensitivity: startSensitivity,
                 endOfSpeechSensitivity: endSensitivity,
@@ -2915,6 +4024,11 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
       model,
       voice_name: voiceName,
       client_name: clientName || undefined,
+      activity_handling: runtimeConfig.voice.gemini_activity_handling,
+      input_transcription_enabled: runtimeConfig.voice.gemini_input_audio_transcription_enabled,
+      output_transcription_enabled: runtimeConfig.voice.gemini_output_audio_transcription_enabled,
+      affective_dialog_enabled: runtimeConfig.voice.gemini_affective_dialog_enabled,
+      proactive_audio_enabled: runtimeConfig.voice.gemini_proactive_audio_enabled,
       issued_at: issuedAt.toISOString(),
       expires_at: expiresAt.toISOString(),
     });
@@ -2937,7 +4051,10 @@ app.post('/v1/voice/synthesize', requireAuth, async (req, res) => {
   }
 
   try {
-    const provider = runtimeConfig.voice.provider === 'gemini_live' ? 'gemini_live' : 'sesame';
+    const provider =
+      runtimeConfig.voice.provider === 'sesame' && runtimeConfig.voice.sesame_enabled
+        ? 'sesame'
+        : 'gemini_live';
     const payload =
       provider === 'gemini_live'
         ? await synthesizeWithGeminiLive({ runtimeConfig, text, clientName })

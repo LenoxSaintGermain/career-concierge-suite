@@ -120,6 +120,14 @@ npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierg
 Seed Firestore + Firebase Auth users:
 
 ```bash
+npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge --auth
+```
+
+Default shared demo-persona password: `CareerDemo!2026`
+
+Override it only if you explicitly need a different temporary password:
+
+```bash
 npm run demo:fixtures:seed -- --project ssai-f6191 --database-id career-concierge --auth --password '<temporary-password>'
 ```
 
@@ -215,6 +223,7 @@ Persistence expectations:
 - generated image assets write to Cloud Storage when `CCS_STORAGE_BUCKET` / storage bucket config is available
 - manifest/job records store asset status, prompt, model, and storage metadata
 - `POST /v1/binge/media-pack/video-status` can update the same persisted job when `job_id` is supplied
+- media jobs now track `attempt_count` and `worker_ready` so the queue can be processed outside the inline episode call
 
 Quick operator check:
 
@@ -222,7 +231,8 @@ Quick operator check:
 2. Confirm the response includes `job_id`, `manifest_id`, and `pipeline_status`.
 3. Inspect Firestore for matching `media_jobs` and `media_manifests` docs.
 4. If video is queued, call `POST /v1/binge/media-pack/video-status` with both `operation_name` and `job_id`.
-5. Confirm the existing job/manifest updates instead of a second job appearing.
+5. Use Admin -> `Media` -> `Process now` or `Run queue now` and confirm the queued job advances without creating a new manifest.
+6. Confirm the existing job/manifest updates instead of a second job appearing.
 
 ## Admin Media Pipeline Console
 
@@ -230,6 +240,8 @@ Operator endpoints:
 
 - `GET /v1/admin/media-pipeline`
 - `POST /v1/admin/media-pipeline/jobs/:clientUid/:jobId/retry`
+- `POST /v1/admin/media-pipeline/jobs/:clientUid/:jobId/process`
+- `POST /v1/admin/media-pipeline/process-pending`
 - `POST /v1/admin/media-pipeline/manifests/:clientUid/:manifestId/review`
 
 Expected behavior:
@@ -264,6 +276,57 @@ Quick operator check:
 2. Confirm `Orchestration control plane` loads without blocking the rest of the admin console.
 3. Verify the current-stack chips reflect the existing web OS + Cloud Run + Firestore posture.
 4. Verify recent run cards show confidence and next-role fields.
+
+## Sample Persona Harness
+
+Operator endpoints:
+
+- `GET /v1/admin/sample-personas`
+- `POST /v1/admin/sample-personas/:personaId/launch`
+- `POST /v1/admin/sample-personas/:personaId/reseed`
+- `POST /v1/admin/sample-personas/:personaId/proof`
+
+Expected behavior:
+
+- roadmap validation shows each seeded persona with launch readiness, hydration status, proof state, and next-gate notes
+- launch mints an admin-gated custom token and opens a session-scoped preview URL
+- reseed clears only the target persona’s seeded state before rebuilding deterministic fixture data
+- proof toggle persists independently of the persona’s Firestore content so demo evidence can be tracked across runs
+
+Quick operator check:
+
+1. Open `Roadmap` -> `Validation`.
+2. Confirm `Sample Persona Harness` lists all seeded personas.
+3. Launch one persona and verify the preview tab signs into the requested demo account.
+4. Reseed that persona and confirm hydration timestamps refresh.
+5. Toggle proof capture and confirm the state persists after refresh.
+
+## Public Concierge Request Flow
+
+Public endpoint:
+
+- `POST /v1/public/concierge-request`
+
+Admin operator endpoint:
+
+- `POST /v1/admin/concierge-requests/:requestId/status`
+- `POST /v1/admin/orchestration-runs/:clientUid/:runId/review`
+
+Expected behavior:
+
+- login surface accepts a Smart Start / AI Concierge request without requiring an account
+- requests persist service intent, optional resume link, structured date/time/timezone preferences, goal, and source into Firestore
+- admin governance exposes those requests with `new`, `reviewed`, and `scheduled` states
+- MyConcierge handoff requests land in the same operator queue with `source: my_concierge`
+
+Quick operator check:
+
+1. Submit a Smart Start request from the login surface.
+2. Open `Admin` -> `Governance` and confirm the request appears under `Concierge requests`.
+3. Confirm the request card shows service intent plus the structured slot fields when they were provided.
+4. Mark it `reviewed`, then `scheduled`, and verify the state persists after refresh.
+5. If a resume link was supplied, confirm the operator card renders it as an outbound link.
+6. Trigger `Request human follow-up` from MyConcierge and confirm a second request appears with the authenticated client context.
 
 ## Starter Library Seeding
 
@@ -389,11 +452,18 @@ Use the reset workflow instead of repeating blind imports.
 - brand save + reload from Admin Brand Studio
 - logo propagation into header/prologue when configured
 - roadmap + validation tile visibility for admin users only
+- sample persona launch/reseed/proof controls in Roadmap validation
+- shared sample-persona password visible in Roadmap validation for direct manual login
+- public Smart Start request intake on login surface
+- admin concierge-request review and status updates
 - MyConcierge visibility and response flow for paid `not_sure` users
+- MyConcierge human follow-up request path
 - episode generation
 - narrated episode playback for auditory-learning personas
 - suite generation
 - live token generation
+- Gemini Live should remain the active real-time voice provider for demo readiness
+- Sesame should remain feature-flagged off until its dedicated Cloud Run service exists
 - CJS upload/review/strategy flow
 - free-tier dashboard should only expose Intake, Episodes, and AI Readiness
 - Assets ledger summary + decision flow

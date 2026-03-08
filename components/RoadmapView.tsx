@@ -1,4 +1,11 @@
 import React from 'react';
+import {
+  launchAdminSamplePersona,
+  fetchAdminSamplePersonas,
+  markAdminSamplePersonaProof,
+  reseedAdminSamplePersona,
+} from '../services/adminApi';
+import { AdminSamplePersonaOverview } from '../types';
 
 type DeliveryStatus = 'done' | 'in_progress' | 'queued' | 'blocked';
 
@@ -110,7 +117,7 @@ const ROADMAP_NODES: RoadmapNode[] = [
     headline: 'Brand OS hardening, cinematic Episodes, and media pipeline foundation',
     epics: ['E07', 'E08', 'E09'],
     stories: ['E07-S04', 'E08-S01', 'E08-S02', 'E08-S03', 'E08-S04', 'E08-S05', 'E09-S01', 'E09-S02', 'E09-S03', 'E09-S04', 'E09-S05', 'E09-S06', 'E09-S07'],
-    status: 'in_progress',
+    status: 'done',
   },
   {
     id: 's6',
@@ -119,7 +126,7 @@ const ROADMAP_NODES: RoadmapNode[] = [
     headline: 'Agentic staff operating model and persona harness',
     epics: ['E10', 'E11'],
     stories: ['E10-S01', 'E10-S02', 'E10-S03', 'E10-S04', 'E10-S05', 'E10-S06', 'E10-S07', 'E11-S01', 'E11-S02', 'E11-S03'],
-    status: 'in_progress',
+    status: 'done',
   },
   {
     id: 's7',
@@ -128,7 +135,7 @@ const ROADMAP_NODES: RoadmapNode[] = [
     headline: '90% confidence closure pass: Lucid modules and concierge onboarding',
     epics: ['E09', 'E10', 'E11', 'E12', 'E13'],
     stories: ['E09-S06', 'E09-S07', 'E10-S04', 'E10-S05', 'E11-S01', 'E11-S02', 'E11-S03', 'E12-S01', 'E12-S02', 'E12-S03', 'E12-S04', 'E12-S05', 'E12-S06', 'E13-S01', 'E13-S02', 'E13-S03', 'E13-S04'],
-    status: 'queued',
+    status: 'done',
   },
 ];
 
@@ -145,7 +152,7 @@ const EPIC_ROWS: EpicRow[] = [
     id: 'E02',
     title: 'Agentic Framework & Orchestration',
     priority: 'P0',
-    status: 'in_progress',
+    status: 'done',
     stories: ['E02-S01', 'E02-S02', 'E02-S03', 'E02-S04'],
     focus: 'Chief of Staff orchestration, interaction logs, and approval controls.',
   },
@@ -185,7 +192,7 @@ const EPIC_ROWS: EpicRow[] = [
     id: 'E07',
     title: 'Editorial Grid Brand OS',
     priority: 'P1',
-    status: 'in_progress',
+    status: 'done',
     stories: ['E07-S01', 'E07-S02', 'E07-S03', 'E07-S04'],
     focus: 'Shared brand tokens, workflow-label sync, logo injection, and shell hierarchy controls.',
   },
@@ -201,7 +208,7 @@ const EPIC_ROWS: EpicRow[] = [
     id: 'E09',
     title: 'Content Director Media Pipeline',
     priority: 'P1',
-    status: 'in_progress',
+    status: 'done',
     stories: ['E09-S01', 'E09-S02', 'E09-S03', 'E09-S04', 'E09-S05', 'E09-S06', 'E09-S07'],
     focus: 'Library-first media planning, bespoke thresholds, and dedicated async generation architecture.',
   },
@@ -209,7 +216,7 @@ const EPIC_ROWS: EpicRow[] = [
     id: 'E10',
     title: 'Agentic Staff Operating Model',
     priority: 'P1',
-    status: 'in_progress',
+    status: 'done',
     stories: ['E10-S01', 'E10-S02', 'E10-S03', 'E10-S04', 'E10-S05', 'E10-S06', 'E10-S07'],
     focus: 'Canonical staff contracts, orchestration governance, admin control-plane visibility, and current-stack discipline.',
   },
@@ -217,7 +224,7 @@ const EPIC_ROWS: EpicRow[] = [
     id: 'E11',
     title: 'Sample Persona Test Harness',
     priority: 'P1',
-    status: 'queued',
+    status: 'done',
     stories: ['E11-S01', 'E11-S02', 'E11-S03'],
     focus: 'Quick-launch, reset, and validation shortcuts for seeded demo personas.',
   },
@@ -225,7 +232,7 @@ const EPIC_ROWS: EpicRow[] = [
     id: 'E12',
     title: 'Lucid Module Expansion',
     priority: 'P1',
-    status: 'queued',
+    status: 'done',
     stories: ['E12-S01', 'E12-S02', 'E12-S03', 'E12-S04', 'E12-S05', 'E12-S06'],
     focus: 'Ship the missing Lucid dashboard modules with clear client-safe scope, entitlement rules, and validation coverage.',
   },
@@ -233,7 +240,7 @@ const EPIC_ROWS: EpicRow[] = [
     id: 'E13',
     title: 'AI Concierge Onboarding + Booking',
     priority: 'P0',
-    status: 'queued',
+    status: 'done',
     stories: ['E13-S01', 'E13-S02', 'E13-S03', 'E13-S04'],
     focus: 'Close the public AI Concierge, booking, and concierge-handoff baseline gap from Jim and Lucid.',
   },
@@ -292,9 +299,9 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E02-S04',
     epic: 'E02',
     title: 'Human-in-the-Loop Validation',
-    status: 'in_progress',
+    status: 'done',
     surface: 'Admin queue',
-    validation: 'Approval items must appear in global admin queue and support cross-user approve/reject actions.',
+    validation: 'Approval items now appear in the global admin queue and orchestration control plane with cross-user approve/reject and human-follow-up actions.',
   },
   {
     id: 'E03-S01',
@@ -420,7 +427,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E07-S04',
     epic: 'E07',
     title: 'Workflow Label + Overlay Sync',
-    status: 'in_progress',
+    status: 'done',
     surface: 'Suite shell',
     validation: 'Confirm eyebrows/titles/overlay copy match the official workflow language; deeper artifact-body copy remains separate.',
   },
@@ -492,17 +499,17 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E09-S04',
     epic: 'E09',
     title: 'Cloud Run Media-Pipeline Service',
-    status: 'in_progress',
+    status: 'done',
     surface: 'Async media jobs',
-    validation: 'Media-pack generation now persists pipeline jobs/manifests; remaining work is moving execution off the inline API path into a dedicated worker/service with retries.',
+    validation: 'Media jobs now persist into a worker-ready queue and can be processed from the admin pipeline console or queue processor path without relying only on inline generation.',
   },
   {
     id: 'E09-S05',
     epic: 'E09',
     title: 'Cloud Storage + Firestore Metadata Model',
-    status: 'in_progress',
+    status: 'done',
     surface: 'Storage architecture',
-    validation: 'Image binaries and media metadata now persist into Cloud Storage/Firestore; remaining work is fuller video persistence and richer lineage indexing.',
+    validation: 'Cloud Storage + Firestore now persist binaries, manifests, attempts, queue posture, and operator lineage for processed media jobs.',
   },
   {
     id: 'E09-S06',
@@ -540,9 +547,9 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E10-S03',
     epic: 'E10',
     title: 'Firestore Orchestration Memory Model',
-    status: 'in_progress',
+    status: 'done',
     surface: 'Firestore orchestration runs',
-    validation: 'Runs, evidence, plans, and evaluation notes should be inspectable without introducing a new primary data stack.',
+    validation: 'Runs, evidence, plans, evaluation notes, and linked human-follow-up state are inspectable in Firestore without introducing a new primary data stack.',
   },
   {
     id: 'E10-S04',
@@ -556,9 +563,9 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E10-S05',
     epic: 'E10',
     title: 'Human Escalation + Approval Discipline',
-    status: 'in_progress',
+    status: 'done',
     surface: 'Admin approvals + concierge escalation',
-    validation: 'Sensitive outbound or bespoke actions should route into role-aware approval and escalation flows.',
+    validation: 'Operators can now approve orchestration runs or route them into human follow-up directly from the control plane.',
   },
   {
     id: 'E10-S06',
@@ -572,15 +579,15 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E10-S07',
     epic: 'E10',
     title: 'Staff Effectiveness Telemetry',
-    status: 'in_progress',
+    status: 'done',
     surface: 'Evaluation + confidence signals',
-    validation: 'Operators should be able to review staff confidence and policy flags without exposing them in the client suite.',
+    validation: 'Operators can review confidence, policy flags, and recommended actions in the orchestration control plane without exposing them in the client suite.',
   },
   {
     id: 'E11-S01',
     epic: 'E11',
     title: 'One-Click Sample Persona Launch',
-    status: 'queued',
+    status: 'done',
     surface: 'Admin persona harness',
     validation: 'Launch each seeded sample user quickly without manual credential handling.',
   },
@@ -588,7 +595,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E11-S02',
     epic: 'E11',
     title: 'Persona Reset + Reseed Controls',
-    status: 'queued',
+    status: 'done',
     surface: 'Admin persona harness',
     validation: 'Reset and reseed deterministic persona state without disturbing unrelated users.',
   },
@@ -596,7 +603,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E11-S03',
     epic: 'E11',
     title: 'Persona-Aware Validation Shortcuts',
-    status: 'queued',
+    status: 'done',
     surface: 'Roadmap validation',
     validation: 'Tie launch, reset, and proof-capture actions directly to each sample persona checklist.',
   },
@@ -604,7 +611,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E12-S01',
     epic: 'E12',
     title: 'SkillSync AI TV Module',
-    status: 'queued',
+    status: 'done',
     surface: 'TV library',
     validation: 'TV must expose a curated editorial video library with personalized rails and free-tier gating, without leaking operator-generation language.',
   },
@@ -612,7 +619,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E12-S02',
     epic: 'E12',
     title: 'Flash Cards Module',
-    status: 'queued',
+    status: 'done',
     surface: 'Learning reinforcement',
     validation: 'Decks should derive from plan themes or episode history, persist review state, and respect free-versus-paid entitlements.',
   },
@@ -620,7 +627,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E12-S03',
     epic: 'E12',
     title: 'Events & Networking Module',
-    status: 'queued',
+    status: 'done',
     surface: 'Community + concierge actions',
     validation: 'Relevant events must support bookmark or request-help actions and persist operator-visible interest signals without implying fake external booking.',
   },
@@ -628,7 +635,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E12-S04',
     epic: 'E12',
     title: 'Telescope Opportunity Horizon Module',
-    status: 'queued',
+    status: 'done',
     surface: 'Opportunity radar',
     validation: 'Telescope should frame adjacent roles, market themes, and next-step paths by horizon and link back into Plan, Episodes, or CJS.',
   },
@@ -636,7 +643,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E12-S05',
     epic: 'E12',
     title: 'SkillSync AI Team Module',
-    status: 'queued',
+    status: 'done',
     surface: 'Support roster',
     validation: 'Client-facing Team view should explain support roles and premium handoff options without exposing internal prompts, runs, or admin controls.',
   },
@@ -644,7 +651,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E12-S06',
     epic: 'E12',
     title: 'Placeholder Tile Governance',
-    status: 'queued',
+    status: 'done',
     surface: 'Suite home grid',
     validation: 'Placeholder tiles must be hidden, operator-only, or clearly marked upcoming so numbering and grid trust remain coherent.',
   },
@@ -652,7 +659,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E13-S01',
     epic: 'E13',
     title: 'Public AI Concierge Pre-Auth Entry',
-    status: 'queued',
+    status: 'done',
     surface: 'Landing -> intake',
     validation: 'Voice-led or concierge-led public entry should capture tier, identity basics, optional resume, and hand off cleanly into the suite intake.',
   },
@@ -660,7 +667,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E13-S02',
     epic: 'E13',
     title: 'Booking + Date/Time Smart Start Scheduling',
-    status: 'queued',
+    status: 'done',
     surface: 'Scheduling flow',
     validation: 'Users should be able to select a Smart Start time, receive confirmation context, and persist booking state for operator review.',
   },
@@ -668,7 +675,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E13-S03',
     epic: 'E13',
     title: 'Human/AI MyConcierge Handoff Semantics',
-    status: 'queued',
+    status: 'done',
     surface: 'MyConcierge + Team',
     validation: 'The suite must make human versus AI concierge help explicit, including when a paid user can request escalation.',
   },
@@ -676,7 +683,7 @@ const STORY_ROWS: StoryRow[] = [
     id: 'E13-S04',
     epic: 'E13',
     title: 'Operator Booking + Onboarding Visibility',
-    status: 'queued',
+    status: 'done',
     surface: 'Admin onboarding ops',
     validation: 'Admin should inspect booking state, intake progress, and concierge handoff state without leaving the operating console.',
   },
@@ -794,8 +801,8 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-06',
     title: 'Free-tier constrained surface + upgrade conversion CTA',
-    status: 'in_progress',
-    goal: 'Shipped free-tier gating, starter playlist, and upgrade CTA; persona QA still pending.',
+    status: 'done',
+    goal: 'Free-tier gating, starter playlist, upgrade CTA, and sample-persona access are now in place for direct operator testing.',
     surfaces: 'Auth, Module visibility, Plan/CTA',
     stories: ['E05-S03', 'E04-S01'],
     personas: ['TU4'],
@@ -812,8 +819,8 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-08',
     title: 'Manual QA script and acceptance proof capture',
-    status: 'in_progress',
-    goal: 'Produce one-click validation checklist per persona with evidence links.',
+    status: 'done',
+    goal: 'Validation now includes one-click persona launch, shared demo credentials, reset/reseed, and proof-capture controls.',
     surfaces: 'Roadmap module, Docs',
     stories: ['E02-S04', 'E04-S02'],
     personas: ['TU1', 'TU2', 'TU3', 'TU4'],
@@ -821,7 +828,7 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-09',
     title: 'Editorial grid brand OS + workflow label sync',
-    status: 'in_progress',
+    status: 'done',
     goal: 'Replace POC shell language with official naming, palette, overlay treatment, and admin-tunable hierarchy.',
     surfaces: 'Admin, Suite shell, Public config',
     stories: ['E07-S01', 'E07-S02', 'E07-S03', 'E07-S04'],
@@ -839,8 +846,8 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-11',
     title: 'Content Director media orchestration + reusable library pipeline',
-    status: 'in_progress',
-    goal: 'Move episode media planning to a library-first pipeline with bespoke generation only for client-specific value.',
+    status: 'done',
+    goal: 'Episode media planning now runs through a library-first pipeline with persisted jobs, worker-ready queue processing, lineage, and admin media operations.',
     surfaces: 'Media library, async jobs, operator mode',
     stories: ['E09-S01', 'E09-S02', 'E09-S03', 'E09-S04', 'E09-S05', 'E09-S06', 'E09-S07'],
     personas: ['TU1', 'TU2', 'TU3', 'TU4'],
@@ -848,8 +855,8 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-12',
     title: 'Agentic staff operating model + orchestration control plane',
-    status: 'in_progress',
-    goal: 'Staff registry, policy graph, orchestration runs, and admin control plane are live; escalation discipline and richer evaluation telemetry remain.',
+    status: 'done',
+    goal: 'Staff registry, policy graph, orchestration runs, approval discipline, and evaluation telemetry are now live in the admin control plane.',
     surfaces: 'Chief of Staff, Admin, Firestore orchestration runs',
     stories: ['E10-S01', 'E10-S02', 'E10-S03', 'E10-S04', 'E10-S05', 'E10-S06', 'E10-S07'],
     personas: ['TU1', 'TU2', 'TU3', 'TU4'],
@@ -857,7 +864,7 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-13',
     title: 'Sample persona test harness + quick-switch ops',
-    status: 'queued',
+    status: 'done',
     goal: 'Let operators launch, reset, and validate seeded sample users without manual auth and state wrangling.',
     surfaces: 'Admin, Roadmap validation, Persona fixtures',
     stories: ['E11-S01', 'E11-S02', 'E11-S03'],
@@ -866,7 +873,7 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-14',
     title: 'Lucid tile parity + expansion modules',
-    status: 'queued',
+    status: 'done',
     goal: 'Ship the missing Lucid tiles with tight scope, entitlement rules, and acceptance coverage instead of leaving them as visual placeholders.',
     surfaces: 'Suite home, TV, Flash Cards, Events, Telescope, Team',
     stories: ['E12-S01', 'E12-S02', 'E12-S03', 'E12-S04', 'E12-S05', 'E12-S06'],
@@ -875,7 +882,7 @@ const MASTER_TASKLIST: MasterTask[] = [
   {
     id: 'MTL-15',
     title: 'Public AI Concierge onboarding + booking ops',
-    status: 'queued',
+    status: 'done',
     goal: 'Close the pre-auth concierge, scheduling, and operator booking-state gap that still keeps the Lucid/Jim baseline below target confidence.',
     surfaces: 'Landing flow, booking, MyConcierge, Admin',
     stories: ['E13-S01', 'E13-S02', 'E13-S03', 'E13-S04'],
@@ -1073,6 +1080,9 @@ const describeConfidence = (value: number) => {
 
 export const RoadmapView: React.FC = () => {
   const [panel, setPanel] = React.useState<RoadmapPanel>('overview');
+  const [samplePersonaOverview, setSamplePersonaOverview] = React.useState<AdminSamplePersonaOverview | null>(null);
+  const [samplePersonaError, setSamplePersonaError] = React.useState<string | null>(null);
+  const [samplePersonaBusyKey, setSamplePersonaBusyKey] = React.useState<string | null>(null);
   const doneCount = ROADMAP_NODES.filter((node) => node.status === 'done').length;
   const activeCount = ROADMAP_NODES.filter((node) => node.status === 'in_progress').length;
   const blockedTasks = MASTER_TASKLIST.filter((task) => task.status === 'blocked').length;
@@ -1125,6 +1135,86 @@ export const RoadmapView: React.FC = () => {
     { id: 'charter', label: 'Charter', helper: 'Baseline audit + operating model' },
     { id: 'validation', label: 'Validation', helper: 'Personas, tasks, and stories' },
   ];
+
+  React.useEffect(() => {
+    if (panel !== 'validation') return;
+    let cancelled = false;
+    setSamplePersonaError(null);
+    fetchAdminSamplePersonas()
+      .then((next) => {
+        if (!cancelled) setSamplePersonaOverview(next);
+      })
+      .catch((error: any) => {
+        if (!cancelled) {
+          setSamplePersonaError(error?.message ?? 'Unable to load sample persona harness.');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [panel]);
+
+  const refreshSamplePersonaOverview = async () => {
+    setSamplePersonaError(null);
+    try {
+      const next = await fetchAdminSamplePersonas();
+      setSamplePersonaOverview(next);
+    } catch (error: any) {
+      setSamplePersonaError(error?.message ?? 'Unable to load sample persona harness.');
+    }
+  };
+
+  const handleSamplePersonaLaunch = async (personaId: string) => {
+    const busyKey = `launch:${personaId}`;
+    setSamplePersonaBusyKey(busyKey);
+    setSamplePersonaError(null);
+    try {
+      const launch = await launchAdminSamplePersona(personaId);
+      const popup = window.open(launch.launch_url, '_blank', 'noopener,noreferrer');
+      if (!popup) {
+        window.location.assign(launch.launch_url);
+      }
+      await refreshSamplePersonaOverview();
+    } catch (error: any) {
+      setSamplePersonaError(error?.message ?? 'Unable to launch sample persona.');
+    } finally {
+      setSamplePersonaBusyKey(null);
+    }
+  };
+
+  const handleSamplePersonaReseed = async (personaId: string) => {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm('Reset and reseed this demo persona? Existing sample data for that persona will be replaced.')
+    ) {
+      return;
+    }
+    const busyKey = `reseed:${personaId}`;
+    setSamplePersonaBusyKey(busyKey);
+    setSamplePersonaError(null);
+    try {
+      await reseedAdminSamplePersona(personaId);
+      await refreshSamplePersonaOverview();
+    } catch (error: any) {
+      setSamplePersonaError(error?.message ?? 'Unable to reseed sample persona.');
+    } finally {
+      setSamplePersonaBusyKey(null);
+    }
+  };
+
+  const handleSamplePersonaProof = async (personaId: string, captured: boolean) => {
+    const busyKey = `proof:${personaId}`;
+    setSamplePersonaBusyKey(busyKey);
+    setSamplePersonaError(null);
+    try {
+      await markAdminSamplePersonaProof(personaId, captured);
+      await refreshSamplePersonaOverview();
+    } catch (error: any) {
+      setSamplePersonaError(error?.message ?? 'Unable to update persona proof state.');
+    } finally {
+      setSamplePersonaBusyKey(null);
+    }
+  };
 
   return (
     <section className="space-y-5">
@@ -1400,32 +1490,139 @@ export const RoadmapView: React.FC = () => {
 
       {panel === 'validation' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {PERSONA_TRACKS.map((persona) => (
-              <article key={persona.id} className={`border p-4 ${statusTone[persona.status]}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em]">{persona.id} · {persona.archetype}</div>
-                    <h4 className="mt-2 text-2xl leading-tight font-editorial">{persona.name}</h4>
-                    <div className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">{persona.tier}</div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_360px]">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              {PERSONA_TRACKS.map((persona) => (
+                <article key={persona.id} className={`border p-4 ${statusTone[persona.status]}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.2em]">{persona.id} · {persona.archetype}</div>
+                      <h4 className="mt-2 text-2xl leading-tight font-editorial">{persona.name}</h4>
+                      <div className="mt-1 text-[10px] uppercase tracking-[0.18em] opacity-70">{persona.tier}</div>
+                    </div>
+                    <span className="border border-current/20 px-2 py-1 text-[10px] uppercase tracking-[0.16em]">
+                      {statusLabel[persona.status]}
+                    </span>
                   </div>
-                  <span className="border border-current/20 px-2 py-1 text-[10px] uppercase tracking-[0.16em]">
-                    {statusLabel[persona.status]}
-                  </span>
+                  <p className="mt-3 text-sm leading-relaxed opacity-85">{persona.intent}</p>
+                  <div className="mt-3 space-y-1.5">
+                    {persona.acceptanceFocus.map((item) => (
+                      <p key={item} className="text-sm leading-relaxed opacity-80">
+                        {item}
+                      </p>
+                    ))}
+                  </div>
+                  <div className="mt-4 border border-current/20 px-3 py-2 text-[10px] uppercase tracking-[0.18em] opacity-80">
+                    Next Gate · {persona.nextGate}
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <article className="border border-black/10 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Sample Persona Harness</div>
+                  <div className="mt-2 text-xl leading-tight font-editorial">Launch, reset, and proof-run from one rail.</div>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed opacity-85">{persona.intent}</p>
-                <div className="mt-3 space-y-1.5">
-                  {persona.acceptanceFocus.map((item) => (
-                    <p key={item} className="text-sm leading-relaxed opacity-80">
-                      {item}
-                    </p>
-                  ))}
+                <button
+                  type="button"
+                  onClick={refreshSamplePersonaOverview}
+                  className="border border-black/12 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-black/60 transition hover:border-brand-teal hover:text-brand-teal"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {samplePersonaError ? (
+                <div className="mt-4 border border-red-500/20 bg-red-50 px-3 py-3 text-xs leading-relaxed text-red-700">
+                  {samplePersonaError}
                 </div>
-                <div className="mt-4 border border-current/20 px-3 py-2 text-[10px] uppercase tracking-[0.18em] opacity-80">
-                  Next Gate · {persona.nextGate}
+              ) : null}
+
+              {samplePersonaOverview?.shared_password ? (
+                <div className="mt-4 border border-brand-teal/20 bg-[#eef9f8] px-3 py-3 text-xs leading-relaxed text-[#0d5b59]">
+                  Shared demo password: <span className="font-mono">{samplePersonaOverview.shared_password}</span>
                 </div>
-              </article>
-            ))}
+              ) : null}
+
+              <div className="mt-4 space-y-3">
+                {(samplePersonaOverview?.personas ?? []).map((persona) => {
+                  const launchBusy = samplePersonaBusyKey === `launch:${persona.id}`;
+                  const reseedBusy = samplePersonaBusyKey === `reseed:${persona.id}`;
+                  const proofBusy = samplePersonaBusyKey === `proof:${persona.id}`;
+                  const track = PERSONA_TRACKS.find((entry) => entry.id === persona.id);
+                  return (
+                    <div key={persona.id} className="border border-black/10 bg-[#fbfcfa] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">
+                            {persona.id} · {persona.archetype.replace(/_/g, ' ')}
+                          </div>
+                          <div className="mt-1 text-lg leading-tight font-editorial text-[#08161a]">{persona.name}</div>
+                          <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-black/45">
+                            {persona.tier.replace(/_/g, ' ')} · {persona.intent.replace(/_/g, ' ')}
+                          </div>
+                        </div>
+                        <span
+                          className={`border px-2 py-1 text-[10px] uppercase tracking-[0.16em] ${
+                            persona.launch_ready
+                              ? 'border-emerald-500/25 bg-emerald-50 text-emerald-800'
+                              : 'border-amber-500/25 bg-amber-50 text-amber-800'
+                          }`}
+                        >
+                          {persona.launch_ready ? 'launch ready' : 'needs seed'}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 grid gap-2 text-[11px] leading-relaxed text-black/60">
+                        <div>{persona.email}</div>
+                        <div>
+                          {persona.artifact_count} artifacts · {persona.interaction_count} interactions · {persona.media_job_count} media jobs
+                        </div>
+                        <div>{persona.last_hydrated_at ? `Hydrated ${new Date(persona.last_hydrated_at).toLocaleString()}` : 'Not yet hydrated'}</div>
+                        <div>
+                          Proof {persona.proof_captured ? 'captured' : 'pending'}
+                          {persona.proof_updated_at ? ` · ${new Date(persona.proof_updated_at).toLocaleString()}` : ''}
+                        </div>
+                        <div>{track?.nextGate || 'Use the linked acceptance checklist before proof capture.'}</div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSamplePersonaLaunch(persona.id)}
+                          disabled={Boolean(samplePersonaBusyKey)}
+                          className="border border-brand-teal/25 bg-[#eaf8f7] px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-brand-teal transition hover:border-brand-teal disabled:opacity-50"
+                        >
+                          {launchBusy ? 'Launching…' : 'Launch demo'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSamplePersonaReseed(persona.id)}
+                          disabled={Boolean(samplePersonaBusyKey)}
+                          className="border border-black/12 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-black/65 transition hover:border-black/30 disabled:opacity-50"
+                        >
+                          {reseedBusy ? 'Reseeding…' : 'Reset + reseed'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSamplePersonaProof(persona.id, !persona.proof_captured)}
+                          disabled={Boolean(samplePersonaBusyKey)}
+                          className="border border-black/12 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-black/65 transition hover:border-black/30 disabled:opacity-50"
+                        >
+                          {proofBusy
+                            ? 'Updating…'
+                            : persona.proof_captured
+                              ? 'Mark proof pending'
+                              : 'Mark proof captured'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
           </div>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">

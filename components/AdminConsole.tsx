@@ -17,12 +17,21 @@ import {
   fetchAdminOrchestrationOverview,
   fetchAdminSystemOverview,
   getAdminApiOrigin,
+  processAdminMediaJob,
+  processAdminMediaQueue,
   requestAdminMediaRetry,
+  reviewAdminOrchestrationRun,
   reviewAdminMediaManifest,
   saveAdminConfig,
+  updateAdminConciergeRequestStatus,
 } from '../services/adminApi';
 import { MEDIA_LIBRARY_TAXONOMY_GROUPS, mergeMediaTags } from '../config/mediaLibraryTaxonomy';
 import { STARTER_MEDIA_LIBRARY_PACK } from '../config/starterMediaLibrary';
+import {
+  GEMINI_LIVE_MODEL_OPTIONS,
+  GEMINI_LIVE_VOICE_OPTIONS,
+  VOICE_RUNTIME_LANES,
+} from '../config/voiceRuntime.js';
 import { BrandStudioSection } from './admin/BrandStudioSection';
 
 type Props = {
@@ -121,6 +130,7 @@ const EXTERNAL_PLATFORMS: MediaPlatform[] = [
 
 const SOURCE_KINDS: MediaSourceKind[] = ['single', 'playlist'];
 const AUDIENCES: MediaAudience[] = ['all', 'new_clients', 'active_clients', 'admins', 'non_admins'];
+const GEMINI_VOICE_NAMES = GEMINI_LIVE_VOICE_OPTIONS.map((voice) => voice.name);
 
 const createMediaItem = (): CuratedMediaItem => ({
   id: `media-${Date.now().toString(36)}`,
@@ -174,7 +184,8 @@ const signalTone = (active: boolean) =>
     : 'border-black/10 bg-white text-black/45';
 
 const mediaPipelineTone = (status: string) => {
-  if (status === 'completed' || status === 'approved') return 'border-emerald-500/25 bg-emerald-50 text-emerald-800';
+  if (status === 'completed' || status === 'approved' || status === 'scheduled') return 'border-emerald-500/25 bg-emerald-50 text-emerald-800';
+  if (status === 'reviewed') return 'border-brand-teal/25 bg-brand-soft text-brand-teal';
   if (status === 'queued' || status === 'needs_review') return 'border-amber-500/25 bg-amber-50 text-amber-800';
   if (status === 'degraded' || status === 'rejected') return 'border-red-500/25 bg-red-50 text-red-800';
   return 'border-black/10 bg-white text-black/60';
@@ -428,6 +439,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   const [mediaPipeline, setMediaPipeline] = useState<AdminMediaPipelineOverview | null>(null);
   const [mediaPipelineError, setMediaPipelineError] = useState<string | null>(null);
   const [mediaPipelineBusyKey, setMediaPipelineBusyKey] = useState<string | null>(null);
+  const [bookingBusyKey, setBookingBusyKey] = useState<string | null>(null);
   const [orchestrationOverview, setOrchestrationOverview] = useState<AdminOrchestrationOverview | null>(null);
   const [orchestrationError, setOrchestrationError] = useState<string | null>(null);
   const [showAdvancedVoice, setShowAdvancedVoice] = useState(false);
@@ -632,6 +644,38 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     }
   };
 
+  const processMediaJob = async (clientUid: string, jobId: string) => {
+    const key = `process:${clientUid}:${jobId}`;
+    setMediaPipelineBusyKey(key);
+    setMediaPipelineError(null);
+    setSuccess(null);
+    try {
+      await processAdminMediaJob(clientUid, jobId);
+      await refreshMediaPipeline();
+      setSuccess('Media job processed.');
+    } catch (e: any) {
+      setMediaPipelineError(e?.message ?? 'Unable to process media job.');
+    } finally {
+      setMediaPipelineBusyKey(null);
+    }
+  };
+
+  const processMediaQueueNow = async () => {
+    const key = 'process:queue';
+    setMediaPipelineBusyKey(key);
+    setMediaPipelineError(null);
+    setSuccess(null);
+    try {
+      await processAdminMediaQueue(2);
+      await refreshMediaPipeline();
+      setSuccess('Pending media queue processed.');
+    } catch (e: any) {
+      setMediaPipelineError(e?.message ?? 'Unable to process pending media queue.');
+    } finally {
+      setMediaPipelineBusyKey(null);
+    }
+  };
+
   const reviewManifest = async (
     clientUid: string,
     manifestId: string,
@@ -664,6 +708,50 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     load();
   };
 
+  const updateConciergeRequestStatus = async (
+    requestId: string,
+    status: 'new' | 'reviewed' | 'scheduled'
+  ) => {
+    setBookingBusyKey(`${requestId}:${status}`);
+    setError(null);
+    setSuccess(null);
+    try {
+      await updateAdminConciergeRequestStatus(requestId, status);
+      const nextOverview = await fetchAdminSystemOverview();
+      setOverview(nextOverview);
+      setSuccess(`Concierge request marked ${status}.`);
+    } catch (e: any) {
+      setError(e?.message ?? 'Unable to update concierge request.');
+    } finally {
+      setBookingBusyKey(null);
+    }
+  };
+
+  const reviewOrchestrationRun = async (
+    clientUid: string,
+    runId: string,
+    decision: 'approved' | 'needs_review' | 'request_human_followup'
+  ) => {
+    const key = `orchestration:${clientUid}:${runId}:${decision}`;
+    setBookingBusyKey(key);
+    setOrchestrationError(null);
+    setSuccess(null);
+    try {
+      await reviewAdminOrchestrationRun(clientUid, runId, decision);
+      const [nextOverview] = await Promise.all([fetchAdminSystemOverview(), refreshOrchestrationOverview()]);
+      setOverview(nextOverview);
+      setSuccess(
+        decision === 'request_human_followup'
+          ? 'Human follow-up requested from orchestration control plane.'
+          : `Run marked ${decision.replace(/_/g, ' ')}.`
+      );
+    } catch (e: any) {
+      setOrchestrationError(e?.message ?? 'Unable to review orchestration run.');
+    } finally {
+      setBookingBusyKey(null);
+    }
+  };
+
   const overviewCards = overview
     ? [
         {
@@ -677,6 +765,12 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           title: `${overview.queue.pending_count} pending / ${overview.queue.client_count} clients`,
           body: 'Global admin queue across client ledgers.',
           meta: overview.queue.pending_count > 0 ? 'attention required' : 'clear',
+        },
+        {
+          eyebrow: 'Concierge',
+          title: `${overview.bookings.pending_count} new / ${overview.bookings.items.length} visible`,
+          body: 'Public AI Concierge and Smart Start intake requests.',
+          meta: overview.bookings.pending_count > 0 ? 'follow up needed' : 'quiet',
         },
         {
           eyebrow: 'Agents',
@@ -1085,7 +1179,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 { label: 'Total jobs', value: pipelineSummary?.total_jobs ?? 0, meta: `${pipelineSummary?.completed_jobs ?? 0} completed` },
                 { label: 'Needs review', value: pipelineSummary?.manifests_needing_review ?? 0, meta: `${pipelineSummary?.retry_requested_jobs ?? 0} retries requested` },
                 { label: 'Reusable gaps', value: pipelineSummary?.reusable_gap_count ?? 0, meta: `${pipelineSummary?.bespoke_gap_count ?? 0} bespoke gaps` },
-                { label: 'Queue health', value: pipelineSummary?.queued_jobs ?? 0, meta: `${pipelineSummary?.degraded_jobs ?? 0} degraded` },
+                { label: 'Queue health', value: pipelineSummary?.queued_jobs ?? 0, meta: `${pipelineSummary?.worker_ready_jobs ?? 0} worker ready` },
               ].map((card) => (
                 <div key={card.label} className="border border-black/10 bg-[#fbfcfa] p-4">
                   <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">{card.label}</div>
@@ -1208,9 +1302,20 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
 
         <Panel title="Recent pipeline jobs" eyebrow="Queue watch" meta={`${mediaPipeline?.jobs.length ?? 0} recent jobs`}>
           <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={processMediaQueueNow}
+                disabled={mediaPipelineBusyKey === 'process:queue'}
+                className="border border-black/15 px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal disabled:opacity-50"
+              >
+                {mediaPipelineBusyKey === 'process:queue' ? 'Processing…' : 'Run queue now'}
+              </button>
+            </div>
             {mediaPipeline?.jobs?.length ? (
               mediaPipeline.jobs.map((job) => {
                 const retryKey = `retry:${job.client_uid}:${job.job_id}`;
+                const processKey = `process:${job.client_uid}:${job.job_id}`;
                 return (
                   <article key={`${job.client_uid}-${job.job_id}`} className="border border-black/10 bg-[#fbfcfa] p-4 space-y-3">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -1233,9 +1338,10 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       </div>
                     </div>
 
-                    <div className="grid gap-2 md:grid-cols-4 text-xs text-black/60">
+                    <div className="grid gap-2 md:grid-cols-5 text-xs text-black/60">
                       <div>{job.asset_count} assets</div>
                       <div>{job.queued_asset_count} queued</div>
+                      <div>{job.attempt_count} attempts</div>
                       <div>{job.retry_requested_count} retries requested</div>
                       <div>{job.updated_at ? new Date(job.updated_at).toLocaleString() : 'No update time'}</div>
                     </div>
@@ -1257,6 +1363,14 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => processMediaJob(job.client_uid, job.job_id)}
+                        disabled={mediaPipelineBusyKey === processKey || !job.worker_ready}
+                        className="border border-black/15 px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal disabled:opacity-50"
+                      >
+                        {mediaPipelineBusyKey === processKey ? 'Processing…' : 'Process now'}
+                      </button>
                       <button
                         type="button"
                         onClick={() => retryMediaJob(job.client_uid, job.job_id)}
@@ -1744,6 +1858,10 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
 
   const renderVoice = () => {
     if (!config) return null;
+    const providerOptions = config.voice.sesame_enabled ? ['gemini_live', 'sesame'] : ['gemini_live'];
+    const selectedVoiceMeta =
+      GEMINI_LIVE_VOICE_OPTIONS.find((voice) => voice.name === config.voice.gemini_voice_name) ??
+      GEMINI_LIVE_VOICE_OPTIONS.find((voice) => voice.name === 'Aoede');
     return (
       <SectionShell {...sectionCopy.voice}>
         <Panel title="Voice posture" eyebrow="Presets" meta="Primary operating modes">
@@ -1775,6 +1893,65 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </div>
         </Panel>
 
+        <Panel title="Voice lane readiness" eyebrow="Runtime map" meta="Gemini live now, others gated">
+          <div className="grid gap-3">
+            {VOICE_RUNTIME_LANES.map((lane) => {
+              const isSelected = lane.id === config.voice.provider;
+              const stateLabel =
+                lane.id === 'sesame'
+                  ? config.voice.sesame_enabled
+                    ? 'flagged on'
+                    : 'flagged off'
+                  : lane.state;
+              return (
+                <article
+                  key={lane.id}
+                  className={`border p-4 ${
+                    isSelected
+                      ? 'border-brand-teal bg-brand-soft shadow-[0_16px_32px_-24px_rgba(0,0,0,0.32)]'
+                      : 'border-black/10 bg-[#fcfcfb]'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">{stateLabel}</div>
+                      <div className="mt-2 text-xl font-editorial italic leading-tight">{lane.label}</div>
+                      <div className="mt-2 text-xs leading-5 text-gray-600">{lane.summary}</div>
+                    </div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">
+                      {isSelected ? 'current lane' : 'not selected'}
+                    </div>
+                  </div>
+                  {lane.id === 'sesame' ? (
+                    <div className="mt-4">
+                      <ToggleField
+                        checked={config.voice.sesame_enabled}
+                        onChange={(checked) =>
+                          setConfig((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  voice: {
+                                    ...prev.voice,
+                                    sesame_enabled: checked,
+                                    provider:
+                                      prev.voice.provider === 'sesame' && !checked ? 'gemini_live' : prev.voice.provider,
+                                  },
+                                }
+                              : prev
+                          )
+                        }
+                        label="Enable Sesame lane"
+                        hint="Leave off until the dedicated Sesame Cloud Run service is deployed."
+                      />
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </Panel>
+
         <div className="grid gap-5">
           <Panel title="Provider and transport" eyebrow="Runtime" meta={config.voice.provider}>
             <div className="grid gap-5">
@@ -1789,7 +1966,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
               <SelectField
                 label="Provider"
                 value={config.voice.provider}
-                options={['sesame', 'gemini_live']}
+                options={providerOptions}
                 onChange={(value) =>
                   setConfig((prev) =>
                     prev
@@ -1797,7 +1974,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                           ...prev,
                           voice: {
                             ...prev.voice,
-                            provider: value === 'gemini_live' ? 'gemini_live' : 'sesame',
+                            provider: value === 'sesame' && prev.voice.sesame_enabled ? 'sesame' : 'gemini_live',
                           },
                         }
                       : prev
@@ -1809,7 +1986,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                   label={
                     config.voice.provider === 'sesame'
                       ? 'Sesame API URL (Cerebrium endpoint)'
-                      : 'Gemini Live model route override'
+                      : 'Gemini Live route notes'
                   }
                   value={config.voice.api_url}
                   onChange={(value) =>
@@ -1818,7 +1995,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                   placeholder={
                     config.voice.provider === 'sesame'
                       ? 'https://api.cortex.cerebrium.ai/v4/PROJECT/APP/generate_audio'
-                      : 'optional override'
+                      : 'Optional operator note. Live route is handled by Gemini config below.'
                   }
                 />
               </div>
@@ -1835,25 +2012,31 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 }
                 placeholder="Maya"
               />
-              <TextField
+              <SelectField
                 label="Gemini Live model"
                 value={config.voice.gemini_live_model}
+                options={GEMINI_LIVE_MODEL_OPTIONS.map((option) => option.id)}
                 onChange={(value) =>
-                  setConfig((prev) =>
-                    prev ? { ...prev, voice: { ...prev.voice, gemini_live_model: value } } : prev
-                  )
+                  setConfig((prev) => (prev ? { ...prev, voice: { ...prev.voice, gemini_live_model: value } } : prev))
                 }
               />
-              <TextField
+              <SelectField
                 label="Gemini voice name"
                 value={config.voice.gemini_voice_name}
+                options={GEMINI_VOICE_NAMES}
                 onChange={(value) =>
                   setConfig((prev) =>
                     prev ? { ...prev, voice: { ...prev.voice, gemini_voice_name: value } } : prev
                   )
                 }
-                placeholder="Aoede"
               />
+              <div className="border border-black/10 bg-[#fbfcfa] p-4 text-xs leading-5 text-black/65">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Selected voice</div>
+                <div className="mt-2 text-lg font-editorial text-[#08161a]">
+                  {selectedVoiceMeta?.name ?? config.voice.gemini_voice_name}
+                </div>
+                <div className="mt-1">Tone: {selectedVoiceMeta?.tone ?? 'Custom'}</div>
+              </div>
               <TextField
                 label="Max audio length (ms)"
                 type="number"
@@ -1887,6 +2070,116 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
 
             {showAdvancedVoice ? (
               <div className="grid gap-5">
+                <ToggleField
+                  checked={config.voice.gemini_input_audio_transcription_enabled}
+                  onChange={(checked) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            voice: { ...prev.voice, gemini_input_audio_transcription_enabled: checked },
+                          }
+                        : prev
+                    )
+                  }
+                  label="Capture input transcription"
+                  hint="Turns live user speech into structured transcript events for the interview rail."
+                />
+                <ToggleField
+                  checked={config.voice.gemini_output_audio_transcription_enabled}
+                  onChange={(checked) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            voice: { ...prev.voice, gemini_output_audio_transcription_enabled: checked },
+                          }
+                        : prev
+                    )
+                  }
+                  label="Capture output transcription"
+                  hint="Improves transcript visibility while audio remains the primary response modality."
+                />
+                <ToggleField
+                  checked={config.voice.gemini_affective_dialog_enabled}
+                  onChange={(checked) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            voice: { ...prev.voice, gemini_affective_dialog_enabled: checked },
+                          }
+                        : prev
+                    )
+                  }
+                  label="Affective dialog"
+                  hint="Optional native-audio emotional response tuning. Leave off for maximum predictability."
+                />
+                <ToggleField
+                  checked={config.voice.gemini_proactive_audio_enabled}
+                  onChange={(checked) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            voice: { ...prev.voice, gemini_proactive_audio_enabled: checked },
+                          }
+                        : prev
+                    )
+                  }
+                  label="Proactive audio"
+                  hint="Lets Gemini hold silence until it decides a response is warranted."
+                />
+                <ToggleField
+                  checked={config.voice.gemini_thinking_enabled}
+                  onChange={(checked) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            voice: {
+                              ...prev.voice,
+                              gemini_thinking_enabled: checked,
+                              gemini_thinking_budget: checked ? Math.max(prev.voice.gemini_thinking_budget, 256) : 0,
+                            },
+                          }
+                        : prev
+                    )
+                  }
+                  label="Thinking mode"
+                  hint="Adds deliberate reasoning time. Keep off when lowest latency matters most."
+                />
+                <SelectField
+                  label="Activity handling"
+                  value={config.voice.gemini_activity_handling}
+                  options={['interrupt', 'wait']}
+                  onChange={(value) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            voice: {
+                              ...prev.voice,
+                              gemini_activity_handling: value === 'wait' ? 'wait' : 'interrupt',
+                            },
+                          }
+                        : prev
+                    )
+                  }
+                />
+                <TextField
+                  label="Thinking budget"
+                  type="number"
+                  min={0}
+                  max={1024}
+                  step={32}
+                  value={config.voice.gemini_thinking_budget}
+                  onChange={(value) =>
+                    setConfig((prev) =>
+                      prev ? { ...prev, voice: { ...prev.voice, gemini_thinking_budget: Number(value) } } : prev
+                    )
+                  }
+                />
                 <TextField
                   label="Voice temperature"
                   type="number"
@@ -2024,6 +2317,76 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </div>
         </Panel>
 
+        <Panel title="Concierge requests" eyebrow="Smart Start ops" meta={`${overview.bookings.pending_count} new`}>
+          <div className="space-y-3">
+            {overview.bookings.items.length === 0 ? (
+              <div className="border border-dashed border-black/15 bg-[#fbfcfa] p-5 text-sm text-black/55">
+                No public concierge or Smart Start requests yet.
+              </div>
+            ) : (
+              overview.bookings.items.map((request) => (
+                <article key={request.id} className="space-y-3 border border-black/10 bg-[#fbfcfa] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">
+                        {request.request_kind.replace(/_/g, ' ')}
+                      </div>
+                      <h5 className="mt-2 text-xl font-editorial leading-tight">{request.name}</h5>
+                      <div className="mt-1 text-xs text-black/55">{request.email}{request.company ? ` · ${request.company}` : ''}</div>
+                    </div>
+                    <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${mediaPipelineTone(request.status)}`}>
+                      {request.status.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+
+                  <p className="text-sm leading-6 text-black/65">{request.goal || 'No goal captured.'}</p>
+                  <div className="grid gap-2 text-xs text-black/55 md:grid-cols-2">
+                    <div>Service: {request.service_interest ? request.service_interest.replace(/_/g, ' ') : 'Not provided'}</div>
+                    <div>Preferred timing: {request.preferred_timing || 'Not provided'}</div>
+                    <div>
+                      Structured slot:{' '}
+                      {request.preferred_date || request.preferred_time || request.preferred_timezone
+                        ? [request.preferred_date, request.preferred_time, request.preferred_timezone].filter(Boolean).join(' · ')
+                        : 'Not provided'}
+                    </div>
+                    <div>{request.updated_at ? new Date(request.updated_at).toLocaleString() : 'No update time'}</div>
+                  </div>
+                  {request.resume_link ? (
+                    <div className="text-xs text-black/55">
+                      Resume / portfolio:{' '}
+                      <a
+                        href={request.resume_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline decoration-black/20 underline-offset-2"
+                      >
+                        {request.resume_link}
+                      </a>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-2">
+                    {(['reviewed', 'scheduled'] as const).map((status) => {
+                      const key = `${request.id}:${status}`;
+                      return (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => updateConciergeRequestStatus(request.id, status)}
+                          disabled={Boolean(bookingBusyKey)}
+                          className="border border-black/12 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-black/65 transition hover:border-brand-teal disabled:opacity-50"
+                        >
+                          {bookingBusyKey === key ? 'Updating…' : `Mark ${status}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </Panel>
+
         <div className="grid gap-5">
           <Panel
             title="Orchestration control plane"
@@ -2062,17 +2425,17 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                   {
                     label: 'Tracked runs',
                     value: orchestrationOverview?.summary.run_count ?? 0,
-                    meta: `${orchestrationOverview?.summary.approval_required_runs ?? 0} approval-linked`,
+                    meta: `${orchestrationOverview?.summary.flagged_runs ?? 0} flagged`,
                   },
                   {
                     label: 'Avg confidence',
                     value: `${Math.round((orchestrationOverview?.summary.average_confidence ?? 0) * 100)}%`,
-                    meta: 'from recent orchestration runs',
+                    meta: `${orchestrationOverview?.summary.low_confidence_runs ?? 0} low-confidence`,
                   },
                   {
                     label: 'Free-tier guard',
                     value: orchestrationOverview?.policy.free_roles.length ?? 0,
-                    meta: 'roles allowed on free journeys',
+                    meta: `${orchestrationOverview?.summary.human_followup_runs ?? 0} human follow-up candidates`,
                   },
                 ].map((card) => (
                   <div key={card.label} className="border border-black/10 bg-[#fbfcfa] p-4">
@@ -2149,6 +2512,22 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                             <div>{run.updated_at ? new Date(run.updated_at).toLocaleString() : 'No update time'}</div>
                           </div>
 
+                          {run.policy_flags.length > 0 ? (
+                            <div className="space-y-2">
+                              <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Policy flags</div>
+                              <div className="flex flex-wrap gap-2">
+                                {run.policy_flags.map((flag) => (
+                                  <span
+                                    key={flag}
+                                    className="border border-amber-500/20 bg-amber-50 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-800"
+                                  >
+                                    {labelize(flag)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
                           <div className="space-y-2">
                             <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Next roles</div>
                             <div className="flex flex-wrap gap-2">
@@ -2161,6 +2540,40 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                                 </span>
                               ))}
                             </div>
+                          </div>
+
+                          {run.recommended_actions.length > 0 ? (
+                            <div className="space-y-2">
+                              <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Recommended actions</div>
+                              <div className="space-y-1 text-xs leading-5 text-black/60">
+                                {run.recommended_actions.map((action) => (
+                                  <div key={action}>{action}</div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => reviewOrchestrationRun(run.client_uid, run.run_id, 'approved')}
+                              disabled={bookingBusyKey === `orchestration:${run.client_uid}:${run.run_id}:approved`}
+                              className="border border-black/15 px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal disabled:opacity-50"
+                            >
+                              {bookingBusyKey === `orchestration:${run.client_uid}:${run.run_id}:approved` ? 'Updating…' : 'Approve run'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => reviewOrchestrationRun(run.client_uid, run.run_id, 'request_human_followup')}
+                              disabled={bookingBusyKey === `orchestration:${run.client_uid}:${run.run_id}:request_human_followup`}
+                              className="border border-black/15 px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal disabled:opacity-50"
+                            >
+                              {bookingBusyKey === `orchestration:${run.client_uid}:${run.run_id}:request_human_followup`
+                                ? 'Routing…'
+                                : run.linked_request_id
+                                  ? 'Follow-up linked'
+                                  : 'Request human follow-up'}
+                            </button>
                           </div>
                         </article>
                       ))

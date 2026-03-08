@@ -2,6 +2,10 @@
 
 Use this checklist for in-product validation before production demos. Each persona now includes positive-path proof plus negative guards so the demo operator can confirm both the intended journey and the important things the product must not do.
 
+Shared demo-persona password for manual login:
+
+- `CareerDemo!2026`
+
 ## TU1 Donell Woodson
 
 ### Positive Path
@@ -184,9 +188,10 @@ Use this checklist for in-product validation before production demos. Each perso
 1. Login as an admin user and open `Admin` -> `Media`.
 2. Confirm the `Pipeline monitor` summary loads counts for jobs, review state, and reusable/bespoke gaps.
 3. In `Recent pipeline jobs`, click `Request retry` on one job and confirm the action succeeds.
-4. Refresh the pipeline monitor and verify the job shows an increased retry-request count.
-5. In `Manifest review`, mark one manifest `approved`, then another `needs review`.
-6. Confirm the updated review state is reflected in the admin surface without leaving the console.
+4. Refresh the pipeline monitor and verify the job shows an increased retry-request count and `worker ready` posture.
+5. Use `Process now` on a queued job or `Run queue now` for the pending rail and confirm the job advances without creating a new manifest.
+6. In `Manifest review`, mark one manifest `approved`, then another `needs review`.
+7. Confirm the updated review state is reflected in the admin surface without leaving the console.
 
 ### Negative Guards
 
@@ -209,3 +214,36 @@ Use this checklist for in-product validation before production demos. Each perso
 1. Confirm the governance view does not expose raw prompt bodies or unrelated client PII beyond the operator-safe summary fields.
 2. Confirm free-tier policy is represented in the orchestration policy and not routed through premium-only roles by default.
 3. Confirm the control plane remains inside Admin and does not appear as a client-facing module.
+
+## Orchestration Approval + Handoff Pass
+
+### Positive Path
+
+1. Login as an admin user and open `Admin` -> `Governance`.
+2. Choose a recent orchestration run and click `Approve run`.
+3. Confirm the approval badge updates and the run remains visible with its evaluation metadata.
+4. Choose a run that should escalate and click `Request human follow-up`.
+5. Open `Concierge requests` and confirm a linked follow-up request appears for that client.
+
+### Negative Guards
+
+1. Confirm approving or escalating a run does not overwrite unsaved config edits elsewhere in Admin.
+2. Confirm `Request human follow-up` does not create duplicate concierge requests when the run already has a linked request.
+3. Confirm non-admin users cannot access run approval or human-follow-up controls.
+
+## Voice Runtime Pass
+
+### Positive Path
+
+1. Login as an admin user and open `Admin` -> `Voice`.
+2. Confirm `Gemini Live` is the selected provider and `Sesame` is shown as `flagged off` by default.
+3. Verify Gemini voice-name options use the official prebuilt voice list rather than free-form placeholder values.
+4. Enable `Capture input transcription` and `Capture output transcription`, save config, then open the live panel.
+5. Start a Gemini Live session and confirm the token payload reflects transcription and activity-handling settings.
+6. Speak one short prompt and confirm the transcript area captures both `You` and `Concierge` lines.
+
+### Negative Guards
+
+1. Disable the global voice toggle and confirm live token creation fails with `voice_disabled`.
+2. Leave Sesame flagged off, attempt to switch the provider to Sesame, save, and confirm the runtime still resolves to Gemini Live.
+3. Confirm `ElevenLabs` and `Manus AI` appear only as planned lanes, not active providers.

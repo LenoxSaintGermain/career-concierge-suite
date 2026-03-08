@@ -172,6 +172,11 @@ export function GeminiLivePanel() {
     () => STORY_SCENES.find((scene) => scene.id === activeStoryScene) ?? STORY_SCENES[0],
     [activeStoryScene]
   );
+  const appendTranscriptLine = (line: string) => {
+    const cleaned = String(line || '').trim();
+    if (!cleaned) return;
+    setTranscript((prev) => `${prev}${prev ? '\n' : ''}${cleaned}`);
+  };
   const liveMood =
     state === 'connected'
       ? micEnabled
@@ -382,6 +387,10 @@ export function GeminiLivePanel() {
         callbacks: {
           onmessage: async (message: any) => {
             const parts = message?.serverContent?.modelTurn?.parts || [];
+            const inputTranscript = String(message?.serverContent?.inputTranscription?.text || '').trim();
+            const outputTranscript = String(message?.serverContent?.outputTranscription?.text || '').trim();
+            if (inputTranscript) appendTranscriptLine(`You · ${inputTranscript}`);
+            if (outputTranscript) appendTranscriptLine(`Concierge · ${outputTranscript}`);
             for (const part of parts) {
               if (part?.inlineData?.data) {
                 const mimeType = String(part?.inlineData?.mimeType || audioMimeRef.current || 'audio/pcm;rate=24000');
@@ -397,8 +406,8 @@ export function GeminiLivePanel() {
                   audioChunksRef.current.push(chunk);
                 }
               }
-              if (part?.text) {
-                setTranscript((prev) => `${prev}${prev ? '\n' : ''}${String(part.text).trim()}`);
+              if (part?.text && !outputTranscript) {
+                appendTranscriptLine(`Concierge · ${String(part.text).trim()}`);
               }
             }
             if (message?.serverContent?.turnComplete) {
