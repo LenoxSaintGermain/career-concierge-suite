@@ -571,10 +571,19 @@ const App: React.FC = () => {
             className="relative flex h-full max-h-[92vh] w-full max-w-[1520px] flex-col overflow-hidden shadow-2xl ring-1 ring-black/5"
             style={{ backgroundColor: brand.colors.surface_background }}
           >
-            <header className="border-b border-black/10 bg-[rgba(245,242,233,0.94)] px-5 py-5 backdrop-blur md:px-8">
-              <div className="flex flex-col gap-4 border-b border-black/10 pb-5 xl:flex-row xl:items-start xl:justify-between">
+            <header
+              className="border-b border-black/10 px-5 py-5 md:px-8"
+              style={{
+                background:
+                  brand.hierarchy.overlay_style === 'cinematic'
+                    ? `linear-gradient(145deg, ${brand.colors.overlay_background} 0%, ${brand.colors.ink} 100%)`
+                    : brand.colors.overlay_background,
+                color: brand.colors.overlay_text,
+              }}
+            >
+              <div className="flex flex-col gap-4 border-b pb-5 xl:flex-row xl:items-start xl:justify-between" style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}>
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em] text-black/45">
+                  <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.48) }}>
                     <span>
                       {openModule.index} / {String(visibleModules.length).padStart(2, '0')}
                     </span>
@@ -582,25 +591,43 @@ const App: React.FC = () => {
                     <span>{openModule.kind}</span>
                     <span>{isLocked(openModule) ? 'Locked' : 'Unlocked'}</span>
                   </div>
-                  <div className={`uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent_dark }}>
+                  <div className={`uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent }}>
                     {displayedOpenModule?.eyebrow}
                   </div>
                   <h2 className={`font-editorial leading-none ${headerScaleClass[brand.hierarchy.header_scale]}`}>
                     {displayedOpenModule?.detail_title || openModule.title}
                   </h2>
-                  <p className={`max-w-4xl text-black/60 ${bodyDensityClass[brand.hierarchy.body_density]}`}>
+                  <p
+                    className={`max-w-4xl ${bodyDensityClass[brand.hierarchy.body_density]}`}
+                    style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}
+                  >
                     {displayedOpenModule?.description || openModule.subtitle}
                   </p>
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="hidden border border-black/10 bg-white/80 px-4 py-3 text-right lg:block">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-black/35">{brand.copy.modal_account_label}</div>
-                    <div className="mt-2 text-xs text-black/65">{user.email ?? user.uid}</div>
+                  <div
+                    className="hidden px-4 py-3 text-right lg:block"
+                    style={{
+                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
+                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
+                    }}
+                  >
+                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
+                      {brand.copy.modal_account_label}
+                    </div>
+                    <div className="mt-2 text-xs" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
+                      {user.email ?? user.uid}
+                    </div>
                   </div>
                   <button
                     onClick={handleCloseModal}
-                    className="border border-black/10 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.24em] text-black/60 transition-colors hover:border-black/20 hover:text-black"
+                    className="px-4 py-3 text-[10px] uppercase tracking-[0.24em] transition-colors"
+                    style={{
+                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.18)}`,
+                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
+                      color: hexToRgba(brand.colors.overlay_text, 0.72),
+                    }}
                   >
                     Close
                   </button>
@@ -609,25 +636,49 @@ const App: React.FC = () => {
 
               <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
                 {brand.toggles.show_detail_quotes ? (
-                  <div className="border border-black/10 bg-white/70 px-5 py-5">
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-brand-teal">Current framing</div>
-                    <p className="mt-4 font-editorial text-2xl italic leading-tight text-[#09161a]">
+                  <div
+                    className="px-5 py-5"
+                    style={{
+                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
+                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
+                    }}
+                  >
+                    <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: brand.colors.accent }}>
+                      Current framing
+                    </div>
+                    <p className="mt-4 font-editorial text-2xl italic leading-tight" style={{ color: brand.colors.overlay_text }}>
                       "{displayedOpenModule?.detail_quote || openModule.subtitle}"
                     </p>
                   </div>
                 ) : (
-                  <div className="border border-black/10 bg-white/70 px-5 py-5">
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-brand-teal">Current framing</div>
-                    <p className="mt-4 text-sm leading-6 text-black/60">
+                  <div
+                    className="px-5 py-5"
+                    style={{
+                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
+                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
+                    }}
+                  >
+                    <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: brand.colors.accent }}>
+                      Current framing
+                    </div>
+                    <p className="mt-4 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
                       {displayedOpenModule?.description || openModule.subtitle}
                     </p>
                   </div>
                 )}
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="border border-black/10 bg-white/70 px-4 py-4">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-black/35">Related modules</div>
-                    <div className="mt-3 text-sm leading-6 text-black/60">
+                  <div
+                    className="px-4 py-4"
+                    style={{
+                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
+                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
+                    }}
+                  >
+                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
+                      Related modules
+                    </div>
+                    <div className="mt-3 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
                       {(openModule.relatedIds || []).slice(0, 3).map((relatedId) => {
                         const relatedModule = visibleModules.find((module) => module.id === relatedId);
                         return relatedModule ? (
@@ -635,7 +686,12 @@ const App: React.FC = () => {
                             key={relatedId}
                             type="button"
                             onClick={() => openModuleById(relatedId)}
-                            className="mr-2 mt-2 inline-flex border border-black/10 bg-white px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-black/55 transition-colors hover:border-black/20 hover:text-black"
+                            className="mr-2 mt-2 inline-flex px-3 py-2 text-[10px] uppercase tracking-[0.18em] transition-colors"
+                            style={{
+                              border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
+                              backgroundColor: hexToRgba(brand.colors.overlay_text, 0.05),
+                              color: hexToRgba(brand.colors.overlay_text, 0.72),
+                            }}
                           >
                             {relatedModule.title}
                           </button>
@@ -643,12 +699,20 @@ const App: React.FC = () => {
                       })}
                     </div>
                   </div>
-                  <div className="border border-black/10 bg-white/70 px-4 py-4">
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-black/35">Session</div>
-                    <div className="mt-3 text-sm leading-6 text-black/60">
+                  <div
+                    className="px-4 py-4"
+                    style={{
+                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
+                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
+                    }}
+                  >
+                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
+                      Session
+                    </div>
+                    <div className="mt-3 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
                       {isAdminUser ? 'Operator controls available where appropriate.' : 'Client-safe view active.'}
                     </div>
-                    <div className="mt-3 text-[10px] uppercase tracking-[0.18em] text-black/35">
+                    <div className="mt-3 text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
                       {isLocked(openModule) ? 'Complete intake to unlock artifacts.' : 'Ready for review and demo.'}
                     </div>
                   </div>
