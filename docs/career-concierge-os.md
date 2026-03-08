@@ -137,6 +137,7 @@ Generated media is no longer only an in-memory response. The current pipeline la
 That queued media-pipeline track explicitly includes a future Admin Console operating section for queue monitoring, retries, approvals, library management, provider configuration, and failure inspection.
 The roadmap now also carries a queued agentic staff operating-model track so the canonical roles, handoffs, and stack boundaries are explicit before more agents are added.
 The same roadmap surface now visualizes the execution charter directly so operators can reference baseline confidence, staffing posture, and highest-risk gaps without leaving the modal.
+The roadmap `Plan` view now uses a stacked execution brief instead of narrow sprint columns, so roadmap phases, gaps, and active work remain readable on laptop-width screens.
 
 ### API Layer
 

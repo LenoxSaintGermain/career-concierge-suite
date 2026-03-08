@@ -1043,157 +1043,137 @@ export const RoadmapView: React.FC = () => {
 
       {panel === 'overview' && (
         <div className="space-y-5">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
-            <article className="border border-brand-teal/15 bg-[#020709] px-5 py-5 text-white">
-              <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-white/45">
-                <span>{doneCount} / {ROADMAP_NODES.length} sprints</span>
-                <span>Operator</span>
-              </div>
-              <h4 className="mt-8 text-4xl leading-none font-editorial">Roadmap</h4>
-              <p className="mt-6 border-l border-brand-teal/60 pl-4 text-sm leading-relaxed text-white/70">
-                Charter view for the POC-to-OS plan. Use this to track confidence, live execution, and the next gated
-                unlocks without wading through the full backlog every time.
-              </p>
-              <div className="mt-8 space-y-3 text-sm text-white/70">
-                <div className="flex items-center justify-between gap-4">
-                  <span>Deploy now</span>
-                  <span className="font-medium text-white">6 AI roles</span>
+          <article className="border border-brand-teal/15 bg-[#020709] px-5 py-5 text-white">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-[0.22em] text-white/45">
+              <span>{doneCount} / {ROADMAP_NODES.length} roadmap phases shipped</span>
+              <span>Operator brief</span>
+            </div>
+            <h4 className="mt-6 text-4xl leading-none font-editorial">Roadmap</h4>
+            <p className="mt-4 max-w-4xl border-l border-brand-teal/60 pl-4 text-sm leading-relaxed text-white/70">
+              Execution view for the POC-to-OS plan. This is now a stacked brief rather than a dashboard grid, so you
+              can scan sequence, gaps, and active work without compressed sprint columns.
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <article className="border border-white/10 bg-white/5 px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-white/45">Backlog Scope</div>
+                <div className="mt-2 text-2xl font-editorial">
+                  {storyCount}
+                  <span className="mx-2 text-white/20">/</span>
+                  {epicCount}
                 </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span>Human roles</span>
-                  <span className="font-medium text-white">2 operators</span>
+                <p className="mt-1 text-xs text-white/55">stories / epics</p>
+              </article>
+              <article className="border border-brand-teal/25 bg-brand-teal/10 px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Agentic Confidence</div>
+                <div className="mt-2 text-2xl font-editorial text-white">{formatPercent(agenticConfidence)}</div>
+                <p className="mt-1 text-xs text-white/55">E02 + E08 + E09 + E10</p>
+              </article>
+              <article className="border border-white/10 bg-white/5 px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-white/45">Delivery Pulse</div>
+                <div className="mt-2 text-2xl font-editorial text-white">{doneCount} shipped</div>
+                <p className="mt-1 text-xs text-white/55">{activeCount} active roadmap phases</p>
+              </article>
+              <article className="border border-white/10 bg-white/5 px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-white/45">Priority Gaps</div>
+                <div className="mt-2 text-2xl font-editorial text-white">{highestRisk.length}</div>
+                <p className="mt-1 text-xs text-white/55">charter checkpoints under pressure</p>
+              </article>
+            </div>
+          </article>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {laneSummaries.map((lane) => (
+              <article
+                key={lane.lane}
+                className={`border p-4 ${lane.score >= 82 ? 'border-emerald-500/35 bg-emerald-50' : lane.score >= 50 ? 'border-brand-teal/35 bg-[#eaf8f7]' : 'border-black/10 bg-white'}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">{lane.lane}</div>
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-black/45">{formatPercent(lane.score)}</div>
                 </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span>Deferred roles</span>
-                  <span className="font-medium text-white">2 queued</span>
+                <h5 className="mt-3 text-[28px] leading-[1] font-editorial italic">{lane.lane}</h5>
+                <div className="mt-4 flex items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-black/45">
+                  <span>{lane.strongCount} strong</span>
+                  <span>{lane.riskCount} at risk</span>
                 </div>
-              </div>
-              <div className="mt-8 border-t border-white/10 pt-4 text-xs leading-relaxed text-white/45">
-                Confidence is derived from live epic and task status, so it moves as delivery states change.
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {lane.items.map((item) => (
+                    <span
+                      key={item.id}
+                      className={`border px-2 py-1 text-[10px] uppercase tracking-[0.16em] ${charterToneMeta[item.tone].card} ${charterToneMeta[item.tone].text}`}
+                    >
+                      {item.id}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            {ROADMAP_NODES.map((node) => (
+              <article key={node.id} className={`border p-4 md:p-5 ${statusTone[node.status]} ${nodeGlow[node.status]}`}>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.22em]">
+                      <span>{node.phase}</span>
+                      <span className="opacity-55">{node.window}</span>
+                      <span className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${dotTone[node.status]}`} />
+                        {statusLabel[node.status]}
+                      </span>
+                    </div>
+                    <h4 className="text-[36px] leading-[1.02] font-editorial italic">{node.headline}</h4>
+                    <div className="text-[10px] uppercase tracking-[0.18em] opacity-70">Epics · {node.epics.join(' · ')}</div>
+                  </div>
+                  <div className="min-w-[180px] border border-current/15 bg-white/35 px-3 py-3 text-[10px] uppercase tracking-[0.18em]">
+                    <div className="opacity-70">Story coverage</div>
+                    <div className="mt-2 text-2xl font-editorial normal-case">{node.stories.length}</div>
+                    <div className="mt-1 opacity-70">mapped delivery nodes</div>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {node.stories.map((story) => (
+                    <span key={story} className="border border-current/20 px-2 py-1 text-[10px] uppercase tracking-[0.16em]">
+                      {story}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <article className="border border-black/10 bg-white p-4">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Primary Gaps</div>
+              <div className="mt-4 space-y-3">
+                {highestRisk.map((item) => (
+                  <div key={item.id} className={`border p-3 ${charterToneMeta[item.tone].card}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">{item.id}</div>
+                      <div className={`text-[10px] uppercase tracking-[0.18em] ${charterToneMeta[item.tone].text}`}>
+                        {charterToneMeta[item.tone].label}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-lg leading-tight font-editorial">{item.title}</div>
+                    <p className="mt-2 text-xs leading-relaxed text-black/60">{item.note}</p>
+                  </div>
+                ))}
               </div>
             </article>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                <article className="border border-black/10 bg-white p-4">
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Backlog Scope</div>
-                  <div className="mt-2 text-2xl font-editorial">
-                    {storyCount}
-                    <span className="mx-2 text-black/20">/</span>
-                    {epicCount}
+            <article className="border border-black/10 bg-white p-4">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Active Now</div>
+              <div className="mt-4 space-y-3">
+                {activeTaskRows.map((task) => (
+                  <div key={task.id} className="border border-black/10 px-3 py-3">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">{task.id}</div>
+                    <div className="mt-2 text-lg leading-tight font-editorial">{task.title}</div>
+                    <p className="mt-2 text-xs leading-relaxed text-black/60">{task.goal}</p>
                   </div>
-                  <p className="mt-1 text-xs text-black/55">stories / epics</p>
-                </article>
-                <article className="border border-black/10 bg-[#eaf8f7] p-4">
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Agentic Confidence</div>
-                  <div className="mt-2 text-2xl font-editorial">{formatPercent(agenticConfidence)}</div>
-                  <p className="mt-1 text-xs text-black/55">E02 + E08 + E09 + E10</p>
-                </article>
-                <article className="border border-black/10 bg-white p-4">
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Delivery Pulse</div>
-                  <div className="mt-2 text-2xl font-editorial">{doneCount} shipped</div>
-                  <p className="mt-1 text-xs text-black/55">{activeCount} active roadmap phases</p>
-                </article>
-                <article className="border border-black/10 bg-white p-4">
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Priority Gaps</div>
-                  <div className="mt-2 text-2xl font-editorial">{highestRisk.length}</div>
-                  <p className="mt-1 text-xs text-black/55">charter checkpoints under pressure</p>
-                </article>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
-                {laneSummaries.map((lane) => (
-                  <article
-                    key={lane.lane}
-                    className={`border p-4 ${lane.score >= 82 ? 'border-emerald-500/35 bg-emerald-50' : lane.score >= 50 ? 'border-brand-teal/35 bg-[#eaf8f7]' : 'border-black/10 bg-white'}`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">{lane.lane}</div>
-                      <div className="text-[11px] uppercase tracking-[0.18em] text-black/45">{formatPercent(lane.score)}</div>
-                    </div>
-                    <h5 className="mt-3 text-[28px] leading-[1] font-editorial italic">{lane.lane}</h5>
-                    <div className="mt-4 flex items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-black/45">
-                      <span>{lane.strongCount} strong</span>
-                      <span>{lane.riskCount} at risk</span>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {lane.items.map((item) => (
-                        <span
-                          key={item.id}
-                          className={`border px-2 py-1 text-[10px] uppercase tracking-[0.16em] ${charterToneMeta[item.tone].card} ${charterToneMeta[item.tone].text}`}
-                        >
-                          {item.id}
-                        </span>
-                      ))}
-                    </div>
-                  </article>
                 ))}
               </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {ROADMAP_NODES.map((node) => (
-                <article key={node.id} className={`border p-4 ${statusTone[node.status]} ${nodeGlow[node.status]}`}>
-                  <div className="flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.22em]">
-                    <span>{node.phase}</span>
-                    <span className="opacity-70">{node.window}</span>
-                  </div>
-                  <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em]">
-                    <span className={`h-2.5 w-2.5 rounded-full ${dotTone[node.status]}`} />
-                    <span>{statusLabel[node.status]}</span>
-                  </div>
-                  <h4 className="mt-4 text-[34px] leading-[1.02] font-editorial italic">{node.headline}</h4>
-                  <div className="mt-4 text-[10px] uppercase tracking-[0.18em] opacity-70">Epics · {node.epics.join(' · ')}</div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {node.stories.slice(0, 6).map((story) => (
-                      <span key={story} className="border border-current/20 px-2 py-1 text-[10px] uppercase tracking-[0.16em]">
-                        {story}
-                      </span>
-                    ))}
-                    {node.stories.length > 6 && (
-                      <span className="border border-current/20 px-2 py-1 text-[10px] uppercase tracking-[0.16em]">
-                        +{node.stories.length - 6}
-                      </span>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            <aside className="space-y-4">
-              <article className="border border-black/10 bg-white p-4">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Primary Gaps</div>
-                <div className="mt-4 space-y-3">
-                  {highestRisk.map((item) => (
-                    <div key={item.id} className={`border p-3 ${charterToneMeta[item.tone].card}`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">{item.id}</div>
-                        <div className={`text-[10px] uppercase tracking-[0.18em] ${charterToneMeta[item.tone].text}`}>
-                          {charterToneMeta[item.tone].label}
-                        </div>
-                      </div>
-                      <div className="mt-2 text-lg leading-tight font-editorial">{item.title}</div>
-                      <p className="mt-2 text-xs leading-relaxed text-black/60">{item.note}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="border border-black/10 bg-white p-4">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Active Now</div>
-                <div className="mt-4 space-y-3">
-                  {activeTaskRows.map((task) => (
-                    <div key={task.id} className="border border-black/10 px-3 py-3">
-                      <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">{task.id}</div>
-                      <div className="mt-2 text-lg leading-tight font-editorial">{task.title}</div>
-                      <p className="mt-2 text-xs leading-relaxed text-black/60">{task.goal}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </aside>
+            </article>
           </div>
         </div>
       )}
