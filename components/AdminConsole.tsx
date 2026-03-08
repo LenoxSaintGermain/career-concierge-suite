@@ -2723,173 +2723,129 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-6">
       <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex h-[94vh] w-full max-w-[1280px] overflow-hidden border border-black/10 bg-[#f3efe6] shadow-[0_40px_120px_-56px_rgba(0,0,0,0.58)]">
-        <aside className="hidden w-[290px] shrink-0 border-r border-black/10 bg-[linear-gradient(180deg,#f9f5ec_0%,#f1ede3_100%)] lg:flex lg:flex-col">
-          <div className="border-b border-black/10 px-6 py-6">
-            <div className="text-[10px] uppercase tracking-[0.28em] text-brand-teal">Admin OS</div>
-            <h2 className="mt-3 text-[34px] font-editorial italic leading-none text-[#08161a]">Operator console.</h2>
-            <p className="mt-3 text-sm leading-6 text-black/60">
-              A compact control plane for policy, presentation, media routing, and runtime posture.
-            </p>
-          </div>
-
-          <div className="border-b border-black/10 px-6 py-5">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="border border-black/10 bg-white/80 px-4 py-3">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Pending</div>
-                <div className="mt-2 text-2xl font-editorial text-[#09161a]">{overview?.queue.pending_count ?? '—'}</div>
-              </div>
-              <div className="border border-black/10 bg-white/80 px-4 py-3">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Agents</div>
-                <div className="mt-2 text-2xl font-editorial text-[#09161a]">{overview?.agents.count ?? '—'}</div>
-              </div>
-              <div className="border border-black/10 bg-white/80 px-4 py-3">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Media</div>
-                <div className="mt-2 text-2xl font-editorial text-[#09161a]">
-                  {overview?.config_summary.curated_library_enabled_count ?? '—'}
-                </div>
-              </div>
-              <div className="border border-black/10 bg-white/80 px-4 py-3">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Revision</div>
-                <div className="mt-2 truncate text-xs uppercase tracking-[0.18em] text-[#09161a]">
-                  {overview?.runtime.revision ?? '—'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <div className="relative flex h-[94vh] w-full max-w-[1480px] flex-col overflow-hidden border border-black/10 bg-[#f3efe6] shadow-[0_40px_120px_-56px_rgba(0,0,0,0.58)]">
+        <header className="border-b border-black/10 bg-[rgba(245,242,233,0.94)] px-5 py-4 backdrop-blur md:px-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="space-y-2">
-              {navSections.map((section, index) => {
-                const active = activeSection === section.id;
-                return (
-                  <button
-                    key={section.id}
-                    type="button"
-                    onClick={() => setActiveSection(section.id)}
-                    disabled={saving}
-                    className={`w-full border px-4 py-4 text-left transition-all ${
-                      active
-                        ? 'border-[#08242a] bg-[#08242a] text-white shadow-[0_20px_40px_-30px_rgba(0,0,0,0.45)]'
-                        : 'border-transparent bg-transparent text-[#09161a] hover:border-black/10 hover:bg-white/70'
-                    } disabled:cursor-not-allowed disabled:opacity-55`}
-                  >
-                    <div
-                      className={`text-[10px] uppercase tracking-[0.24em] ${
-                        active ? 'text-brand-teal' : 'text-black/40'
-                      }`}
-                    >
-                      {String(index + 1).padStart(2, '0')} {section.eyebrow}
-                    </div>
-                    <div className="mt-2 text-lg font-editorial leading-tight">{section.title}</div>
-                    <div className={`mt-2 text-xs leading-5 ${active ? 'text-white/70' : 'text-black/55'}`}>
-                      {section.description}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-        </aside>
-
-        <div className="flex min-w-0 flex-1 flex-col bg-[linear-gradient(180deg,#f4f1e7_0%,#f6f4ee_42%,#f5f4ef_100%)]">
-          <header className="border-b border-black/10 bg-[rgba(245,242,233,0.92)] px-5 py-4 backdrop-blur md:px-6">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-              <div className="space-y-2">
-                <div className="text-[10px] uppercase tracking-[0.28em] text-brand-teal">{sectionMeta.eyebrow}</div>
-                <h2 className="text-[30px] font-editorial italic leading-none text-[#08161a] md:text-[38px]">
-                  {sectionMeta.title}
-                </h2>
-                <p className="max-w-3xl text-sm leading-6 text-black/60">{sectionMeta.description}</p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex border border-black/10 bg-white px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-black/55">
-                  {loading ? 'Loading' : 'Live config'}
-                </span>
-                <span
-                  className={`inline-flex border px-3 py-2 text-[10px] uppercase tracking-[0.18em] ${
-                    hasUnsavedChanges
-                      ? 'border-amber-500/25 bg-amber-50 text-amber-800'
-                      : 'border-emerald-500/25 bg-emerald-50 text-emerald-800'
-                  }`}
-                >
-                  {hasUnsavedChanges ? 'Unsaved changes' : 'Saved state'}
-                </span>
-                <button
-                  onClick={onClose}
-                  className="border border-black/10 bg-white px-4 py-2 text-[10px] uppercase tracking-[0.22em] text-black/60 transition-colors hover:border-black/20 hover:text-black"
-                >
-                  Close
-                </button>
-              </div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-brand-teal">Admin OS · {sectionMeta.eyebrow}</div>
+              <h2 className="text-[30px] font-editorial italic leading-none text-[#08161a] md:text-[38px]">
+                {sectionMeta.title}
+              </h2>
+              <p className="max-w-4xl text-sm leading-6 text-black/60">{sectionMeta.description}</p>
             </div>
 
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-              {navSections.map((section) => (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => setActiveSection(section.id)}
-                  disabled={saving}
-                  className={`whitespace-nowrap border px-3 py-2 text-[10px] uppercase tracking-[0.18em] ${
-                    activeSection === section.id
-                      ? 'border-[#08242a] bg-[#08242a] text-white'
-                      : 'border-black/10 bg-white text-black/55'
-                  } disabled:cursor-not-allowed disabled:opacity-55`}
-                >
-                  {section.shortLabel}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex border border-black/10 bg-white px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-black/55">
+                {loading ? 'Loading' : 'Live config'}
+              </span>
+              <span
+                className={`inline-flex border px-3 py-2 text-[10px] uppercase tracking-[0.18em] ${
+                  hasUnsavedChanges
+                    ? 'border-amber-500/25 bg-amber-50 text-amber-800'
+                    : 'border-emerald-500/25 bg-emerald-50 text-emerald-800'
+                }`}
+              >
+                {hasUnsavedChanges ? 'Unsaved changes' : 'Saved state'}
+              </span>
+              <button
+                onClick={onClose}
+                className="border border-black/10 bg-white px-4 py-2 text-[10px] uppercase tracking-[0.22em] text-black/60 transition-colors hover:border-black/20 hover:text-black"
+              >
+                Close
+              </button>
             </div>
-          </header>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 pb-10 md:px-6 md:py-6 md:pb-12">
-            {loading ? (
-              <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Loading…</div>
-            ) : null}
-            {error ? (
-              <div className="mb-5 border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-700">{error}</div>
-            ) : null}
-            {success ? (
-              <div className="mb-5 border border-green-500/20 bg-green-500/5 p-4 text-sm text-green-700">
-                {success}
-              </div>
-            ) : null}
-            {isReady && config ? (
-              <fieldset disabled={saving} className={saving ? 'opacity-70 transition-opacity' : undefined}>
-                {renderActiveSection()}
-              </fieldset>
-            ) : null}
           </div>
 
-          <footer className="border-t border-black/10 bg-[rgba(255,255,255,0.86)] px-5 py-4 backdrop-blur md:px-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-black/40">Operator save rail</div>
-                <div className="text-sm text-black/58">
-                  Save only after the current section and the control tower read match the intended operating posture.
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={requestReload}
-                  disabled={loading || saving}
-                  className="border border-black/10 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-black/60 transition-colors hover:border-black/20 hover:text-black disabled:opacity-30"
-                >
-                  Reload
-                </button>
-                <button
-                  onClick={save}
-                  disabled={!isReady || saving || !hasUnsavedChanges}
-                  className="btn-brand px-5 py-3 text-[10px] uppercase tracking-[0.25em] transition-colors disabled:opacity-50"
-                >
-                  {saving ? 'Saving…' : 'Save Config'}
-                </button>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="border border-black/10 bg-white/80 px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Pending</div>
+              <div className="mt-2 text-2xl font-editorial text-[#09161a]">{overview?.queue.pending_count ?? '—'}</div>
+            </div>
+            <div className="border border-black/10 bg-white/80 px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Agents</div>
+              <div className="mt-2 text-2xl font-editorial text-[#09161a]">{overview?.agents.count ?? '—'}</div>
+            </div>
+            <div className="border border-black/10 bg-white/80 px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Media</div>
+              <div className="mt-2 text-2xl font-editorial text-[#09161a]">
+                {overview?.config_summary.curated_library_enabled_count ?? '—'}
               </div>
             </div>
-          </footer>
+            <div className="border border-black/10 bg-white/80 px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Revision</div>
+              <div className="mt-2 truncate text-xs uppercase tracking-[0.18em] text-[#09161a]">
+                {overview?.runtime.revision ?? '—'}
+              </div>
+            </div>
+          </div>
+
+          <nav className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {navSections.map((section, index) => (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => setActiveSection(section.id)}
+                disabled={saving}
+                className={`whitespace-nowrap border px-3 py-3 text-left transition-all ${
+                  activeSection === section.id
+                    ? 'border-[#08242a] bg-[#08242a] text-white shadow-[0_16px_30px_-24px_rgba(0,0,0,0.45)]'
+                    : 'border-black/10 bg-white text-[#09161a] hover:border-black/20'
+                } disabled:cursor-not-allowed disabled:opacity-55`}
+              >
+                <div className={`text-[10px] uppercase tracking-[0.24em] ${activeSection === section.id ? 'text-brand-teal' : 'text-black/40'}`}>
+                  {String(index + 1).padStart(2, '0')} {section.shortLabel}
+                </div>
+                <div className="mt-2 text-sm font-editorial leading-tight">{section.title}</div>
+              </button>
+            ))}
+          </nav>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 pb-10 md:px-6 md:py-6 md:pb-12">
+          {loading ? (
+            <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Loading…</div>
+          ) : null}
+          {error ? (
+            <div className="mb-5 border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-700">{error}</div>
+          ) : null}
+          {success ? (
+            <div className="mb-5 border border-green-500/20 bg-green-500/5 p-4 text-sm text-green-700">
+              {success}
+            </div>
+          ) : null}
+          {isReady && config ? (
+            <fieldset disabled={saving} className={saving ? 'opacity-70 transition-opacity' : undefined}>
+              {renderActiveSection()}
+            </fieldset>
+          ) : null}
         </div>
+
+        <footer className="border-t border-black/10 bg-[rgba(255,255,255,0.86)] px-5 py-4 backdrop-blur md:px-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-black/40">Operator save rail</div>
+              <div className="text-sm text-black/58">
+                Save only after the current section and the control tower read match the intended operating posture.
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={requestReload}
+                disabled={loading || saving}
+                className="border border-black/10 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-black/60 transition-colors hover:border-black/20 hover:text-black disabled:opacity-30"
+              >
+                Reload
+              </button>
+              <button
+                onClick={save}
+                disabled={!isReady || saving || !hasUnsavedChanges}
+                className="btn-brand px-5 py-3 text-[10px] uppercase tracking-[0.25em] transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save Config'}
+              </button>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

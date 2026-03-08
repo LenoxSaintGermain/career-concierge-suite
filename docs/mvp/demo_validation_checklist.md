@@ -247,3 +247,33 @@ Shared demo-persona password for manual login:
 1. Disable the global voice toggle and confirm live token creation fails with `voice_disabled`.
 2. Leave Sesame flagged off, attempt to switch the provider to Sesame, save, and confirm the runtime still resolves to Gemini Live.
 3. Confirm `ElevenLabs` and `Manus AI` appear only as planned lanes, not active providers.
+
+## SkillSync AI TV Pass
+
+### Positive Path
+
+1. Login as a paid persona and open `SkillSync AI TV`.
+2. Confirm the top of the module renders a staged viewing surface instead of a metadata-only card list.
+3. If a curated item has an `embed_url`, confirm it plays inline in the stage.
+4. If no playable media exists yet, confirm the stage shows an intentional placeholder or coming-soon hero rather than a blank area.
+5. Click `Watch here` on a different rail item and confirm the stage updates to that selection.
+
+### Negative Guards
+
+1. Confirm the client-facing TV view does not expose prompt lineage, media-job IDs, or operator pipeline controls.
+2. Confirm the module never falls into a dead empty state without a primary viewing surface.
+
+## Operator Speed-Run Pass
+
+### Positive Path
+
+1. Login as an admin user and launch a seeded sample persona.
+2. Open `Start Here`.
+3. Confirm the intake view exposes `Autofill intake`, `Autofill + jump`, and `Autofill + prepare suite`.
+4. Use `Autofill intake` and confirm the current step populates from the seeded client context rather than generic placeholders.
+5. Use `Autofill + prepare suite` and confirm suite setup completes without manually entering the full journey.
+
+### Negative Guards
+
+1. Confirm non-admin users do not see operator speed-run controls in intake.
+2. Confirm the autofill controls do not overwrite the wrong persona when switching between seeded test users.

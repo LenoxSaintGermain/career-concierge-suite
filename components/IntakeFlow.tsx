@@ -7,7 +7,7 @@ import {
   SMART_START_FIELDS,
   SmartStartField,
 } from '../constants';
-import { ClientIntent, ClientPreferences, FocusPreference, IntakeAnswers, PacePreference, SuiteModuleId } from '../types';
+import { ClientDoc, ClientIntent, ClientPreferences, FocusPreference, IntakeAnswers, PacePreference, SuiteModuleId } from '../types';
 import { saveIntake } from '../services/clientService';
 import { upsertArtifact } from '../services/artifactService';
 import {
@@ -37,6 +37,8 @@ const base64ToBytes = (base64: string) => {
 export function IntakeFlow(props: {
   uid: string;
   tier?: string;
+  client?: ClientDoc | null;
+  isAdminUser?: boolean;
   onComplete: (
     nextModuleId: SuiteModuleId,
     payload: { intent: ClientIntent; preferences: ClientPreferences; answers: IntakeAnswers }
@@ -152,6 +154,45 @@ export function IntakeFlow(props: {
         : [...existing, value];
       return { ...prev, [id]: next };
     });
+
+  const buildProfileAutofillState = () => {
+    const seededAnswers = props.client?.intake?.answers ?? {};
+    const demoProfile = props.client?.demo_profile ?? {};
+    const inferredAnswers: IntakeAnswers = {
+      ...seededAnswers,
+      current_title:
+        typeof seededAnswers.current_title === 'string'
+          ? seededAnswers.current_title
+          : typeof seededAnswers.current_or_target_job_title === 'string'
+            ? seededAnswers.current_or_target_job_title
+            : demoProfile?.name || '',
+      suite_feel:
+        typeof seededAnswers.suite_feel === 'string'
+          ? seededAnswers.suite_feel
+          : props.client?.preferences?.focus === 'leadership'
+            ? 'LEADERSHIP'
+            : props.client?.preferences?.focus === 'skills'
+              ? 'SKILLS'
+              : 'STRATEGIC',
+    };
+
+    return {
+      nextIntent: props.client?.intent ?? intent,
+      nextPace: props.client?.preferences?.pace ?? pace,
+      nextFocus: props.client?.preferences?.focus ?? focus,
+      nextAnswers: inferredAnswers,
+    };
+  };
+
+  const applyProfileAutofill = (nextStep?: Step) => {
+    const next = buildProfileAutofillState();
+    setIntent(next.nextIntent);
+    setPace(next.nextPace);
+    setFocus(next.nextFocus);
+    setAnswers(next.nextAnswers);
+    setError(null);
+    if (nextStep) setStep(nextStep);
+  };
 
   const renderSmartStartField = (field: SmartStartField) => {
     if (field.type === 'text') {
@@ -298,18 +339,22 @@ export function IntakeFlow(props: {
     }
   };
 
-  const submit = async () => {
+  const submitWithPayload = async (
+    nextIntent: ClientIntent,
+    nextPreferences: ClientPreferences,
+    nextAnswers: IntakeAnswers
+  ) => {
     setBusy(true);
     setError(null);
     try {
-      const intakePayload = { intent, preferences: prefs, answers };
+      const intakePayload = { intent: nextIntent, preferences: nextPreferences, answers: nextAnswers };
       await saveIntake(props.uid, intakePayload);
 
       // Generate artifacts (stubbed for now; LLM swap is Phase 1).
       setStep('plating');
 
       if (isFreeTier) {
-        const readiness = generateReadinessDoc(answers);
+        const readiness = generateReadinessDoc(nextAnswers);
         const resourceGuide = {
           resource_guide: [
             'Intro path: AI essentials for career acceleration.',
@@ -331,33 +376,47 @@ export function IntakeFlow(props: {
       // Fallback: local stub generator if API isn't configured yet.
       let brief: any, plan: any, profile: any, aiProfile: any, gaps: any;
       try {
-        const artifacts = await generateSuiteArtifacts({ intent, preferences: prefs, answers });
+        const artifacts = await generateSuiteArtifacts({
+          intent: nextIntent,
+          preferences: nextPreferences,
+          answers: nextAnswers,
+        });
         brief = artifacts.brief;
         plan = artifacts.plan;
         profile = artifacts.profile;
         aiProfile = artifacts.ai_profile;
         gaps = artifacts.gaps;
       } catch {
-        brief = generateBrief(answers);
-        plan = generatePlan(answers);
-        profile = generateProfileDoc(answers);
-        aiProfile = generateAIProfileDoc(answers);
-        gaps = generateGapsDoc(answers);
+        brief = generateBrief(nextAnswers);
+        plan = generatePlan(nextAnswers);
+        profile = generateProfileDoc(nextAnswers);
+        aiProfile = generateAIProfileDoc(nextAnswers);
+        gaps = generateGapsDoc(nextAnswers);
       }
 
       await Promise.all([
         upsertArtifact(props.uid, 'brief', 'The Brief', brief),
-        upsertArtifact(props.uid, 'suite_distilled', 'Your Suite, Distilled', generateSuiteDistilledDoc(brief, answers)),
+        upsertArtifact(
+          props.uid,
+          'suite_distilled',
+          'Your Suite, Distilled',
+          generateSuiteDistilledDoc(brief, nextAnswers)
+        ),
         upsertArtifact(props.uid, 'plan', 'Your Plan', plan),
         upsertArtifact(props.uid, 'profile', 'Your Profile', profile),
         upsertArtifact(props.uid, 'ai_profile', 'Your AI Profile', aiProfile),
         upsertArtifact(props.uid, 'gaps', 'Your Gaps', gaps),
-        upsertArtifact(props.uid, 'readiness', 'AI Readiness Assessment', generateReadinessDoc(answers)),
-        upsertArtifact(props.uid, 'cjs_execution', 'ConciergeJobSearch Execution', generateCjsExecutionDoc(answers, intent)),
+        upsertArtifact(props.uid, 'readiness', 'AI Readiness Assessment', generateReadinessDoc(nextAnswers)),
+        upsertArtifact(
+          props.uid,
+          'cjs_execution',
+          'ConciergeJobSearch Execution',
+          generateCjsExecutionDoc(nextAnswers, nextIntent)
+        ),
       ]);
 
       setStep('done');
-      const nextModuleId: SuiteModuleId = intent === 'not_sure' ? 'my_concierge' : 'brief';
+      const nextModuleId: SuiteModuleId = nextIntent === 'not_sure' ? 'my_concierge' : 'brief';
       props.onComplete(nextModuleId, intakePayload);
     } catch (e: any) {
       setError(e?.message ?? 'Unable to complete intake.');
@@ -365,6 +424,18 @@ export function IntakeFlow(props: {
     } finally {
       setBusy(false);
     }
+  };
+
+  const submit = async () => submitWithPayload(intent, prefs, answers);
+
+  const speedRunProfileSubmit = async () => {
+    const next = buildProfileAutofillState();
+    const nextPreferences: ClientPreferences = { pace: next.nextPace, focus: next.nextFocus };
+    setIntent(next.nextIntent);
+    setPace(next.nextPace);
+    setFocus(next.nextFocus);
+    setAnswers(next.nextAnswers);
+    await submitWithPayload(next.nextIntent, nextPreferences, next.nextAnswers);
   };
 
   return (
@@ -376,6 +447,43 @@ export function IntakeFlow(props: {
           No tests and no scripts. We start by understanding your context so your suite is useful from the first move.
         </p>
       </div>
+
+      {props.isAdminUser ? (
+        <div className="border border-brand-teal/20 bg-[#eef9f8] p-4 md:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-brand-teal">Operator speed run</div>
+              <div className="mt-2 text-sm leading-6 text-[#0d5b59]">
+                Use seeded profile context to prefill intake and jump straight into suite preparation.
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => applyProfileAutofill('questions')}
+                className="border border-brand-teal/25 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-brand-teal"
+              >
+                Autofill intake
+              </button>
+              <button
+                type="button"
+                onClick={() => applyProfileAutofill('prefs')}
+                className="btn-brand px-4 py-3 text-[10px] uppercase tracking-[0.22em]"
+              >
+                Autofill + jump
+              </button>
+              <button
+                type="button"
+                onClick={speedRunProfileSubmit}
+                disabled={busy}
+                className="border border-black/10 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-black/60 disabled:opacity-50"
+              >
+                {busy ? 'Preparing…' : 'Autofill + prepare suite'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {error && (
         <div className="border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-700">
@@ -436,12 +544,23 @@ export function IntakeFlow(props: {
             })}
           </div>
           <div className="pt-3">
-            <button
-              onClick={() => setStep(isFreeTier ? 'questions' : 'concierge')}
-              className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
-            >
-              Continue
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {props.isAdminUser ? (
+                <button
+                  type="button"
+                  onClick={() => applyProfileAutofill(isFreeTier ? 'questions' : 'concierge')}
+                  className="border border-black/10 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-black/60"
+                >
+                  Use profile defaults
+                </button>
+              ) : null}
+              <button
+                onClick={() => setStep(isFreeTier ? 'questions' : 'concierge')}
+                className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
+              >
+                Continue
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -545,6 +664,15 @@ export function IntakeFlow(props: {
             >
               Back
             </button>
+            {props.isAdminUser ? (
+              <button
+                type="button"
+                onClick={() => applyProfileAutofill('prefs')}
+                className="border border-black/10 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-black/60"
+              >
+                Autofill remainder
+              </button>
+            ) : null}
             <button
               onClick={() => setStep('prefs')}
               className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
@@ -605,6 +733,15 @@ export function IntakeFlow(props: {
             >
               Back
             </button>
+            {props.isAdminUser ? (
+              <button
+                type="button"
+                onClick={() => applyProfileAutofill('prefs')}
+                className="border border-black/10 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-black/60"
+              >
+                Refresh from profile
+              </button>
+            ) : null}
             <button
               onClick={submit}
               disabled={busy}

@@ -454,6 +454,7 @@ Use the reset workflow instead of repeating blind imports.
 - roadmap + validation tile visibility for admin users only
 - sample persona launch/reseed/proof controls in Roadmap validation
 - shared sample-persona password visible in Roadmap validation for direct manual login
+- admin/operator intake now supports `Autofill intake`, `Autofill + jump`, and `Autofill + prepare suite` for seeded persona speed runs
 - public Smart Start request intake on login surface
 - admin concierge-request review and status updates
 - MyConcierge visibility and response flow for paid `not_sure` users
@@ -464,6 +465,7 @@ Use the reset workflow instead of repeating blind imports.
 - live token generation
 - Gemini Live should remain the active real-time voice provider for demo readiness
 - Sesame should remain feature-flagged off until its dedicated Cloud Run service exists
+- SkillSync AI TV should render an actual staged viewing surface in client mode, not only metadata cards
 - CJS upload/review/strategy flow
 - free-tier dashboard should only expose Intake, Episodes, and AI Readiness
 - Assets ledger summary + decision flow

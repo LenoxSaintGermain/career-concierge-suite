@@ -642,6 +642,8 @@ const App: React.FC = () => {
                 <IntakeFlow
                   uid={user.uid}
                   tier={clientTier}
+                  client={client}
+                  isAdminUser={isAdminUser}
                   onComplete={(nextModuleId, payload) => {
                     // Update local client state so tiles unlock immediately.
                     setClient((prev) =>

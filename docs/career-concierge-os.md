@@ -115,6 +115,7 @@ It uses:
 - one active workspace at a time for generation, media, brand, voice, or governance edits
 - a single-column editorial content stack so controls do not compress or overlap on medium-width laptop views
 - a lane-readiness voice studio that treats Gemini Live as the active rail, Sesame as explicitly gated off, and ElevenLabs/Manus as planned future lanes
+- a top-command admin layout instead of a permanent desktop side rail so the operating canvas scales on laptop-width modals
 - a persistent save rail with explicit unsaved-state feedback
 - collapsible media-library editing so large libraries do not overwhelm the modal
 - taxonomy shortcut chips inside the media-library editor so reusable media can be tagged consistently instead of relying only on free-form tag entry
@@ -189,6 +190,8 @@ The Express API under `api/` handles:
 - voice synthesis routing
 - deterministic persona fixture seeding for demo/test (`api/scripts/seed_persona_fixtures.mjs`) with full account hydration
 - shared sample-persona password reset on auth create/reseed for direct manual testing
+- operator speed-run intake autofill so seeded persona context can prefill or directly prepare a suite without hand-entering every intake field
+- SkillSync AI TV now stages a real client-safe viewing surface with embed/direct-video support and a placeholder hero when no published reel exists
 
 ## Architecture Summary
 
