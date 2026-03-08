@@ -198,6 +198,11 @@ Negative checks:
 - free-tier or users without the Phase A episode plan should return `resolver.status = no_plan`
 - if curated media exists but no tags match, the resolver should report reusable-kit gaps rather than pretending the episode is fully covered
 
+Lineage boundary:
+
+- non-admin clients should still receive routed library items, but resolver lineage stays off the normal client surface
+- operator/admin surfaces are the place where prompt lineage and gap analysis are reviewed
+
 ## Media Job + Manifest Persistence
 
 `POST /v1/binge/media-pack` now persists generated output into:
@@ -218,6 +223,28 @@ Quick operator check:
 3. Inspect Firestore for matching `media_jobs` and `media_manifests` docs.
 4. If video is queued, call `POST /v1/binge/media-pack/video-status` with both `operation_name` and `job_id`.
 5. Confirm the existing job/manifest updates instead of a second job appearing.
+
+## Admin Media Pipeline Console
+
+Operator endpoints:
+
+- `GET /v1/admin/media-pipeline`
+- `POST /v1/admin/media-pipeline/jobs/:clientUid/:jobId/retry`
+- `POST /v1/admin/media-pipeline/manifests/:clientUid/:manifestId/review`
+
+Expected behavior:
+
+- admin overview returns recent jobs/manifests plus summary counts for queue, retries, and reusable/bespoke gaps
+- retry requests increment `retry_requested_count` on the target job and associated manifest
+- review actions persist `review_state` across both manifest and associated job records when present
+
+Quick operator check:
+
+1. Open `Admin` -> `Media`.
+2. Confirm `Pipeline monitor` loads recent jobs and manifests.
+3. Request retry on one job and confirm the count increments after refresh.
+4. Mark one manifest `approved` and one `needs_review`.
+5. Confirm the updated review state persists across refresh.
 
 ## Starter Library Seeding
 

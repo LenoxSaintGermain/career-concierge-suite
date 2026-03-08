@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CLIENT_INTENTS, FOCUS_PREFS, PACE_PREFS } from '../constants';
 import {
+  AdminMediaPipelineOverview,
   AdminSystemOverview,
   AppConfig,
   CuratedMediaItem,
@@ -11,8 +12,11 @@ import {
 } from '../types';
 import {
   fetchAdminConfig,
+  fetchAdminMediaPipelineOverview,
   fetchAdminSystemOverview,
   getAdminApiOrigin,
+  requestAdminMediaRetry,
+  reviewAdminMediaManifest,
   saveAdminConfig,
 } from '../services/adminApi';
 import { MEDIA_LIBRARY_TAXONOMY_GROUPS, mergeMediaTags } from '../config/mediaLibraryTaxonomy';
@@ -166,6 +170,13 @@ const signalTone = (active: boolean) =>
   active
     ? 'border-brand-teal/25 bg-brand-soft text-brand-teal'
     : 'border-black/10 bg-white text-black/45';
+
+const mediaPipelineTone = (status: string) => {
+  if (status === 'completed' || status === 'approved') return 'border-emerald-500/25 bg-emerald-50 text-emerald-800';
+  if (status === 'queued' || status === 'needs_review') return 'border-amber-500/25 bg-amber-50 text-amber-800';
+  if (status === 'degraded' || status === 'rejected') return 'border-red-500/25 bg-red-50 text-red-800';
+  return 'border-black/10 bg-white text-black/60';
+};
 
 const sectionCopy: Record<
   AdminSectionId,
@@ -412,6 +423,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [overview, setOverview] = useState<AdminSystemOverview | null>(null);
+  const [mediaPipeline, setMediaPipeline] = useState<AdminMediaPipelineOverview | null>(null);
+  const [mediaPipelineError, setMediaPipelineError] = useState<string | null>(null);
+  const [mediaPipelineBusyKey, setMediaPipelineBusyKey] = useState<string | null>(null);
   const [showAdvancedVoice, setShowAdvancedVoice] = useState(false);
   const [activeSection, setActiveSection] = useState<AdminSectionId>('summary');
   const [expandedMediaId, setExpandedMediaId] = useState<string | null>(null);
@@ -425,11 +439,17 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     setLoading(true);
     setError(null);
     setSuccess(null);
+    setMediaPipelineError(null);
     setShowAdvancedVoice(false);
     try {
-      const [cfg, nextOverview] = await Promise.all([fetchAdminConfig(), fetchAdminSystemOverview()]);
+      const [cfg, nextOverview, nextPipeline] = await Promise.all([
+        fetchAdminConfig(),
+        fetchAdminSystemOverview(),
+        fetchAdminMediaPipelineOverview(),
+      ]);
       setConfig(cfg);
       setOverview(nextOverview);
+      setMediaPipeline(nextPipeline);
       setBaselineFingerprint(JSON.stringify(cfg));
       setExpandedMediaId(cfg.media.curated_library[0]?.id ?? null);
     } catch (e: any) {
@@ -552,14 +572,64 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
       const nextConfig = cloneConfig(saved);
       setConfig(nextConfig);
       setBaselineFingerprint(JSON.stringify(nextConfig));
-      const nextOverview = await fetchAdminSystemOverview();
+      const [nextOverview, nextPipeline] = await Promise.all([
+        fetchAdminSystemOverview(),
+        fetchAdminMediaPipelineOverview(),
+      ]);
       setOverview(nextOverview);
+      setMediaPipeline(nextPipeline);
       setSuccess('Configuration saved.');
       onSaved?.();
     } catch (e: any) {
       setError(e?.message ?? 'Unable to save config.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const refreshMediaPipeline = async () => {
+    setMediaPipelineError(null);
+    try {
+      const next = await fetchAdminMediaPipelineOverview();
+      setMediaPipeline(next);
+    } catch (e: any) {
+      setMediaPipelineError(e?.message ?? 'Unable to load media pipeline.');
+    }
+  };
+
+  const retryMediaJob = async (clientUid: string, jobId: string) => {
+    const key = `retry:${clientUid}:${jobId}`;
+    setMediaPipelineBusyKey(key);
+    setMediaPipelineError(null);
+    setSuccess(null);
+    try {
+      await requestAdminMediaRetry(clientUid, jobId);
+      await refreshMediaPipeline();
+      setSuccess('Retry request recorded.');
+    } catch (e: any) {
+      setMediaPipelineError(e?.message ?? 'Unable to request retry.');
+    } finally {
+      setMediaPipelineBusyKey(null);
+    }
+  };
+
+  const reviewManifest = async (
+    clientUid: string,
+    manifestId: string,
+    decision: 'approved' | 'needs_review' | 'rejected'
+  ) => {
+    const key = `review:${clientUid}:${manifestId}:${decision}`;
+    setMediaPipelineBusyKey(key);
+    setMediaPipelineError(null);
+    setSuccess(null);
+    try {
+      await reviewAdminMediaManifest(clientUid, manifestId, decision);
+      await refreshMediaPipeline();
+      setSuccess(`Manifest marked ${decision.replace(/_/g, ' ')}.`);
+    } catch (e: any) {
+      setMediaPipelineError(e?.message ?? 'Unable to update manifest review state.');
+    } finally {
+      setMediaPipelineBusyKey(null);
     }
   };
 
@@ -964,8 +1034,56 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
 
   const renderMedia = () => {
     if (!config) return null;
+    const pipelineSummary = mediaPipeline?.summary;
     return (
       <SectionShell {...sectionCopy.media}>
+        <Panel title="Pipeline monitor" eyebrow="Operator boundary" meta="Lineage stays operator-only">
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 border border-black/10 bg-[#f8faf8] p-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Monitoring posture</div>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-black/60">
+                  Client-facing screens should only render final assembled media. Queue state, prompts, retries, and
+                  review decisions stay in this operator surface.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={refreshMediaPipeline}
+                disabled={mediaPipelineBusyKey !== null}
+                className="border border-black/15 px-4 py-3 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal disabled:opacity-50"
+              >
+                Refresh pipeline
+              </button>
+            </div>
+
+            {mediaPipelineError ? (
+              <div className="border border-red-500/20 bg-red-50 px-4 py-3 text-sm text-red-700">{mediaPipelineError}</div>
+            ) : null}
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                { label: 'Total jobs', value: pipelineSummary?.total_jobs ?? 0, meta: `${pipelineSummary?.completed_jobs ?? 0} completed` },
+                { label: 'Needs review', value: pipelineSummary?.manifests_needing_review ?? 0, meta: `${pipelineSummary?.retry_requested_jobs ?? 0} retries requested` },
+                { label: 'Reusable gaps', value: pipelineSummary?.reusable_gap_count ?? 0, meta: `${pipelineSummary?.bespoke_gap_count ?? 0} bespoke gaps` },
+                { label: 'Queue health', value: pipelineSummary?.queued_jobs ?? 0, meta: `${pipelineSummary?.degraded_jobs ?? 0} degraded` },
+              ].map((card) => (
+                <div key={card.label} className="border border-black/10 bg-[#fbfcfa] p-4">
+                  <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">{card.label}</div>
+                  <div className="mt-3 text-3xl font-editorial italic leading-none text-[#09161a]">{card.value}</div>
+                  <div className="mt-2 text-xs text-black/55">{card.meta}</div>
+                </div>
+              ))}
+            </div>
+
+            {mediaPipeline?.warnings?.length ? (
+              <div className="border border-amber-500/20 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                {mediaPipeline.warnings.slice(0, 2).join(' | ')}
+              </div>
+            ) : null}
+          </div>
+        </Panel>
+
         <div className="grid gap-5">
           <Panel title="Media routing stack" eyebrow="Generation" meta="Primary configuration">
             <div className="grid gap-5">
@@ -1068,6 +1186,146 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             </div>
           </Panel>
         </div>
+
+        <Panel title="Recent pipeline jobs" eyebrow="Queue watch" meta={`${mediaPipeline?.jobs.length ?? 0} recent jobs`}>
+          <div className="space-y-3">
+            {mediaPipeline?.jobs?.length ? (
+              mediaPipeline.jobs.map((job) => {
+                const retryKey = `retry:${job.client_uid}:${job.job_id}`;
+                return (
+                  <article key={`${job.client_uid}-${job.job_id}`} className="border border-black/10 bg-[#fbfcfa] p-4 space-y-3">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="space-y-1">
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-black/40">
+                          {job.client_name || 'Client'} · {job.episode_id || 'episode'}
+                        </div>
+                        <div className="text-lg font-editorial italic leading-tight text-[#09161a]">Job {job.job_id}</div>
+                        <div className="text-xs text-black/55">
+                          {job.client_email || 'No email'} · {job.runner || 'unknown runner'} · {job.trigger || 'unknown trigger'}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${mediaPipelineTone(job.status)}`}>
+                          {job.status.replace(/_/g, ' ')}
+                        </span>
+                        <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${mediaPipelineTone(job.review_state)}`}>
+                          {job.review_state.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2 md:grid-cols-4 text-xs text-black/60">
+                      <div>{job.asset_count} assets</div>
+                      <div>{job.queued_asset_count} queued</div>
+                      <div>{job.retry_requested_count} retries requested</div>
+                      <div>{job.updated_at ? new Date(job.updated_at).toLocaleString() : 'No update time'}</div>
+                    </div>
+
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {job.assets.map((asset, index) => (
+                        <div key={`${job.job_id}-${asset.kind}-${index}`} className="border border-black/10 bg-white px-3 py-3 text-xs text-black/60">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="uppercase tracking-[0.18em] text-black/40">{asset.kind}</span>
+                            <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${mediaPipelineTone(asset.status)}`}>
+                              {asset.status}
+                            </span>
+                          </div>
+                          <div className="mt-2 font-mono text-[11px] text-[#09161a]">{asset.model || 'unknown model'}</div>
+                          {asset.storage_path ? <div className="mt-1 font-mono text-[10px] text-black/45">{asset.storage_path}</div> : null}
+                          {asset.note ? <div className="mt-2 leading-5">{asset.note}</div> : null}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => retryMediaJob(job.client_uid, job.job_id)}
+                        disabled={mediaPipelineBusyKey === retryKey}
+                        className="border border-black/15 px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal disabled:opacity-50"
+                      >
+                        {mediaPipelineBusyKey === retryKey ? 'Requesting…' : 'Request retry'}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="border border-dashed border-black/15 bg-[#fbfcfa] p-6 text-sm text-black/55">
+                No media jobs have been captured yet.
+              </div>
+            )}
+          </div>
+        </Panel>
+
+        <Panel title="Manifest review" eyebrow="Client-safe output" meta={`${mediaPipeline?.manifests.length ?? 0} recent manifests`}>
+          <div className="space-y-3">
+            {mediaPipeline?.manifests?.length ? (
+              mediaPipeline.manifests.map((manifest) => (
+                <article key={`${manifest.client_uid}-${manifest.manifest_id}`} className="border border-black/10 bg-[#fbfcfa] p-4 space-y-3">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-black/40">
+                        {manifest.client_name || 'Client'} · {manifest.episode_id || 'episode'}
+                      </div>
+                      <div className="text-lg font-editorial italic leading-tight text-[#09161a]">
+                        Manifest {manifest.manifest_id}
+                      </div>
+                      <div className="text-xs text-black/55">{manifest.client_email || 'No email'}</div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${mediaPipelineTone(manifest.pipeline_status)}`}>
+                        {manifest.pipeline_status.replace(/_/g, ' ')}
+                      </span>
+                      <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${mediaPipelineTone(manifest.review_state)}`}>
+                        {manifest.review_state.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 md:grid-cols-4 text-xs text-black/60">
+                    <div>{manifest.client_payload_asset_count} client-visible assets</div>
+                    <div>{manifest.reusable_gap_count} reusable gaps</div>
+                    <div>{manifest.bespoke_gap_count} bespoke gaps</div>
+                    <div>{manifest.updated_at ? new Date(manifest.updated_at).toLocaleString() : 'No update time'}</div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="border border-black/10 bg-white px-3 py-3">
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Image prompt lineage</div>
+                      <div className="mt-2 text-xs leading-5 text-black/60">{manifest.image_prompt || 'No stored image prompt'}</div>
+                    </div>
+                    <div className="border border-black/10 bg-white px-3 py-3">
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Video prompt lineage</div>
+                      <div className="mt-2 text-xs leading-5 text-black/60">{manifest.video_prompt || 'No stored video prompt'}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {(['approved', 'needs_review', 'rejected'] as const).map((decision) => {
+                      const actionKey = `review:${manifest.client_uid}:${manifest.manifest_id}:${decision}`;
+                      return (
+                        <button
+                          key={decision}
+                          type="button"
+                          onClick={() => reviewManifest(manifest.client_uid, manifest.manifest_id, decision)}
+                          disabled={mediaPipelineBusyKey === actionKey}
+                          className="border border-black/15 px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-[#09161a] transition-colors hover:border-brand-teal disabled:opacity-50"
+                        >
+                          {mediaPipelineBusyKey === actionKey ? 'Saving…' : decision.replace(/_/g, ' ')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="border border-dashed border-black/15 bg-[#fbfcfa] p-6 text-sm text-black/55">
+                No manifests have been persisted yet.
+              </div>
+            )}
+          </div>
+        </Panel>
 
         <Panel title="Style direction" eyebrow="Art direction" meta="Narrative language">
           <div className="grid gap-5">

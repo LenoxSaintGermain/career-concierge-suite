@@ -176,3 +176,20 @@ Use this checklist for in-product validation before production demos. Each perso
 1. Confirm generating a scene pack without Gemini configured still creates a degraded job/manifest record instead of failing silently.
 2. Confirm repeated video-status refreshes update the same job rather than spawning duplicate job docs.
 3. Confirm persisted metadata does not require the client UI to retain the raw in-memory response in order to understand job state.
+
+## Admin Media Pipeline Pass
+
+### Positive Path
+
+1. Login as an admin user and open `Admin` -> `Media`.
+2. Confirm the `Pipeline monitor` summary loads counts for jobs, review state, and reusable/bespoke gaps.
+3. In `Recent pipeline jobs`, click `Request retry` on one job and confirm the action succeeds.
+4. Refresh the pipeline monitor and verify the job shows an increased retry-request count.
+5. In `Manifest review`, mark one manifest `approved`, then another `needs review`.
+6. Confirm the updated review state is reflected in the admin surface without leaving the console.
+
+### Negative Guards
+
+1. Confirm non-admin users cannot load the admin media-pipeline controls.
+2. Confirm client-facing `Episodes` never shows prompt lineage, manifest review state, or retry controls.
+3. Confirm the admin pipeline console does not erase curated-library configuration when only retry/review actions are used.

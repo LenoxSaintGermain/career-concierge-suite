@@ -303,3 +303,22 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - operator visibility for bookings and onboarding state
 - Added `MTL-14` and `MTL-15` so the roadmap now shows one explicit closure pass rather than leaving those items as audit observations.
 - Formalized acceptance criteria and positive/negative validation coverage for the Lucid-only modules, which previously had names in spec but not committed AC depth.
+
+### Delivery: Admin Media-Pipeline Console + Operator Lineage Boundary
+
+- Completed the current `E09-S06` posture by making the client-versus-operator boundary explicit:
+  - client-facing media stays on final assembled output
+  - prompt lineage, queue state, retry state, and review posture are kept in operator/admin surfaces
+- Extended persisted media records with operator-only lineage and client-visible payload separation.
+- Added admin media-pipeline endpoints for:
+  - overview
+  - retry request
+  - manifest review state
+- Added a new admin Media pipeline monitor with:
+  - job counts
+  - review counts
+  - reusable/bespoke gap totals
+  - recent jobs
+  - recent manifests
+  - retry and review actions
+- Updated validation docs so operator QA now covers retry/review behavior and the client boundary directly.

@@ -141,6 +141,12 @@ Generated media is no longer only an in-memory response. The current pipeline la
 - video-status refresh updates back into the same job/manifest pair
 
 That queued media-pipeline track explicitly includes a future Admin Console operating section for queue monitoring, retries, approvals, library management, provider configuration, and failure inspection.
+That admin media operating section is now partially live: operators can inspect recent jobs/manifests, prompt lineage, retry requests, review state, and reusable-versus-bespoke gap posture inside the `Media` section of Admin.
+The boundary is now explicit in the product model as well:
+
+- client-facing Episodes surfaces render final staged media only
+- operator/admin surfaces carry queue state, prompt lineage, review decisions, and retry controls
+
 The roadmap now also carries a queued agentic staff operating-model track so the canonical roles, handoffs, and stack boundaries are explicit before more agents are added.
 The same roadmap surface now visualizes the execution charter directly so operators can reference baseline confidence, staffing posture, and highest-risk gaps without leaving the modal.
 The roadmap `Plan` view now uses a stacked execution brief instead of narrow sprint columns, so roadmap phases, gaps, and active work remain readable on laptop-width screens.

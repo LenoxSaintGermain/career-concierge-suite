@@ -1218,6 +1218,10 @@ export function BingeFeedView(props: {
                   {mediaPack.job_id && <span>Job {mediaPack.job_id}</span>}
                   {mediaPack.manifest_id && <span>Manifest {mediaPack.manifest_id}</span>}
                 </div>
+                <div className="border border-[#2e4c53] bg-[#0d2329] px-3 py-3 text-xs leading-relaxed text-[#a9bcc0]">
+                  Operator-only lineage lives in the pipeline console. Client mode only renders the final staged media and
+                  never sees prompts, queue state, or manifest review decisions.
+                </div>
                 <div className="text-xs text-[#a9bcc0] leading-relaxed">{mediaPack.narrative}</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="border border-[#2e4c53] bg-[#0d2329] p-3 space-y-3">

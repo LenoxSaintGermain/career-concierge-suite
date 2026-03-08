@@ -2,7 +2,7 @@
 
 ## Status
 
-Partially implemented. Phase A planning seeds now write after suite generation; reusable-library resolution, async media jobs, and admin media ops remain queued.
+Partially implemented. Phase A planning seeds, reusable-library resolution, persisted async media records, operator-only lineage, and admin media ops are now live. The major remaining gap is dedicated worker execution beyond the inline API path.
 
 ## Product Question
 

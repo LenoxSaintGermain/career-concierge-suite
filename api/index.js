@@ -182,6 +182,175 @@ app.get('/v1/admin/system-overview', requireAuth, requireAdmin, async (_req, res
   }
 });
 
+app.get('/v1/admin/media-pipeline', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const warnings = [];
+    const jobs = [];
+    const manifests = [];
+    const clientsSnap = await db.collection('clients').select('display_name', 'email').get();
+
+    for (const clientSnap of clientsSnap.docs) {
+      const clientData = clientSnap.data() ?? {};
+      const uid = clientSnap.id;
+      let resolutionSummary = null;
+
+      try {
+        const runSnap = await clientOrchestrationRunsRef(uid).doc('content_director_phase_a').get();
+        if (runSnap.exists) {
+          resolutionSummary = runSnap.data()?.media_resolution?.summary ?? null;
+        }
+      } catch (error) {
+        warnings.push(`resolution_unavailable:${uid}:${sanitizeError(error, 'resolution_unavailable')}`);
+      }
+
+      try {
+        const jobsSnap = await clientMediaJobsRef(uid).orderBy('updated_at', 'desc').limit(4).get();
+        jobsSnap.docs.forEach((snap) => {
+          jobs.push(serializeAdminMediaJob({ uid, clientData, jobData: snap.data() ?? {} }));
+        });
+      } catch (error) {
+        warnings.push(`jobs_unavailable:${uid}:${sanitizeError(error, 'jobs_unavailable')}`);
+      }
+
+      try {
+        const manifestsSnap = await clientMediaManifestsRef(uid).orderBy('updated_at', 'desc').limit(3).get();
+        manifestsSnap.docs.forEach((snap) => {
+          manifests.push(
+            serializeAdminMediaManifest({
+              uid,
+              clientData,
+              manifestData: snap.data() ?? {},
+              resolutionSummary,
+            })
+          );
+        });
+      } catch (error) {
+        warnings.push(`manifests_unavailable:${uid}:${sanitizeError(error, 'manifests_unavailable')}`);
+      }
+    }
+
+    jobs.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+    manifests.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+
+    const visibleJobs = jobs.slice(0, 18);
+    const visibleManifests = manifests.slice(0, 12);
+
+    return res.json({
+      generated_at: new Date().toISOString(),
+      summary: {
+        total_jobs: jobs.length,
+        queued_jobs: jobs.filter((job) => job.status === 'queued').length,
+        degraded_jobs: jobs.filter((job) => job.status === 'degraded').length,
+        completed_jobs: jobs.filter((job) => job.status === 'completed').length,
+        retry_requested_jobs: jobs.filter((job) => Number(job.retry_requested_count || 0) > 0).length,
+        manifests_needing_review: manifests.filter((manifest) => manifest.review_state !== 'approved').length,
+        reusable_gap_count: manifests.reduce((sum, manifest) => sum + Number(manifest.reusable_gap_count || 0), 0),
+        bespoke_gap_count: manifests.reduce((sum, manifest) => sum + Number(manifest.bespoke_gap_count || 0), 0),
+      },
+      jobs: visibleJobs,
+      manifests: visibleManifests,
+      warnings: warnings.slice(0, 8),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_media_pipeline_failed',
+      detail: sanitizeError(error, 'admin_media_pipeline_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/media-pipeline/jobs/:clientUid/:jobId/retry', requireAuth, requireAdmin, async (req, res) => {
+  const clientUid = nonEmpty(req.params?.clientUid);
+  const jobId = nonEmpty(req.params?.jobId);
+  if (!clientUid || !jobId) return res.status(400).json({ error: 'missing_job_ref' });
+
+  try {
+    const jobRef = clientMediaJobsRef(clientUid).doc(jobId);
+    const jobSnap = await jobRef.get();
+    if (!jobSnap.exists) return res.status(404).json({ error: 'job_not_found' });
+    const jobData = jobSnap.data() ?? {};
+    const manifestId = nonEmpty(jobData?.manifest_id) || nonEmpty(jobData?.episode_id);
+    const now = new Date();
+    const nextRetryCount = Number(jobData?.retry_requested_count || 0) + 1;
+
+    await jobRef.set(
+      {
+        retry_requested_count: nextRetryCount,
+        retry_requested_at: now,
+        retry_requested_by: req.user.email ?? req.user.uid,
+        review_state: 'needs_review',
+        updated_at: now,
+      },
+      { merge: true }
+    );
+
+    if (manifestId) {
+      await clientMediaManifestsRef(clientUid).doc(manifestId).set(
+        {
+          review_state: 'needs_review',
+          retry_requested_count: nextRetryCount,
+          retry_requested_at: now,
+          updated_at: now,
+        },
+        { merge: true }
+      );
+    }
+
+    return res.json({ ok: true, job_id: jobId, retry_requested_count: nextRetryCount });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_media_retry_failed',
+      detail: sanitizeError(error, 'admin_media_retry_failed'),
+    });
+  }
+});
+
+app.post('/v1/admin/media-pipeline/manifests/:clientUid/:manifestId/review', requireAuth, requireAdmin, async (req, res) => {
+  const clientUid = nonEmpty(req.params?.clientUid);
+  const manifestId = nonEmpty(req.params?.manifestId);
+  const decision = nonEmpty(req.body?.decision).toLowerCase();
+  if (!clientUid || !manifestId) return res.status(400).json({ error: 'missing_manifest_ref' });
+  if (!['approved', 'needs_review', 'rejected'].includes(decision)) {
+    return res.status(400).json({ error: 'invalid_decision' });
+  }
+
+  try {
+    const manifestRef = clientMediaManifestsRef(clientUid).doc(manifestId);
+    const manifestSnap = await manifestRef.get();
+    if (!manifestSnap.exists) return res.status(404).json({ error: 'manifest_not_found' });
+    const manifestData = manifestSnap.data() ?? {};
+    const jobId = nonEmpty(manifestData?.job_id);
+    const now = new Date();
+
+    await manifestRef.set(
+      {
+        review_state: decision,
+        reviewed_at: now,
+        reviewed_by: req.user.email ?? req.user.uid,
+        updated_at: now,
+      },
+      { merge: true }
+    );
+
+    if (jobId) {
+      await clientMediaJobsRef(clientUid).doc(jobId).set(
+        {
+          review_state: decision,
+          updated_at: now,
+        },
+        { merge: true }
+      );
+    }
+
+    return res.json({ ok: true, manifest_id: manifestId, review_state: decision });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'admin_media_review_failed',
+      detail: sanitizeError(error, 'admin_media_review_failed'),
+    });
+  }
+});
+
 app.put('/v1/admin/config', requireAuth, requireAdmin, async (req, res) => {
   const next = normalizeConfig(req.body?.config ?? {});
   await configRef().set(
@@ -1521,6 +1690,14 @@ const persistMediaPipelineArtifacts = async ({ uid, episodeId, direction, pack }
     : pack.degraded
       ? 'degraded'
       : 'completed';
+  const reviewState = pipelineStatus === 'completed' && !pack.degraded ? 'approved' : 'needs_review';
+  const clientPayloadAssets = persistedAssets.map((asset) => ({
+    kind: asset.kind,
+    status: asset.status,
+    storage_provider: asset.storage_provider || 'none',
+    storage_path: asset.storage_path || '',
+    source_url: asset.source_url || '',
+  }));
 
   await Promise.all([
     clientMediaJobsRef(uid).doc(jobId).set(
@@ -1537,6 +1714,9 @@ const persistMediaPipelineArtifacts = async ({ uid, episodeId, direction, pack }
         degraded: Boolean(pack.degraded),
         asset_count: persistedAssets.length,
         queued_asset_count: persistedAssets.filter((asset) => asset.status === 'queued').length,
+        review_state: reviewState,
+        retry_requested_count: 0,
+        retry_requested_at: null,
         storage_bucket: storageBucketName || '',
         assets: persistedAssets,
       },
@@ -1552,7 +1732,20 @@ const persistMediaPipelineArtifacts = async ({ uid, episodeId, direction, pack }
         narrative: pack.narrative,
         degraded: Boolean(pack.degraded),
         pipeline_status: pipelineStatus,
+        review_state: reviewState,
         direction,
+        client_payload: {
+          narrative: pack.narrative,
+          assets: clientPayloadAssets,
+        },
+        operator_lineage: {
+          trigger: 'binge_media_pack',
+          runner: 'inline_api',
+          assets: persistedAssets,
+          direction,
+          generated_at: now,
+          updated_at: now,
+        },
         assets: persistedAssets,
       },
       { merge: true }
@@ -1595,11 +1788,20 @@ const updatePersistedVideoStatus = async ({ uid, jobId, operationName, done, vid
       : nextAssets.some((asset) => asset?.status === 'unavailable')
         ? 'degraded'
         : 'completed';
+    const nextReviewState = nextStatus === 'completed' ? 'approved' : 'needs_review';
+    const clientPayloadAssets = nextAssets.map((asset) => ({
+      kind: asset.kind,
+      status: asset.status,
+      storage_provider: asset.storage_provider || 'none',
+      storage_path: asset.storage_path || '',
+      source_url: asset.source_url || '',
+    }));
 
     await jobRef.set(
       {
         status: nextStatus,
         updated_at: new Date(),
+        review_state: nextReviewState,
         assets: nextAssets,
       },
       { merge: true }
@@ -1610,6 +1812,14 @@ const updatePersistedVideoStatus = async ({ uid, jobId, operationName, done, vid
         {
           pipeline_status: nextStatus,
           updated_at: new Date(),
+          review_state: nextReviewState,
+          client_payload: {
+            assets: clientPayloadAssets,
+          },
+          operator_lineage: {
+            assets: nextAssets,
+            updated_at: new Date(),
+          },
           assets: nextAssets,
         },
         { merge: true }
@@ -1618,6 +1828,80 @@ const updatePersistedVideoStatus = async ({ uid, jobId, operationName, done, vid
   } catch (error) {
     console.error('media_video_status_persist_error', error);
   }
+};
+
+const sanitizeMediaLineagePrompt = (value) => nonEmpty(value).slice(0, 220);
+
+const serializeAdminMediaAsset = (asset) => ({
+  kind: asset?.kind === 'video' ? 'video' : 'image',
+  status: nonEmpty(asset?.status) || 'unknown',
+  model: nonEmpty(asset?.model),
+  storage_provider: nonEmpty(asset?.storage_provider) || 'none',
+  storage_path: nonEmpty(asset?.storage_path) || '',
+  source_url: nonEmpty(asset?.source_url) || '',
+  note: nonEmpty(asset?.note) || '',
+});
+
+const serializeAdminMediaJob = ({ uid, clientData, jobData }) => ({
+  client_uid: uid,
+  client_name: nonEmpty(clientData?.display_name) || toDisplayName({ email: clientData?.email }) || uid,
+  client_email: nonEmpty(clientData?.email),
+  job_id: nonEmpty(jobData?.job_id),
+  manifest_id: nonEmpty(jobData?.manifest_id),
+  episode_id: nonEmpty(jobData?.episode_id),
+  status: nonEmpty(jobData?.status) || 'unknown',
+  trigger: nonEmpty(jobData?.trigger),
+  runner: nonEmpty(jobData?.runner),
+  generated_at: toIso(jobData?.generated_at),
+  updated_at: toIso(jobData?.updated_at),
+  asset_count: Number(jobData?.asset_count || 0),
+  queued_asset_count: Number(jobData?.queued_asset_count || 0),
+  degraded: Boolean(jobData?.degraded),
+  review_state: nonEmpty(jobData?.review_state) || 'needs_review',
+  retry_requested_count: Number(jobData?.retry_requested_count || 0),
+  retry_requested_at: toIso(jobData?.retry_requested_at),
+  assets: Array.isArray(jobData?.assets) ? jobData.assets.map(serializeAdminMediaAsset) : [],
+});
+
+const serializeAdminMediaManifest = ({ uid, clientData, manifestData, resolutionSummary }) => {
+  const clientPayloadAssets = Array.isArray(manifestData?.client_payload?.assets)
+    ? manifestData.client_payload.assets
+    : Array.isArray(manifestData?.assets)
+      ? manifestData.assets.map((asset) => ({
+          kind: asset?.kind === 'video' ? 'video' : 'image',
+          status: nonEmpty(asset?.status) || 'unknown',
+          storage_provider: nonEmpty(asset?.storage_provider) || 'none',
+          storage_path: nonEmpty(asset?.storage_path) || '',
+          source_url: nonEmpty(asset?.source_url) || '',
+        }))
+      : [];
+  const lineage = manifestData?.operator_lineage && typeof manifestData.operator_lineage === 'object'
+    ? manifestData.operator_lineage
+    : {};
+  const direction = manifestData?.direction && typeof manifestData.direction === 'object'
+    ? manifestData.direction
+    : lineage?.direction && typeof lineage.direction === 'object'
+      ? lineage.direction
+      : {};
+  return {
+    client_uid: uid,
+    client_name: nonEmpty(clientData?.display_name) || toDisplayName({ email: clientData?.email }) || uid,
+    client_email: nonEmpty(clientData?.email),
+    manifest_id: nonEmpty(manifestData?.manifest_id),
+    job_id: nonEmpty(manifestData?.job_id),
+    episode_id: nonEmpty(manifestData?.episode_id),
+    pipeline_status: nonEmpty(manifestData?.pipeline_status) || 'unknown',
+    review_state: nonEmpty(manifestData?.review_state) || 'needs_review',
+    generated_at: toIso(manifestData?.generated_at),
+    updated_at: toIso(manifestData?.updated_at),
+    client_payload_asset_count: clientPayloadAssets.length,
+    reusable_gap_count: Number(resolutionSummary?.reusable_gap_count || 0),
+    bespoke_gap_count: Number(resolutionSummary?.bespoke_gap_count || 0),
+    final_asset_count: Array.isArray(manifestData?.assets) ? manifestData.assets.length : clientPayloadAssets.length,
+    image_prompt: sanitizeMediaLineagePrompt(direction?.image_prompt),
+    video_prompt: sanitizeMediaLineagePrompt(direction?.video_prompt),
+    assets: Array.isArray(manifestData?.assets) ? manifestData.assets.map(serializeAdminMediaAsset) : [],
+  };
 };
 
 const readClientProfile = async (uid) => {
@@ -2499,7 +2783,7 @@ app.get('/v1/media/library', requireAuth, async (req, res) => {
       surface,
       generated_at: new Date().toISOString(),
       context: { ...context, is_admin: isAdmin },
-      resolver: buildLibraryFirstResolution({ items: [], episodePlan: null, surface }),
+      resolver: isAdmin ? buildLibraryFirstResolution({ items: [], episodePlan: null, surface }) : null,
       items: [],
     });
   }
@@ -2519,8 +2803,10 @@ app.get('/v1/media/library', requireAuth, async (req, res) => {
       ...item,
       ...resolveExternalMediaUrls(item),
     }));
-  const resolver = buildLibraryFirstResolution({ items: visible, episodePlan, surface });
-  await persistLibraryFirstResolution({ uid: req.user.uid, resolution: resolver });
+  const resolver = isAdmin ? buildLibraryFirstResolution({ items: visible, episodePlan, surface }) : null;
+  if (resolver) {
+    await persistLibraryFirstResolution({ uid: req.user.uid, resolution: resolver });
+  }
 
   return res.json({
     surface,

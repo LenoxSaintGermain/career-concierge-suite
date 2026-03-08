@@ -1,5 +1,6 @@
 import { auth } from './firebase';
 import {
+  AdminMediaPipelineOverview,
   AdminSystemOverview,
   AppConfig,
   BrandBodyDensity,
@@ -425,6 +426,42 @@ export const fetchAdminSystemOverview = async (): Promise<AdminSystemOverview> =
   }, 'Admin overview error');
 
   return (await resp.json()) as AdminSystemOverview;
+};
+
+export const fetchAdminMediaPipelineOverview = async (): Promise<AdminMediaPipelineOverview> => {
+  const resp = await adminRequest('/v1/admin/media-pipeline', {
+    method: 'GET',
+    headers: await authHeaders(),
+  }, 'Admin media pipeline error');
+
+  return (await resp.json()) as AdminMediaPipelineOverview;
+};
+
+export const requestAdminMediaRetry = async (clientUid: string, jobId: string): Promise<void> => {
+  await adminRequest(
+    `/v1/admin/media-pipeline/jobs/${encodeURIComponent(clientUid)}/${encodeURIComponent(jobId)}/retry`,
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+    },
+    'Admin media retry error'
+  );
+};
+
+export const reviewAdminMediaManifest = async (
+  clientUid: string,
+  manifestId: string,
+  decision: 'approved' | 'needs_review' | 'rejected'
+): Promise<void> => {
+  await adminRequest(
+    `/v1/admin/media-pipeline/manifests/${encodeURIComponent(clientUid)}/${encodeURIComponent(manifestId)}/review`,
+    {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ decision }),
+    },
+    'Admin media review error'
+  );
 };
 
 export const canAccessAdminConfig = async (): Promise<boolean> => {

@@ -522,6 +522,74 @@ export interface AdminSystemOverview {
   };
 }
 
+export interface AdminMediaPipelineAssetSummary {
+  kind: 'image' | 'video';
+  status: string;
+  model: string;
+  storage_provider: string;
+  storage_path?: string;
+  source_url?: string;
+  note?: string;
+}
+
+export interface AdminMediaPipelineJobSummary {
+  client_uid: string;
+  client_name: string;
+  client_email: string;
+  job_id: string;
+  manifest_id: string;
+  episode_id: string;
+  status: string;
+  trigger: string;
+  runner: string;
+  generated_at: string | null;
+  updated_at: string | null;
+  asset_count: number;
+  queued_asset_count: number;
+  degraded: boolean;
+  review_state: string;
+  retry_requested_count: number;
+  retry_requested_at: string | null;
+  assets: AdminMediaPipelineAssetSummary[];
+}
+
+export interface AdminMediaPipelineManifestSummary {
+  client_uid: string;
+  client_name: string;
+  client_email: string;
+  manifest_id: string;
+  job_id: string;
+  episode_id: string;
+  pipeline_status: string;
+  review_state: string;
+  generated_at: string | null;
+  updated_at: string | null;
+  client_payload_asset_count: number;
+  reusable_gap_count: number;
+  bespoke_gap_count: number;
+  final_asset_count: number;
+  image_prompt: string;
+  video_prompt: string;
+  assets: AdminMediaPipelineAssetSummary[];
+}
+
+export interface AdminMediaPipelineOverview {
+  generated_at: string;
+  summary: {
+    total_jobs: number;
+    queued_jobs: number;
+    degraded_jobs: number;
+    completed_jobs: number;
+    retry_requested_jobs: number;
+    manifests_needing_review: number;
+    reusable_gap_count: number;
+    bespoke_gap_count: number;
+  };
+  jobs: AdminMediaPipelineJobSummary[];
+  manifests: AdminMediaPipelineManifestSummary[];
+  warnings: string[];
+}
+
 export interface VoiceSynthesisResponse {
   provider: 'sesame' | 'gemini_live';
   mime_type: string;

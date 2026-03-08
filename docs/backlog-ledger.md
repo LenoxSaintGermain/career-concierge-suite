@@ -50,8 +50,8 @@ Source of truth backlog:
 | E09-S03 Library-First Resolver + Gap Analysis | E09 | P1 | Done | `/v1/media/library` now resolves tagged assets against the Phase A episode plan, classifies reusable-kit vs bespoke gaps, and persists the decision summary into `orchestration_runs`. |
 | E09-S04 Cloud Run Media-Pipeline Service | E09 | P1 | In Progress | Media-pack generation now persists pipeline jobs/manifests; moving generation off the inline API path into a dedicated worker/service remains. |
 | E09-S05 Cloud Storage + Firestore Metadata Model | E09 | P1 | In Progress | Generated image binaries and media metadata now persist to Cloud Storage/Firestore; fuller video persistence and richer lineage indexing remain. |
-| E09-S06 Operator Lineage vs Client Output Boundary | E09 | P1 | Queued | Operator mode should expose provenance while client mode only sees final assembled media. |
-| E09-S07 Admin Media-Pipeline Console | E09 | P1 | Queued | Admin should monitor queue health, library operations, approvals, failures, and pipeline config end to end. |
+| E09-S06 Operator Lineage vs Client Output Boundary | E09 | P1 | Done | Client-facing media now stays on final assembled output while resolver lineage, prompts, retry state, and review posture are kept in operator/admin surfaces only. |
+| E09-S07 Admin Media-Pipeline Console | E09 | P1 | Done | Admin now exposes media-pipeline monitoring, prompt lineage, retry requests, review actions, and pipeline summary in the Media section. |
 | E10-S01 Canonical Staff Registry + Contracts | E10 | P1 | Queued | Every MVP staff role should have explicit trigger, scope, IO, and approval rules. |
 | E10-S02 Intent/Tier Handoff Graph | E10 | P1 | Queued | The orchestrator should explain which downstream staff roles were selected and why. |
 | E10-S03 Firestore Orchestration Memory Model | E10 | P1 | Queued | Orchestration runs, evidence, and evaluation state should live in Firestore before optional vector infrastructure. |
@@ -138,6 +138,7 @@ Current task pulse:
 | 2026-03-07 00:45:00Z | E09-S02 starter library seed | Added a starter curated-media pack plus one-click admin seeding so reusable routes can be loaded into config without hand-building every entry. | Done | `components/AdminConsole.tsx`, `config/starterMediaLibrary.ts`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-07 01:30:00Z | E09-S04/E09-S05 pipeline persistence | Added persisted media jobs/manifests, Cloud Storage image saves, Firestore metadata/state writes, and video-status writeback for generated episode media. | Done | `api/index.js`, `types.ts`, `services/bingeApi.ts`, `components/BingeFeedView.tsx`, `components/RoadmapView.tsx`, `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/progress-log.md` |
 | 2026-03-08 04:30:00Z | E12/E13/MTL-14/MTL-15 planning | Added the 90% confidence-closure pass, formalized Lucid tile expansion stories, and mapped the missing AI Concierge onboarding/booking baseline into committed roadmap, backlog, and acceptance docs. | Done | `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`, `components/RoadmapView.tsx`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`, `docs/career-concierge-os.md` |
+| 2026-03-08 05:35:00Z | E09-S06/E09-S07 media ops | Added operator-only lineage storage, a dedicated admin media-pipeline console, retry/review controls, and client-versus-operator media boundary enforcement. | Done | `api/index.js`, `components/AdminConsole.tsx`, `components/BingeFeedView.tsx`, `services/adminApi.ts`, `types.ts`, `docs/operations-runbook.md`, `docs/mvp/demo_validation_checklist.md`, `docs/progress-log.md` |
 
 ## Update Protocol
 
