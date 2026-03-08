@@ -72,26 +72,6 @@ const tileIndexClass = {
   title: 'text-[10px] opacity-20',
 };
 
-const overlayRailStyle = (brand: BrandConfig): React.CSSProperties => {
-  if (brand.hierarchy.overlay_style === 'minimal') {
-    return {
-      backgroundColor: brand.colors.surface_background,
-      color: brand.colors.ink,
-      borderRight: `1px solid ${brand.colors.grid_line}`,
-    };
-  }
-  if (brand.hierarchy.overlay_style === 'cinematic') {
-    return {
-      background: `linear-gradient(160deg, ${brand.colors.overlay_background} 0%, ${brand.colors.ink} 100%)`,
-      color: brand.colors.overlay_text,
-    };
-  }
-  return {
-    backgroundColor: brand.colors.overlay_background,
-    color: brand.colors.overlay_text,
-  };
-};
-
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -588,56 +568,95 @@ const App: React.FC = () => {
           />
 
           <div
-            className="w-full max-w-6xl h-full max-h-[90vh] shadow-2xl relative flex flex-col md:flex-row overflow-y-auto md:overflow-hidden ring-1 ring-black/5"
+            className="relative flex h-full max-h-[92vh] w-full max-w-[1520px] flex-col overflow-hidden shadow-2xl ring-1 ring-black/5"
             style={{ backgroundColor: brand.colors.surface_background }}
           >
-            <div className="absolute top-6 right-6 z-20 flex items-center gap-4">
-              <button
-                onClick={handleCloseModal}
-                className="p-2 opacity-50 hover:opacity-100 transition-opacity dur-xs rounded-full mix-blend-difference text-white/80 hover:text-white"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-            </div>
-
-            {/* Left column */}
-            <div className="w-full md:w-[31%] p-8 md:p-12 flex flex-col justify-between shrink-0" style={overlayRailStyle(brand)}>
-              <div>
-                <div className="text-xs font-mono opacity-50 mb-8 flex justify-between">
-                  <span>{openModule.index} / {String(visibleModules.length).padStart(2, '0')}</span>
-                  <span className="opacity-50">{brand.copy.modal_meta_label}</span>
-                </div>
-                <div className={`uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent }}>
-                  {displayedOpenModule?.eyebrow}
-                </div>
-                <h2 className={`font-editorial leading-none mb-8 mt-3 ${headerScaleClass[brand.hierarchy.header_scale]}`}>
-                  {displayedOpenModule?.detail_title || openModule.title}
-                </h2>
-                {brand.toggles.show_detail_quotes && (
-                  <p
-                    className={`font-light opacity-80 font-editorial italic border-l pl-6 py-1 ${bodyDensityClass[brand.hierarchy.body_density]}`}
-                    style={{ borderColor: brand.colors.accent }}
-                  >
-                    "{displayedOpenModule?.detail_quote || openModule.subtitle}"
+            <header className="border-b border-black/10 bg-[rgba(245,242,233,0.94)] px-5 py-5 backdrop-blur md:px-8">
+              <div className="flex flex-col gap-4 border-b border-black/10 pb-5 xl:flex-row xl:items-start xl:justify-between">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em] text-black/45">
+                    <span>
+                      {openModule.index} / {String(visibleModules.length).padStart(2, '0')}
+                    </span>
+                    <span>{brand.copy.modal_meta_label}</span>
+                    <span>{openModule.kind}</span>
+                    <span>{isLocked(openModule) ? 'Locked' : 'Unlocked'}</span>
+                  </div>
+                  <div className={`uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent_dark }}>
+                    {displayedOpenModule?.eyebrow}
+                  </div>
+                  <h2 className={`font-editorial leading-none ${headerScaleClass[brand.hierarchy.header_scale]}`}>
+                    {displayedOpenModule?.detail_title || openModule.title}
+                  </h2>
+                  <p className={`max-w-4xl text-black/60 ${bodyDensityClass[brand.hierarchy.body_density]}`}>
+                    {displayedOpenModule?.description || openModule.subtitle}
                   </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="hidden border border-black/10 bg-white/80 px-4 py-3 text-right lg:block">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-black/35">{brand.copy.modal_account_label}</div>
+                    <div className="mt-2 text-xs text-black/65">{user.email ?? user.uid}</div>
+                  </div>
+                  <button
+                    onClick={handleCloseModal}
+                    className="border border-black/10 bg-white px-4 py-3 text-[10px] uppercase tracking-[0.24em] text-black/60 transition-colors hover:border-black/20 hover:text-black"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+                {brand.toggles.show_detail_quotes ? (
+                  <div className="border border-black/10 bg-white/70 px-5 py-5">
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-brand-teal">Current framing</div>
+                    <p className="mt-4 font-editorial text-2xl italic leading-tight text-[#09161a]">
+                      "{displayedOpenModule?.detail_quote || openModule.subtitle}"
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border border-black/10 bg-white/70 px-5 py-5">
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-brand-teal">Current framing</div>
+                    <p className="mt-4 text-sm leading-6 text-black/60">
+                      {displayedOpenModule?.description || openModule.subtitle}
+                    </p>
+                  </div>
                 )}
-              </div>
 
-              <div className="mt-10 space-y-6">
-                <div className="text-[10px] uppercase tracking-widest opacity-40">{brand.copy.modal_account_label}</div>
-                <div className="text-xs opacity-70">{user.email ?? user.uid}</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="border border-black/10 bg-white/70 px-4 py-4">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-black/35">Related modules</div>
+                    <div className="mt-3 text-sm leading-6 text-black/60">
+                      {(openModule.relatedIds || []).slice(0, 3).map((relatedId) => {
+                        const relatedModule = visibleModules.find((module) => module.id === relatedId);
+                        return relatedModule ? (
+                          <button
+                            key={relatedId}
+                            type="button"
+                            onClick={() => openModuleById(relatedId)}
+                            className="mr-2 mt-2 inline-flex border border-black/10 bg-white px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-black/55 transition-colors hover:border-black/20 hover:text-black"
+                          >
+                            {relatedModule.title}
+                          </button>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                  <div className="border border-black/10 bg-white/70 px-4 py-4">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-black/35">Session</div>
+                    <div className="mt-3 text-sm leading-6 text-black/60">
+                      {isAdminUser ? 'Operator controls available where appropriate.' : 'Client-safe view active.'}
+                    </div>
+                    <div className="mt-3 text-[10px] uppercase tracking-[0.18em] text-black/35">
+                      {isLocked(openModule) ? 'Complete intake to unlock artifacts.' : 'Ready for review and demo.'}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            </header>
 
-            {/* Right column */}
-            <div
-              ref={modalScrollRef}
-              className="w-full md:w-[69%] p-8 md:p-14 md:overflow-y-auto"
-              style={{ backgroundColor: brand.colors.surface_background }}
-            >
+            <div ref={modalScrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-8 md:py-8">
               {openModule.id === 'intake' ? (
                 <IntakeFlow
                   uid={user.uid}
@@ -765,7 +784,7 @@ const App: React.FC = () => {
                           </button>
                         </div>
                       </div>
-                    )}
+                  )}
                 </>
               )}
             </div>

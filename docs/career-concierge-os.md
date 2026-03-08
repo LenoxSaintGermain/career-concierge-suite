@@ -116,6 +116,7 @@ It uses:
 - a single-column editorial content stack so controls do not compress or overlap on medium-width laptop views
 - a lane-readiness voice studio that treats Gemini Live as the active rail, Sesame as explicitly gated off, and ElevenLabs/Manus as planned future lanes
 - a top-command admin layout instead of a permanent desktop side rail so the operating canvas scales on laptop-width modals
+- a top-command client module shell instead of the old split left-rail modal so episodes, TV, and artifact modules have a wider presentation canvas
 - a persistent save rail with explicit unsaved-state feedback
 - collapsible media-library editing so large libraries do not overwhelm the modal
 - taxonomy shortcut chips inside the media-library editor so reusable media can be tagged consistently instead of relying only on free-form tag entry

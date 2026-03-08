@@ -458,6 +458,7 @@ Use the reset workflow instead of repeating blind imports.
 - public Smart Start request intake on login surface
 - admin concierge-request review and status updates
 - MyConcierge visibility and response flow for paid `not_sure` users
+- the main client module modal now uses a top-command single-canvas layout rather than a persistent left rail
 - MyConcierge human follow-up request path
 - episode generation
 - narrated episode playback for auditory-learning personas
