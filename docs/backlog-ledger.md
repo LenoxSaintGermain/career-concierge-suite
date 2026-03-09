@@ -76,8 +76,8 @@ Source of truth backlog:
 | E15-S02 Admin Voice Operating Studio | E15 | P0 | Done | Admin voice controls now expose official Gemini voices, lane readiness, transcription toggles, and advanced live-session tuning. |
 | E15-S03 Sesame Feature Flag Off by Default | E15 | P0 | Done | Sesame now sits behind an explicit disabled flag and cannot silently win provider selection while the Cloud Run service is absent. |
 | E15-S04 Shared Sample Persona Password | E15 | P0 | Done | Sample persona auth creation, reseed flows, and the seed script now share a default demo password for direct manual login. |
-| E15-S05 ElevenLabs Secondary Voice Lane Planning | E15 | P1 | Queued | ElevenLabs is scoped as the second premium voice lane with adapter, secret, and admin-control requirements defined but not yet implemented. |
-| E15-S06 Manus Operator Lane Planning | E15 | P1 | Queued | Manus AI is scoped as an operator-side research/workflow lane with ledger write-back and approval requirements, but remains backlog-only. |
+| E15-S05 ElevenLabs Secondary Voice Lane Planning | E15 | P1 | In Progress | Cloud Run API env now stages ElevenLabs key/agent metadata and admin readiness visibility; provider adapter and runtime selection remain queued. |
+| E15-S06 Manus Operator Lane Planning | E15 | P1 | In Progress | Cloud Run API env now stages Manus credentials and admin readiness visibility; operator adapter and ledger write-back remain queued. |
 | E14-S01 Gmail + Calendar Smart Start Follow-Up Adapter | E14 | P2 | Deferred | Use Google Workspace CLI only for operator-side Smart Start follow-up drafting and scheduling payloads after the core booking flow is stable. |
 | E14-S02 Google Docs Briefing Pack Export | E14 | P2 | Deferred | Export operator briefing packs to Google Docs from Firestore-backed client context without making Docs canonical. |
 | E14-S03 Google Sheets Pipeline Mirror | E14 | P2 | Deferred | Mirror concierge request tracking into Sheets for ops visibility while keeping Firestore canonical. |

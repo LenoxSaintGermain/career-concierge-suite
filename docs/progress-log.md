@@ -405,3 +405,9 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - ElevenLabs and Manus are now documented as queued lanes rather than implied live options.
 - Sample persona auth create/reseed paths now reset to a shared demo password, and the roadmap validation harness surfaces that password for manual login.
 - With `MTL-06`, `MTL-08`, and `MTL-09` now marked done, the roadmap execution confidence moves into the `95%+` range while `MTL-04` and `MTL-07` remain the primary residual demo risks.
+
+### Delivery: External Lane Env Staging
+
+- Added Cloud Run API env staging for `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`, `ELEVENLABS_AGENT_BRANCH_ID`, `MANUS_API_KEY`, and `MANUS_API_URL`.
+- Admin system overview now reports ElevenLabs and Manus readiness from API runtime env.
+- Gemini Live remains the only active voice provider; ElevenLabs and Manus are still staged lanes until their adapters ship.

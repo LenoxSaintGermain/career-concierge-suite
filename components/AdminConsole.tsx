@@ -834,12 +834,23 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                   layer so the actual editing surfaces stay focused.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.18em] text-white/70 sm:min-w-[18rem]">
+              <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.18em] text-white/70 sm:min-w-[18rem] lg:grid-cols-3">
                 <div className="border border-white/10 bg-white/5 px-3 py-3">
                   Gemini {overview.runtime.gemini_configured ? 'configured' : 'missing'}
                 </div>
                 <div className="border border-white/10 bg-white/5 px-3 py-3">
                   Sesame {overview.runtime.sesame_configured ? 'configured' : 'missing'}
+                </div>
+                <div className="border border-white/10 bg-white/5 px-3 py-3">
+                  ElevenLabs{' '}
+                  {overview.runtime.elevenlabs_api_configured
+                    ? 'configured'
+                    : overview.runtime.elevenlabs_agent_configured
+                      ? 'agent only'
+                      : 'missing'}
+                </div>
+                <div className="border border-white/10 bg-white/5 px-3 py-3">
+                  Manus {overview.runtime.manus_configured ? 'configured' : 'missing'}
                 </div>
                 <div className="border border-white/10 bg-white/5 px-3 py-3">
                   Storage {overview.runtime.storage_bucket ? 'wired' : 'unset'}

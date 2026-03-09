@@ -61,6 +61,17 @@ API env options for `gemini_live`:
 - `GEMINI_LIVE_VAD_START`
 - `GEMINI_LIVE_VAD_END`
 
+API env options for staged external lanes:
+
+- `ELEVENLABS_API_KEY`
+- `ELEVENLABS_AGENT_ID`
+- `ELEVENLABS_AGENT_BRANCH_ID`
+- `MANUS_API_KEY`
+- `MANUS_API_URL`
+
+These envs currently stage credential and agent metadata in the Cloud Run API and surface readiness in Admin.
+They do not activate ElevenLabs or Manus as runtime providers until a dedicated adapter is implemented.
+
 Admin controls expose:
 
 - provider toggle

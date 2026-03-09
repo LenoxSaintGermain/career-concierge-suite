@@ -494,6 +494,11 @@ export interface AdminSystemOverview {
     storage_bucket: string;
     gemini_configured: boolean;
     sesame_configured: boolean;
+    elevenlabs_api_configured: boolean;
+    elevenlabs_agent_configured: boolean;
+    elevenlabs_branch_configured: boolean;
+    manus_configured: boolean;
+    manus_api_url: string;
     admin_email_mode: 'open' | 'allowlist';
     admin_email_count: number;
     rom_version: string;
