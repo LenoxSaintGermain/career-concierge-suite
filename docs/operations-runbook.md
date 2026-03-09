@@ -170,11 +170,14 @@ Current default admin list in the deploy template includes:
 - `treble.design@gmail.com`
 - `lenox@thirdsignal.ai`
 - `iamjimbutler@gmail.com`
+- `jazminbutler@me.com`
 
 The API now also includes a baked-in operator fallback so these accounts still pass admin checks when environment allowlists drift:
 
 - `operator@thirdsignal.ai`
 - `gws@conciergecareerservices.com`
+
+Runtime bootstrap also attempts to keep `iamjimbutler@gmail.com` and `jazminbutler@me.com` on the shared demo password `CareerDemo!2026` using the API service account.
 
 Authorization paths are now:
 
@@ -465,6 +468,7 @@ Use the reset workflow instead of repeating blind imports.
 - roadmap + validation tile visibility for admin users only
 - sample persona launch/reseed/proof controls in Roadmap validation
 - shared sample-persona password visible in Roadmap validation for direct manual login
+- validation now explicitly instructs operators to reseed first, then launch, and only use manual login after a successful reseed
 - admin/operator intake now supports `Autofill intake`, `Autofill + jump`, and `Autofill + prepare suite` for seeded persona speed runs
 - public Smart Start request intake on login surface
 - admin concierge-request review and status updates

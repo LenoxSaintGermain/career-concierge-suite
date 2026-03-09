@@ -568,11 +568,11 @@ const App: React.FC = () => {
           />
 
           <div
-            className="relative flex h-full max-h-[92vh] w-full max-w-[1520px] flex-col overflow-hidden shadow-2xl ring-1 ring-black/5"
+            className="relative flex h-full max-h-[92vh] w-full max-w-[1520px] flex-col overflow-y-auto shadow-2xl ring-1 ring-black/5 md:overflow-hidden"
             style={{ backgroundColor: brand.colors.surface_background }}
           >
             <header
-              className="border-b border-black/10 px-5 py-5 md:px-8"
+              className="shrink-0 border-b border-black/10 px-4 py-4 sm:px-5 sm:py-5 md:px-8"
               style={{
                 background:
                   brand.hierarchy.overlay_style === 'cinematic'
@@ -581,9 +581,9 @@ const App: React.FC = () => {
                 color: brand.colors.overlay_text,
               }}
             >
-              <div className="flex flex-col gap-4 border-b pb-5 xl:flex-row xl:items-start xl:justify-between" style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}>
+              <div className="flex flex-col gap-4 border-b pb-4 sm:pb-5 xl:flex-row xl:items-start xl:justify-between" style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}>
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.48) }}>
+                  <div className="hidden flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em] sm:flex" style={{ color: hexToRgba(brand.colors.overlay_text, 0.48) }}>
                     <span>
                       {openModule.index} / {String(visibleModules.length).padStart(2, '0')}
                     </span>
@@ -598,7 +598,7 @@ const App: React.FC = () => {
                     {displayedOpenModule?.detail_title || openModule.title}
                   </h2>
                   <p
-                    className={`max-w-4xl ${bodyDensityClass[brand.hierarchy.body_density]}`}
+                    className="max-w-4xl text-sm leading-6 md:text-base md:leading-7"
                     style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}
                   >
                     {displayedOpenModule?.description || openModule.subtitle}
@@ -634,7 +634,7 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+              <div className="mt-4 hidden gap-3 md:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
                 {brand.toggles.show_detail_quotes ? (
                   <div
                     className="px-5 py-5"
@@ -720,7 +720,7 @@ const App: React.FC = () => {
               </div>
             </header>
 
-            <div ref={modalScrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-8 md:py-8">
+            <div ref={modalScrollRef} className="px-4 py-4 sm:px-5 sm:py-5 md:min-h-0 md:flex-1 md:overflow-y-auto md:px-8 md:py-8">
               {openModule.id === 'intake' ? (
                 <IntakeFlow
                   uid={user.uid}

@@ -118,6 +118,7 @@ It uses:
 - Cloud Run API env staging for Manus credentials plus ElevenLabs agent metadata so Admin can report external-lane readiness without mislabeling those lanes as live providers
 - a top-command admin layout instead of a permanent desktop side rail so the operating canvas scales on laptop-width modals
 - a top-command client module shell instead of the old split left-rail modal so episodes, TV, and artifact modules have a wider presentation canvas
+- mobile and tablet module shells now retreat secondary chrome so the narrative stage stays primary when media is present
 - a persistent save rail with explicit unsaved-state feedback
 - collapsible media-library editing so large libraries do not overwhelm the modal
 - taxonomy shortcut chips inside the media-library editor so reusable media can be tagged consistently instead of relying only on free-form tag entry
@@ -192,6 +193,7 @@ The Express API under `api/` handles:
 - voice synthesis routing
 - deterministic persona fixture seeding for demo/test (`api/scripts/seed_persona_fixtures.mjs`) with full account hydration
 - shared sample-persona password reset on auth create/reseed for direct manual testing
+- deploy-time bootstrap for `iamjimbutler@gmail.com` and `jazminbutler@me.com` so those users remain admin-eligible and default to the shared demo password
 - operator speed-run intake autofill so seeded persona context can prefill or directly prepare a suite without hand-entering every intake field
 - SkillSync AI TV now stages a real client-safe viewing surface with embed/direct-video support and a placeholder hero when no published reel exists
 - the starter curated-media library now ships with local Veo-generated TV clips and auto-fills the runtime library whenever no saved curated library exists yet

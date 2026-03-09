@@ -822,7 +822,16 @@ const toDisplayName = (user) => {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
 };
-const defaultAdminEmails = ['operator@thirdsignal.ai', 'gws@conciergecareerservices.com'];
+const defaultAdminEmails = [
+  'operator@thirdsignal.ai',
+  'gws@conciergecareerservices.com',
+  'iamjimbutler@gmail.com',
+  'jazminbutler@me.com',
+];
+const bootstrapAdminUsers = [
+  { email: 'iamjimbutler@gmail.com', displayName: 'Jim Butler' },
+  { email: 'jazminbutler@me.com', displayName: 'Jazmin Butler' },
+];
 
 const adminEmailSet = new Set(
   [...defaultAdminEmails, ...(process.env.ADMIN_EMAILS || '').split(',')]
@@ -831,6 +840,7 @@ const adminEmailSet = new Set(
 );
 const SAMPLE_PERSONA_FIXTURE_URL = new URL('../config/demo/persona-fixtures.json', import.meta.url);
 let samplePersonaFixtureCache = null;
+let bootstrapAdminUsersPromise = null;
 
 const CONFIG_COLLECTION = 'system';
 const CONFIG_DOC = 'career-concierge-config';
@@ -1374,14 +1384,94 @@ const liveSystemInstruction = (runtimeConfig, clientName = '') =>
   );
 
 const configRef = () => db.collection(CONFIG_COLLECTION).doc(CONFIG_DOC);
+const cloneStarterMediaLibrary = () => JSON.parse(JSON.stringify(STARTER_MEDIA_LIBRARY_PACK));
+
+const ensureBootstrapAdminUsers = async () => {
+  if (!bootstrapAdminUsers.length) return;
+  if (!bootstrapAdminUsersPromise) {
+    bootstrapAdminUsersPromise = (async () => {
+      for (const entry of bootstrapAdminUsers) {
+        const email = nonEmpty(entry.email)?.toLowerCase();
+        if (!email) continue;
+        let userRecord;
+        try {
+          userRecord = await admin.auth().getUserByEmail(email);
+        } catch (error) {
+          if (error?.code === 'auth/user-not-found') {
+            userRecord = await admin.auth().createUser({
+              email,
+              password: DEMO_PERSONA_SHARED_PASSWORD,
+              displayName: nonEmpty(entry.displayName) || undefined,
+              emailVerified: true,
+            });
+          } else {
+            throw error;
+          }
+        }
+
+        await admin.auth().updateUser(userRecord.uid, {
+          password: DEMO_PERSONA_SHARED_PASSWORD,
+          displayName: nonEmpty(entry.displayName) || userRecord.displayName || undefined,
+          emailVerified: true,
+          disabled: false,
+        });
+
+        await db.collection('clients').doc(userRecord.uid).set(
+          {
+            email,
+            display_name: nonEmpty(entry.displayName) || userRecord.displayName || '',
+            updated_at: new Date(),
+          },
+          { merge: true }
+        );
+      }
+    })().catch((error) => {
+      bootstrapAdminUsersPromise = null;
+      throw error;
+    });
+  }
+  return bootstrapAdminUsersPromise;
+};
+
+void ensureBootstrapAdminUsers().catch((error) => {
+  console.error('bootstrap_admin_users_failed', String(error?.message || 'bootstrap_admin_users_failed'));
+});
 
 const loadAppConfig = async () => {
   try {
     const snap = await configRef().get();
-    if (!snap.exists) return normalizeConfig(DEFAULT_APP_CONFIG);
+    if (!snap.exists) {
+      const normalized = normalizeConfig(DEFAULT_APP_CONFIG);
+      await configRef().set(
+        {
+          config: normalized,
+          updated_at: new Date(),
+        },
+        { merge: true }
+      );
+      return normalized;
+    }
     const data = snap.data() ?? {};
     const raw = data.config && typeof data.config === 'object' ? data.config : data;
-    return normalizeConfig(raw);
+    const normalized = normalizeConfig(raw);
+    const hasSavedCuratedLibrary =
+      Array.isArray(raw?.media?.curated_library) && raw.media.curated_library.length > 0;
+    if (!hasSavedCuratedLibrary) {
+      await configRef().set(
+        {
+          config: {
+            ...normalized,
+            media: {
+              ...normalized.media,
+              curated_library: cloneStarterMediaLibrary(),
+            },
+          },
+          updated_at: new Date(),
+        },
+        { merge: true }
+      );
+    }
+    return normalized;
   } catch (error) {
     console.error('config_load_error', error);
     return normalizeConfig(DEFAULT_APP_CONFIG);

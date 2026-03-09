@@ -1546,6 +1546,16 @@ export const RoadmapView: React.FC = () => {
                 </div>
               ) : null}
 
+              <div className="mt-4 border border-black/10 bg-[#f7f3ea] px-3 py-3 text-xs leading-relaxed text-black/65">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">How to use this rail</div>
+                <div className="mt-3 space-y-2">
+                  <p>1. Click <span className="font-medium">Reset + reseed</span> first to refresh the persona state and reset the account password.</p>
+                  <p>2. Click <span className="font-medium">Launch demo</span> to open that persona in a separate preview tab.</p>
+                  <p>3. Use the shared demo password only after a successful reseed if you want to test manual login directly from the login screen.</p>
+                  <p>4. Operator-only intake autofill lives in the admin session, not inside the launched persona preview tab.</p>
+                </div>
+              </div>
+
               <div className="mt-4 space-y-3">
                 {(samplePersonaOverview?.personas ?? []).map((persona) => {
                   const launchBusy = samplePersonaBusyKey === `launch:${persona.id}`;
@@ -1581,6 +1591,7 @@ export const RoadmapView: React.FC = () => {
                           {persona.artifact_count} artifacts · {persona.interaction_count} interactions · {persona.media_job_count} media jobs
                         </div>
                         <div>{persona.last_hydrated_at ? `Hydrated ${new Date(persona.last_hydrated_at).toLocaleString()}` : 'Not yet hydrated'}</div>
+                        <div>{persona.launch_ready ? 'Recommended path: launch preview after reseed.' : 'Recommended path: reseed before launch or manual login.'}</div>
                         <div>
                           Proof {persona.proof_captured ? 'captured' : 'pending'}
                           {persona.proof_updated_at ? ` · ${new Date(persona.proof_updated_at).toLocaleString()}` : ''}
