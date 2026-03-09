@@ -778,37 +778,75 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     }
   };
 
+  const runtime = overview?.runtime ?? {
+    project_id: 'unknown',
+    region: 'unknown',
+    service_name: 'career-concierge-api',
+    revision: 'unknown',
+    firestore_database_id: 'default',
+    storage_bucket: '',
+    gemini_configured: false,
+    sesame_configured: false,
+    elevenlabs_api_configured: false,
+    elevenlabs_agent_configured: false,
+    manus_configured: false,
+    admin_email_mode: 'open',
+    admin_email_count: 0,
+    rom_version: 'unknown',
+  };
+  const queue = overview?.queue ?? { pending_count: 0, client_count: 0, hydrated_account_count: 0, items: [], warning: '' };
+  const bookings = overview?.bookings ?? { pending_count: 0, items: [] };
+  const agents = overview?.agents ?? { count: 0, approval_required_count: 0, write_scope_count: 0, items: [] };
+  const configSummary = overview?.config_summary ?? {
+    external_media_enabled: false,
+    curated_library_count: 0,
+    curated_library_enabled_count: 0,
+    voice_enabled: false,
+    voice_provider: 'gemini_live',
+    live_model: 'unknown',
+    episodes_enabled: false,
+    cjs_enabled: false,
+    tone_guard_enabled: false,
+    onboarding_email_enabled: false,
+    auto_generate_on_episode: false,
+    suite_overlay_configured: false,
+    binge_overlay_configured: false,
+    rom_overlay_configured: false,
+    live_overlay_configured: false,
+    art_director_overlay_configured: false,
+  };
+
   const overviewCards = overview
     ? [
         {
           eyebrow: 'Runtime',
-          title: `${overview.runtime.project_id} / ${overview.runtime.region}`,
-          body: `${overview.runtime.service_name} on ${overview.runtime.firestore_database_id}`,
-          meta: `rev ${overview.runtime.revision}`,
+          title: `${runtime.project_id} / ${runtime.region}`,
+          body: `${runtime.service_name} on ${runtime.firestore_database_id}`,
+          meta: `rev ${runtime.revision}`,
         },
         {
           eyebrow: 'Approvals',
-          title: `${overview.queue.pending_count} pending / ${overview.queue.client_count} clients`,
+          title: `${queue.pending_count} pending / ${queue.client_count} clients`,
           body: 'Global admin queue across client ledgers.',
-          meta: overview.queue.pending_count > 0 ? 'attention required' : 'clear',
+          meta: queue.pending_count > 0 ? 'attention required' : 'clear',
         },
         {
           eyebrow: 'Concierge',
-          title: `${overview.bookings.pending_count} new / ${overview.bookings.items.length} visible`,
+          title: `${bookings.pending_count} new / ${bookings.items.length} visible`,
           body: 'Public AI Concierge and Smart Start intake requests.',
-          meta: overview.bookings.pending_count > 0 ? 'follow up needed' : 'quiet',
+          meta: bookings.pending_count > 0 ? 'follow up needed' : 'quiet',
         },
         {
           eyebrow: 'Agents',
-          title: `${overview.agents.count} live roles / ${overview.agents.write_scope_count} write scopes`,
-          body: `${overview.agents.approval_required_count} roles require approval before execution leaves the rail.`,
-          meta: `${overview.runtime.admin_email_count} admin emails`,
+          title: `${agents.count} live roles / ${agents.write_scope_count} write scopes`,
+          body: `${agents.approval_required_count} roles require approval before execution leaves the rail.`,
+          meta: `${runtime.admin_email_count} admin emails`,
         },
         {
           eyebrow: 'Routing',
-          title: `${overview.config_summary.voice_provider} / ${overview.config_summary.live_model}`,
-          body: `${overview.config_summary.curated_library_enabled_count} enabled media routes, ${overview.config_summary.curated_library_count} total entries.`,
-          meta: overview.config_summary.external_media_enabled ? 'external media on' : 'external media off',
+          title: `${configSummary.voice_provider} / ${configSummary.live_model}`,
+          body: `${configSummary.curated_library_enabled_count} enabled media routes, ${configSummary.curated_library_count} total entries.`,
+          meta: configSummary.external_media_enabled ? 'external media on' : 'external media off',
         },
       ]
     : [];
@@ -816,23 +854,23 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   const apiOrigin = getAdminApiOrigin();
   const serviceStates = overview
     ? [
-        { label: 'Episodes rail', active: overview.config_summary.episodes_enabled },
-        { label: 'CJS execution', active: overview.config_summary.cjs_enabled },
-        { label: 'Voice rail', active: overview.config_summary.voice_enabled },
-        { label: 'External media', active: overview.config_summary.external_media_enabled },
-        { label: 'Episode autogen', active: overview.config_summary.auto_generate_on_episode },
-        { label: 'Tone guard', active: overview.config_summary.tone_guard_enabled },
-        { label: 'Onboarding email', active: overview.config_summary.onboarding_email_enabled },
+        { label: 'Episodes rail', active: configSummary.episodes_enabled },
+        { label: 'CJS execution', active: configSummary.cjs_enabled },
+        { label: 'Voice rail', active: configSummary.voice_enabled },
+        { label: 'External media', active: configSummary.external_media_enabled },
+        { label: 'Episode autogen', active: configSummary.auto_generate_on_episode },
+        { label: 'Tone guard', active: configSummary.tone_guard_enabled },
+        { label: 'Onboarding email', active: configSummary.onboarding_email_enabled },
       ]
     : [];
 
   const promptStates = overview
     ? [
-        { label: 'Suite overlay', active: overview.config_summary.suite_overlay_configured },
-        { label: 'Binge overlay', active: overview.config_summary.binge_overlay_configured },
-        { label: 'ROM overlay', active: overview.config_summary.rom_overlay_configured },
-        { label: 'Live overlay', active: overview.config_summary.live_overlay_configured },
-        { label: 'Art director', active: overview.config_summary.art_director_overlay_configured },
+        { label: 'Suite overlay', active: configSummary.suite_overlay_configured },
+        { label: 'Binge overlay', active: configSummary.binge_overlay_configured },
+        { label: 'ROM overlay', active: configSummary.rom_overlay_configured },
+        { label: 'Live overlay', active: configSummary.live_overlay_configured },
+        { label: 'Art director', active: configSummary.art_director_overlay_configured },
       ]
     : [];
 
@@ -862,27 +900,27 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
               </div>
               <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.18em] text-white/70 sm:min-w-[18rem] lg:grid-cols-3">
                 <div className="border border-white/10 bg-white/5 px-3 py-3">
-                  Gemini {overview.runtime.gemini_configured ? 'configured' : 'missing'}
+                  Gemini {runtime.gemini_configured ? 'configured' : 'missing'}
                 </div>
                 <div className="border border-white/10 bg-white/5 px-3 py-3">
-                  Sesame {overview.runtime.sesame_configured ? 'configured' : 'missing'}
+                  Sesame {runtime.sesame_configured ? 'configured' : 'missing'}
                 </div>
                 <div className="border border-white/10 bg-white/5 px-3 py-3">
                   ElevenLabs{' '}
-                  {overview.runtime.elevenlabs_api_configured
+                  {runtime.elevenlabs_api_configured
                     ? 'configured'
-                    : overview.runtime.elevenlabs_agent_configured
+                    : runtime.elevenlabs_agent_configured
                       ? 'agent only'
                       : 'missing'}
                 </div>
                 <div className="border border-white/10 bg-white/5 px-3 py-3">
-                  Manus {overview.runtime.manus_configured ? 'configured' : 'missing'}
+                  Manus {runtime.manus_configured ? 'configured' : 'missing'}
                 </div>
                 <div className="border border-white/10 bg-white/5 px-3 py-3">
-                  Storage {overview.runtime.storage_bucket ? 'wired' : 'unset'}
+                  Storage {runtime.storage_bucket ? 'wired' : 'unset'}
                 </div>
                 <div className="border border-white/10 bg-white/5 px-3 py-3">
-                  Voice {overview.config_summary.voice_enabled ? 'enabled' : 'disabled'}
+                  Voice {configSummary.voice_enabled ? 'enabled' : 'disabled'}
                 </div>
               </div>
             </div>
@@ -903,34 +941,34 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
         </section>
 
         <div className="grid gap-5">
-          <Panel title="Runtime identity" eyebrow="Environment" meta={`ROM ${overview.runtime.rom_version}`}>
+          <Panel title="Runtime identity" eyebrow="Environment" meta={`ROM ${runtime.rom_version}`}>
             <div className="grid gap-4">
               <div className="space-y-3 border border-black/10 bg-[#f8faf8] p-4">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">API origin</div>
                 <div className="break-all font-mono text-xs text-gray-700">{apiOrigin}</div>
               </div>
               <div className="space-y-2 border border-black/10 bg-[#f8faf8] p-4 text-sm text-gray-700">
-                <div>{overview.runtime.service_name}</div>
-                <div>{overview.runtime.project_id}</div>
-                <div>{overview.runtime.region}</div>
+                <div>{runtime.service_name}</div>
+                <div>{runtime.project_id}</div>
+                <div>{runtime.region}</div>
               </div>
               <div className="space-y-2 border border-black/10 bg-[#f8faf8] p-4 text-sm text-gray-700">
-                <div>Firestore: {overview.runtime.firestore_database_id}</div>
-                <div>Bucket: {overview.runtime.storage_bucket || 'not configured'}</div>
-                <div>Revision: {overview.runtime.revision}</div>
+                <div>Firestore: {runtime.firestore_database_id}</div>
+                <div>Bucket: {runtime.storage_bucket || 'not configured'}</div>
+                <div>Revision: {runtime.revision}</div>
               </div>
               <div className="space-y-2 border border-black/10 bg-[#f8faf8] p-4 text-sm text-gray-700">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">Admin access</div>
                 <div>
-                  {overview.runtime.admin_email_mode === 'allowlist'
-                    ? `${overview.runtime.admin_email_count} allowlisted admin emails control access.`
+                  {runtime.admin_email_mode === 'allowlist'
+                    ? `${runtime.admin_email_count} allowlisted admin emails control access.`
                     : 'Open admin mode is active because no ADMIN_EMAILS allowlist is configured.'}
                 </div>
               </div>
             </div>
           </Panel>
 
-          <Panel title="Live posture" eyebrow="Signals" meta={`${overview.queue.pending_count} pending`}>
+          <Panel title="Live posture" eyebrow="Signals" meta={`${queue.pending_count} pending`}>
             <div className="space-y-4">
               <div>
                 <div className="mb-3 text-[10px] uppercase tracking-[0.18em] text-black/45">Service toggles</div>
@@ -967,19 +1005,19 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
         </div>
 
         <div className="grid gap-5">
-          <Panel title="Approval rail preview" eyebrow="Admin Queue" meta={`${overview.queue.items.length} visible items`}>
+          <Panel title="Approval rail preview" eyebrow="Admin Queue" meta={`${queue.items.length} visible items`}>
             <div className="space-y-3">
-              {overview.queue.warning ? (
+              {queue.warning ? (
                 <div className="border border-amber-500/30 bg-amber-500/8 p-4 text-sm text-amber-800">
-                  Queue visibility is partially unavailable: {overview.queue.warning}
+                  Queue visibility is partially unavailable: {queue.warning}
                 </div>
               ) : null}
-              {overview.queue.items.length === 0 ? (
+              {queue.items.length === 0 ? (
                 <div className="border border-black/10 bg-[#f8faf8] p-4 text-sm text-gray-600">
                   No pending approvals across client ledgers.
                 </div>
               ) : (
-                overview.queue.items.slice(0, 3).map((item) => (
+                queue.items.slice(0, 3).map((item) => (
                   <article
                     key={`${item.client_uid || 'client'}-${item.id}`}
                     className="space-y-3 border border-black/10 bg-[#fbfcfa] p-4"
@@ -1009,9 +1047,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             </div>
           </Panel>
 
-          <Panel title="Active staff registry" eyebrow="Policy" meta={`${overview.agents.count} roles`}>
+          <Panel title="Active staff registry" eyebrow="Policy" meta={`${agents.count} roles`}>
             <div className="space-y-3">
-              {overview.agents.items.slice(0, 4).map((agent) => (
+              {agents.items.slice(0, 4).map((agent) => (
                 <article key={agent.role_id} className="space-y-3 border border-black/10 bg-[#fbfcfa] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -2354,14 +2392,14 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </div>
         </Panel>
 
-        <Panel title="Concierge requests" eyebrow="Smart Start ops" meta={`${overview.bookings.pending_count} new`}>
+        <Panel title="Concierge requests" eyebrow="Smart Start ops" meta={`${bookings.pending_count} new`}>
           <div className="space-y-3">
-            {overview.bookings.items.length === 0 ? (
+            {bookings.items.length === 0 ? (
               <div className="border border-dashed border-black/15 bg-[#fbfcfa] p-5 text-sm text-black/55">
                 No public concierge or Smart Start requests yet.
               </div>
             ) : (
-              overview.bookings.items.map((request) => (
+              bookings.items.map((request) => (
                 <article key={request.id} className="space-y-3 border border-black/10 bg-[#fbfcfa] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -2621,19 +2659,19 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             </div>
           </Panel>
 
-          <Panel title="Approval rail" eyebrow="Queue" meta={`${overview.queue.pending_count} pending`}>
+          <Panel title="Approval rail" eyebrow="Queue" meta={`${queue.pending_count} pending`}>
             <div className="space-y-3">
-              {overview.queue.warning ? (
+              {queue.warning ? (
                 <div className="border border-amber-500/30 bg-amber-500/8 p-4 text-sm text-amber-800">
-                  Queue visibility is partially unavailable: {overview.queue.warning}
+                  Queue visibility is partially unavailable: {queue.warning}
                 </div>
               ) : null}
-              {overview.queue.items.length === 0 ? (
+              {queue.items.length === 0 ? (
                 <div className="border border-black/10 bg-[#f8faf8] p-4 text-sm text-gray-600">
                   No pending approvals across client ledgers.
                 </div>
               ) : (
-                overview.queue.items.map((item) => (
+                queue.items.map((item) => (
                   <article
                     key={`${item.client_uid || 'client'}-${item.id}`}
                     className="space-y-3 border border-black/10 bg-[#fbfcfa] p-4"
@@ -2672,9 +2710,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             </div>
           </Panel>
 
-          <Panel title="Agent registry" eyebrow="Staff" meta={`${overview.agents.write_scope_count} write scopes`}>
+          <Panel title="Agent registry" eyebrow="Staff" meta={`${agents.write_scope_count} write scopes`}>
             <div className="space-y-3">
-              {overview.agents.items.map((agent) => (
+              {agents.items.map((agent) => (
                 <article key={agent.role_id} className="space-y-4 border border-black/10 bg-[#fbfcfa] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
