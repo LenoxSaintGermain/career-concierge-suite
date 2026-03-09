@@ -43,9 +43,9 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
 };
 
 const headerScaleClass = {
-  compact: 'text-2xl md:text-3xl',
-  standard: 'text-3xl md:text-4xl',
-  hero: 'text-4xl md:text-5xl',
+  compact: 'text-xl md:text-2xl',
+  standard: 'text-2xl md:text-3xl',
+  hero: 'text-3xl md:text-4xl',
 };
 
 const subheaderScaleClass = {
@@ -61,9 +61,9 @@ const bodyDensityClass = {
 };
 
 const tileTitleClass = {
-  index: 'text-lg md:text-xl font-editorial leading-tight',
-  balanced: 'text-xl font-editorial leading-tight',
-  title: 'text-2xl font-editorial leading-tight',
+  index: 'text-base md:text-lg font-editorial leading-tight',
+  balanced: 'text-lg font-editorial leading-tight',
+  title: 'text-xl font-editorial leading-tight',
 };
 
 const tileIndexClass = {
@@ -399,7 +399,7 @@ const App: React.FC = () => {
       )}
 
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-10 px-6 py-6 flex justify-between items-center backdrop-blur-[2px]">
+      <header className="fixed top-0 left-0 z-10 flex w-full items-center justify-between px-4 py-4 backdrop-blur-[2px] sm:px-5 sm:py-5">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
             {brand.toggles.show_logo_mark && brand.identity.logo_url && (
@@ -445,13 +445,13 @@ const App: React.FC = () => {
 
       {/* Suite Home */}
       <main
-        className={`pt-24 pb-24 px-6 min-h-screen transition-all dur-md ease-standard ${
+        className={`min-h-screen px-4 pb-14 pt-18 transition-all dur-md ease-standard sm:px-5 sm:pb-18 sm:pt-20 ${
           openModuleId ? 'opacity-20 blur-sm scale-95 pointer-events-none' : 'opacity-100 scale-100'
         }`}
         onClick={() => isMobile && setHoveredModuleId(null)}
         onMouseLeave={() => !isMobile && setHoveredModuleId(null)}
       >
-        <div className="max-w-6xl mx-auto relative">
+        <div className="relative mx-auto max-w-[1360px]">
           {brand.toggles.show_grid_glow && (
             <>
               <div
@@ -464,13 +464,13 @@ const App: React.FC = () => {
               />
             </>
           )}
-          <div className="mb-10">
+          <div className="mb-8">
             {brand.toggles.show_suite_kicker && (
               <div className={`uppercase opacity-80 ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent_dark }}>
                 {brand.copy.home_kicker}
               </div>
             )}
-            <div className={`font-editorial italic mt-3 ${headerScaleClass[brand.hierarchy.header_scale]}`}>{brand.copy.home_title}</div>
+            <div className={`font-editorial italic mt-2 ${headerScaleClass[brand.hierarchy.header_scale]}`}>{brand.copy.home_title}</div>
             <p className={`text-black/55 mt-4 max-w-2xl ${bodyDensityClass[brand.hierarchy.body_density]}`}>{brand.copy.home_description}</p>
             {brand.toggles.show_home_callout && (
               <div
@@ -492,7 +492,7 @@ const App: React.FC = () => {
           </div>
 
           <div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px border"
+            className="grid grid-cols-1 gap-px border sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             style={{
               backgroundColor: brand.colors.grid_line,
               borderColor: brand.colors.grid_line,
@@ -513,7 +513,7 @@ const App: React.FC = () => {
               return (
                 <div
                   key={m.id}
-                  className={`p-6 transition-all dur-md ease-exit cursor-pointer select-none ${
+                  className={`cursor-pointer select-none p-4 transition-all dur-md ease-exit md:p-5 ${
                     constellationDimmed ? 'opacity-20' : 'opacity-100'
                   } ${mobileFocused ? 'bg-white ring-1 ring-black/5 shadow-card-hover border-brand-teal' : 'hover:bg-white/95'} ${
                     !locked ? 'relative before:absolute before:left-0 before:top-0 before:h-[2px] before:w-14 before:bg-brand-teal/60' : ''
@@ -537,17 +537,17 @@ const App: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  <div className="mt-10">
+                  <div className="mt-5">
                     <div className={`uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent_dark }}>
                       {display.eyebrow}
                     </div>
                     <div className={`mt-2 ${tileTitleClass[brand.hierarchy.tile_emphasis]}`}>{display.title}</div>
                     {brand.toggles.show_tile_descriptions && (
-                      <p className={`text-black/50 mt-4 ${bodyDensityClass[brand.hierarchy.body_density]}`}>{display.description}</p>
+                      <p className={`mt-3 text-black/50 ${bodyDensityClass[brand.hierarchy.body_density]}`}>{display.description}</p>
                     )}
                   </div>
                   {isMobile && isHovered && (
-                    <div className="mt-6 text-[9px] uppercase tracking-widest opacity-40">
+                    <div className="mt-4 text-[9px] uppercase tracking-widest opacity-40">
                       {brand.copy.mobile_focus_hint}
                     </div>
                   )}
@@ -560,7 +560,7 @@ const App: React.FC = () => {
 
       {/* Module Modal */}
       {openModule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
           <div
             className="absolute inset-0 backdrop-blur-md"
             style={{ backgroundColor: hexToRgba(brand.colors.page_background, 0.8) }}
@@ -568,11 +568,11 @@ const App: React.FC = () => {
           />
 
           <div
-            className="relative flex h-full max-h-[92vh] w-full max-w-[1520px] flex-col overflow-y-auto shadow-2xl ring-1 ring-black/5 md:overflow-hidden"
+            className="relative flex h-full max-h-[92vh] w-full max-w-[1460px] flex-col overflow-y-auto shadow-2xl ring-1 ring-black/5 md:overflow-hidden"
             style={{ backgroundColor: brand.colors.surface_background }}
           >
             <header
-              className="shrink-0 border-b border-black/10 px-4 py-4 sm:px-5 sm:py-5 md:px-8"
+              className="shrink-0 border-b border-black/10 px-4 py-3 sm:px-5 sm:py-4 md:px-6"
               style={{
                 background:
                   brand.hierarchy.overlay_style === 'cinematic'
@@ -581,7 +581,7 @@ const App: React.FC = () => {
                 color: brand.colors.overlay_text,
               }}
             >
-              <div className="flex flex-col gap-4 border-b pb-4 sm:pb-5 xl:flex-row xl:items-start xl:justify-between" style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}>
+              <div className="flex flex-col gap-3 border-b pb-3 sm:pb-4 xl:flex-row xl:items-start xl:justify-between" style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}>
                 <div className="space-y-3">
                   <div className="hidden flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em] sm:flex" style={{ color: hexToRgba(brand.colors.overlay_text, 0.48) }}>
                     <span>
@@ -634,10 +634,10 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-4 hidden gap-3 md:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+              <div className="mt-3 hidden gap-3 lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.82fr)]">
                 {brand.toggles.show_detail_quotes ? (
                   <div
-                    className="px-5 py-5"
+                    className="px-4 py-4"
                     style={{
                       border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
                       backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
@@ -646,13 +646,13 @@ const App: React.FC = () => {
                     <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: brand.colors.accent }}>
                       Current framing
                     </div>
-                    <p className="mt-4 font-editorial text-2xl italic leading-tight" style={{ color: brand.colors.overlay_text }}>
+                    <p className="mt-3 font-editorial text-xl italic leading-tight" style={{ color: brand.colors.overlay_text }}>
                       "{displayedOpenModule?.detail_quote || openModule.subtitle}"
                     </p>
                   </div>
                 ) : (
                   <div
-                    className="px-5 py-5"
+                    className="px-4 py-4"
                     style={{
                       border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
                       backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
@@ -661,7 +661,7 @@ const App: React.FC = () => {
                     <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: brand.colors.accent }}>
                       Current framing
                     </div>
-                    <p className="mt-4 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
+                    <p className="mt-3 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
                       {displayedOpenModule?.description || openModule.subtitle}
                     </p>
                   </div>
@@ -669,7 +669,7 @@ const App: React.FC = () => {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div
-                    className="px-4 py-4"
+                    className="px-3 py-3"
                     style={{
                       border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
                       backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
@@ -678,7 +678,7 @@ const App: React.FC = () => {
                     <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
                       Related modules
                     </div>
-                    <div className="mt-3 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
+                    <div className="mt-2 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
                       {(openModule.relatedIds || []).slice(0, 3).map((relatedId) => {
                         const relatedModule = visibleModules.find((module) => module.id === relatedId);
                         return relatedModule ? (
@@ -700,7 +700,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <div
-                    className="px-4 py-4"
+                    className="px-3 py-3"
                     style={{
                       border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
                       backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
@@ -709,7 +709,7 @@ const App: React.FC = () => {
                     <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
                       Session
                     </div>
-                    <div className="mt-3 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
+                    <div className="mt-2 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
                       {isAdminUser ? 'Operator controls available where appropriate.' : 'Client-safe view active.'}
                     </div>
                     <div className="mt-3 text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
@@ -720,7 +720,7 @@ const App: React.FC = () => {
               </div>
             </header>
 
-            <div ref={modalScrollRef} className="px-4 py-4 sm:px-5 sm:py-5 md:min-h-0 md:flex-1 md:overflow-y-auto md:px-8 md:py-8">
+            <div ref={modalScrollRef} className="px-4 py-4 sm:px-4 sm:py-4 md:min-h-0 md:flex-1 md:overflow-y-auto md:px-6 md:py-6">
               {openModule.id === 'intake' ? (
                 <IntakeFlow
                   uid={user.uid}

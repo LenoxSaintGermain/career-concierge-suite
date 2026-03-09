@@ -2732,14 +2732,14 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   const sectionMeta = sectionCopy[activeSection];
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-6">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-2 sm:p-3">
       <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex h-[94vh] w-full max-w-[1480px] flex-col overflow-hidden border border-black/10 bg-[#f3efe6] shadow-[0_40px_120px_-56px_rgba(0,0,0,0.58)]">
-        <header className="border-b border-black/10 bg-[rgba(245,242,233,0.94)] px-5 py-4 backdrop-blur md:px-6">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div className="relative flex h-[94vh] w-full max-w-[1360px] flex-col overflow-hidden border border-black/10 bg-[#f3efe6] shadow-[0_40px_120px_-56px_rgba(0,0,0,0.58)]">
+        <header className="border-b border-black/10 bg-[rgba(245,242,233,0.94)] px-3 py-3 backdrop-blur md:px-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
             <div className="space-y-2">
               <div className="text-[10px] uppercase tracking-[0.28em] text-brand-teal">Admin OS · {sectionMeta.eyebrow}</div>
-              <h2 className="text-[30px] font-editorial italic leading-none text-[#08161a] md:text-[38px]">
+              <h2 className="text-[28px] font-editorial italic leading-none text-[#08161a] md:text-[34px]">
                 {sectionMeta.title}
               </h2>
               <p className="max-w-4xl text-sm leading-6 text-black/60">{sectionMeta.description}</p>
@@ -2767,22 +2767,22 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="border border-black/10 bg-white/80 px-4 py-3">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="border border-black/10 bg-white/80 px-3 py-3">
               <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Pending</div>
               <div className="mt-2 text-2xl font-editorial text-[#09161a]">{overview?.queue.pending_count ?? '—'}</div>
             </div>
-            <div className="border border-black/10 bg-white/80 px-4 py-3">
+            <div className="border border-black/10 bg-white/80 px-3 py-3">
               <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Agents</div>
               <div className="mt-2 text-2xl font-editorial text-[#09161a]">{overview?.agents.count ?? '—'}</div>
             </div>
-            <div className="border border-black/10 bg-white/80 px-4 py-3">
+            <div className="border border-black/10 bg-white/80 px-3 py-3">
               <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Media</div>
               <div className="mt-2 text-2xl font-editorial text-[#09161a]">
                 {overview?.config_summary.curated_library_enabled_count ?? '—'}
               </div>
             </div>
-            <div className="border border-black/10 bg-white/80 px-4 py-3">
+            <div className="border border-black/10 bg-white/80 px-3 py-3">
               <div className="text-[10px] uppercase tracking-[0.18em] text-black/40">Revision</div>
               <div className="mt-2 truncate text-xs uppercase tracking-[0.18em] text-[#09161a]">
                 {overview?.runtime.revision ?? '—'}
@@ -2790,14 +2790,14 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          <nav className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          <nav className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {navSections.map((section, index) => (
               <button
                 key={section.id}
                 type="button"
                 onClick={() => setActiveSection(section.id)}
                 disabled={saving}
-                className={`whitespace-nowrap border px-3 py-3 text-left transition-all ${
+                className={`whitespace-nowrap border px-3 py-2.5 text-left transition-all ${
                   activeSection === section.id
                     ? 'border-[#08242a] bg-[#08242a] text-white shadow-[0_16px_30px_-24px_rgba(0,0,0,0.45)]'
                     : 'border-black/10 bg-white text-[#09161a] hover:border-black/20'
@@ -2812,7 +2812,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </nav>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 pb-10 md:px-6 md:py-6 md:pb-12">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-8 md:px-5 md:py-5 md:pb-10">
           {loading ? (
             <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Loading…</div>
           ) : null}
@@ -2831,7 +2831,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           ) : null}
         </div>
 
-        <footer className="border-t border-black/10 bg-[rgba(255,255,255,0.86)] px-5 py-4 backdrop-blur md:px-6">
+        <footer className="border-t border-black/10 bg-[rgba(255,255,255,0.86)] px-4 py-3 backdrop-blur md:px-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-1">
               <div className="text-[10px] uppercase tracking-[0.22em] text-black/40">Operator save rail</div>

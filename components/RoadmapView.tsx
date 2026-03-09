@@ -1217,26 +1217,26 @@ export const RoadmapView: React.FC = () => {
   };
 
   return (
-    <section className="space-y-5">
-      <header className="border border-black/10 bg-white px-5 py-5 md:px-6">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+    <section className="space-y-4">
+      <header className="border border-black/10 bg-white px-4 py-4 md:px-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] text-brand-teal">Roadmap + Charter Surface</div>
-            <h3 className="mt-3 text-3xl leading-none font-editorial italic md:text-4xl">Execution map for the OS.</h3>
+            <h3 className="mt-2 text-2xl leading-none font-editorial italic md:text-3xl">Execution map for the OS.</h3>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-black/55">
               Compact operator view of the roadmap, charter confidence, and validation surfaces. Confidence updates as
               epic and task states move.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:min-w-[360px]">
-            <div className="border border-black/10 bg-[#eaf8f7] px-4 py-3">
+          <div className="grid grid-cols-2 gap-2 md:min-w-[320px]">
+            <div className="border border-black/10 bg-[#eaf8f7] px-3 py-3">
               <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Baseline Confidence</div>
-              <div className="mt-2 text-3xl leading-none font-editorial">{formatPercent(baselineConfidence)}</div>
+              <div className="mt-2 text-2xl leading-none font-editorial">{formatPercent(baselineConfidence)}</div>
               <div className="mt-1 text-xs text-black/55">{describeConfidence(baselineConfidence)}</div>
             </div>
-            <div className="border border-black/10 bg-white px-4 py-3">
+            <div className="border border-black/10 bg-white px-3 py-3">
               <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Execution Confidence</div>
-              <div className="mt-2 text-3xl leading-none font-editorial">{formatPercent(executionConfidence)}</div>
+              <div className="mt-2 text-2xl leading-none font-editorial">{formatPercent(executionConfidence)}</div>
               <div className="mt-1 text-xs text-black/55">{activeTasks} active tasks in motion</div>
             </div>
           </div>
@@ -1251,7 +1251,7 @@ export const RoadmapView: React.FC = () => {
               key={option.id}
               type="button"
               onClick={() => setPanel(option.id)}
-              className={`border px-4 py-2 text-left transition ${
+              className={`border px-3 py-2 text-left transition ${
                 isActive
                   ? 'border-brand-teal bg-[#eaf8f7] text-brand-teal'
                   : 'border-black/10 bg-white text-black/55 hover:border-brand-teal/35 hover:text-black'
@@ -1265,19 +1265,19 @@ export const RoadmapView: React.FC = () => {
       </div>
 
       {panel === 'overview' && (
-        <div className="space-y-5">
-          <article className="border border-brand-teal/15 bg-[#020709] px-5 py-5 text-white">
+        <div className="space-y-4">
+          <article className="border border-brand-teal/15 bg-[#020709] px-4 py-4 text-white">
             <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-[0.22em] text-white/45">
               <span>{doneCount} / {ROADMAP_NODES.length} roadmap phases shipped</span>
               <span>Operator brief</span>
             </div>
-            <h4 className="mt-6 text-4xl leading-none font-editorial">Roadmap</h4>
+            <h4 className="mt-4 text-[28px] leading-none font-editorial">Roadmap</h4>
             <p className="mt-4 max-w-4xl border-l border-brand-teal/60 pl-4 text-sm leading-relaxed text-white/70">
               Execution view for the POC-to-OS plan. This is now a stacked brief rather than a dashboard grid, so you
               can scan sequence, gaps, and active work without compressed sprint columns.
             </p>
-            <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <article className="border border-white/10 bg-white/5 px-4 py-3">
+            <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+              <article className="border border-white/10 bg-white/5 px-3 py-2.5">
                 <div className="text-[10px] uppercase tracking-[0.22em] text-white/45">Backlog Scope</div>
                 <div className="mt-2 text-2xl font-editorial">
                   {storyCount}
@@ -1286,17 +1286,17 @@ export const RoadmapView: React.FC = () => {
                 </div>
                 <p className="mt-1 text-xs text-white/55">stories / epics</p>
               </article>
-              <article className="border border-brand-teal/25 bg-brand-teal/10 px-4 py-3">
+              <article className="border border-brand-teal/25 bg-brand-teal/10 px-3 py-2.5">
                 <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Agentic Confidence</div>
                 <div className="mt-2 text-2xl font-editorial text-white">{formatPercent(agenticConfidence)}</div>
                 <p className="mt-1 text-xs text-white/55">E02 + E08 + E09 + E10</p>
               </article>
-              <article className="border border-white/10 bg-white/5 px-4 py-3">
+              <article className="border border-white/10 bg-white/5 px-3 py-2.5">
                 <div className="text-[10px] uppercase tracking-[0.22em] text-white/45">Delivery Pulse</div>
                 <div className="mt-2 text-2xl font-editorial text-white">{doneCount} shipped</div>
                 <p className="mt-1 text-xs text-white/55">{activeCount} active roadmap phases</p>
               </article>
-              <article className="border border-white/10 bg-white/5 px-4 py-3">
+              <article className="border border-white/10 bg-white/5 px-3 py-2.5">
                 <div className="text-[10px] uppercase tracking-[0.22em] text-white/45">Priority Gaps</div>
                 <div className="mt-2 text-2xl font-editorial text-white">{highestRisk.length}</div>
                 <p className="mt-1 text-xs text-white/55">charter checkpoints under pressure</p>
@@ -1308,13 +1308,13 @@ export const RoadmapView: React.FC = () => {
             {laneSummaries.map((lane) => (
               <article
                 key={lane.lane}
-                className={`border p-4 ${lane.score >= 82 ? 'border-emerald-500/35 bg-emerald-50' : lane.score >= 50 ? 'border-brand-teal/35 bg-[#eaf8f7]' : 'border-black/10 bg-white'}`}
+                className={`border p-3 ${lane.score >= 82 ? 'border-emerald-500/35 bg-emerald-50' : lane.score >= 50 ? 'border-brand-teal/35 bg-[#eaf8f7]' : 'border-black/10 bg-white'}`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">{lane.lane}</div>
                   <div className="text-[11px] uppercase tracking-[0.18em] text-black/45">{formatPercent(lane.score)}</div>
                 </div>
-                <h5 className="mt-3 text-[28px] leading-[1] font-editorial italic">{lane.lane}</h5>
+                <h5 className="mt-2 text-[24px] leading-[1] font-editorial italic">{lane.lane}</h5>
                 <div className="mt-4 flex items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-black/45">
                   <span>{lane.strongCount} strong</span>
                   <span>{lane.riskCount} at risk</span>
@@ -1335,7 +1335,7 @@ export const RoadmapView: React.FC = () => {
 
           <div className="space-y-4">
             {ROADMAP_NODES.map((node) => (
-              <article key={node.id} className={`border p-4 md:p-5 ${statusTone[node.status]} ${nodeGlow[node.status]}`}>
+              <article key={node.id} className={`border p-3 md:p-4 ${statusTone[node.status]} ${nodeGlow[node.status]}`}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.22em]">
@@ -1346,7 +1346,7 @@ export const RoadmapView: React.FC = () => {
                         {statusLabel[node.status]}
                       </span>
                     </div>
-                    <h4 className="text-[36px] leading-[1.02] font-editorial italic">{node.headline}</h4>
+                    <h4 className="text-[30px] leading-[1.04] font-editorial italic">{node.headline}</h4>
                     <div className="text-[10px] uppercase tracking-[0.18em] opacity-70">Epics · {node.epics.join(' · ')}</div>
                   </div>
                   <div className="min-w-[180px] border border-current/15 bg-white/35 px-3 py-3 text-[10px] uppercase tracking-[0.18em]">
@@ -1367,7 +1367,7 @@ export const RoadmapView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            <article className="border border-black/10 bg-white p-4">
+            <article className="border border-black/10 bg-white p-3">
               <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Primary Gaps</div>
               <div className="mt-4 space-y-3">
                 {highestRisk.map((item) => (
@@ -1385,7 +1385,7 @@ export const RoadmapView: React.FC = () => {
               </div>
             </article>
 
-            <article className="border border-black/10 bg-white p-4">
+            <article className="border border-black/10 bg-white p-3">
               <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Active Now</div>
               <div className="mt-4 space-y-3">
                 {activeTaskRows.map((task) => (
@@ -1404,15 +1404,15 @@ export const RoadmapView: React.FC = () => {
       {panel === 'charter' && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="space-y-4">
-            <article className="border border-brand-teal/15 bg-[#020709] p-5 text-white">
+            <article className="border border-brand-teal/15 bg-[#020709] p-4 text-white">
               <div className="text-[10px] uppercase tracking-[0.22em] text-white/45">Execution Charter</div>
-              <div className="mt-4 text-5xl leading-none font-editorial">{formatPercent(baselineConfidence)}</div>
+              <div className="mt-3 text-4xl leading-none font-editorial">{formatPercent(baselineConfidence)}</div>
               <p className="mt-3 text-sm leading-relaxed text-white/70">
                 Confidence that the OS roadmap reflects Jim + Lucid baselines. This score updates from live epic and
                 task status, not a static note.
               </p>
             </article>
-            <article className="border border-black/10 bg-white p-4">
+            <article className="border border-black/10 bg-white p-3">
               <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Recommended Staff</div>
               <div className="mt-4 space-y-3 text-sm text-black/70">
                 <div className="flex items-center justify-between gap-4">
@@ -1429,7 +1429,7 @@ export const RoadmapView: React.FC = () => {
                 </div>
               </div>
             </article>
-            <article className="border border-black/10 bg-white p-4">
+            <article className="border border-black/10 bg-white p-3">
               <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Shared Notebook</div>
               <p className="mt-3 text-sm leading-relaxed text-black/60">
                 Agents stay in sync through Firestore-backed orchestration runs, interactions, plans, and approvals,
@@ -1447,7 +1447,7 @@ export const RoadmapView: React.FC = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {laneSummaries.map((lane) => (
-                <article key={lane.lane} className="border border-black/10 bg-white p-4">
+                <article key={lane.lane} className="border border-black/10 bg-white p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">{lane.lane}</div>
                     <div className="text-[11px] uppercase tracking-[0.18em] text-black/45">{formatPercent(lane.score)}</div>
@@ -1490,10 +1490,10 @@ export const RoadmapView: React.FC = () => {
 
       {panel === 'validation' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_360px]">
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.45fr)_320px]">
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {PERSONA_TRACKS.map((persona) => (
-                <article key={persona.id} className={`border p-4 ${statusTone[persona.status]}`}>
+                <article key={persona.id} className={`border p-3 ${statusTone[persona.status]}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.2em]">{persona.id} · {persona.archetype}</div>
@@ -1519,7 +1519,7 @@ export const RoadmapView: React.FC = () => {
               ))}
             </div>
 
-            <article className="border border-black/10 bg-white p-4">
+            <article className="border border-black/10 bg-white p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Sample Persona Harness</div>
@@ -1636,8 +1636,8 @@ export const RoadmapView: React.FC = () => {
             </article>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-            <article className="border border-black/10 bg-white p-4">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[320px_minmax(0,1fr)]">
+            <article className="border border-black/10 bg-white p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Master Tasks</div>
                 <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">
@@ -1660,7 +1660,7 @@ export const RoadmapView: React.FC = () => {
               </div>
             </article>
 
-            <article className="border border-black/10 bg-white p-4">
+            <article className="border border-black/10 bg-white p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[10px] uppercase tracking-[0.22em] text-black/45">Story Validation Grid</div>
                 <div className="text-[10px] uppercase tracking-[0.18em] text-black/45">{storyCount} rows</div>
@@ -1688,7 +1688,7 @@ export const RoadmapView: React.FC = () => {
         </div>
       )}
 
-      <div className="border border-black/10 bg-white p-4">
+      <div className="border border-black/10 bg-white p-3">
         <div className="text-[10px] uppercase tracking-[0.24em] text-black/40">Log Binding</div>
         <p className="mt-2 text-sm leading-relaxed text-black/60">
           Canonical tracking remains in <code>docs/backlog-ledger.md</code>, <code>docs/progress-log.md</code>, and{' '}
