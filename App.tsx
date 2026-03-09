@@ -26,6 +26,7 @@ import { FlashCardsView } from './components/FlashCardsView';
 import { EventsNetworkingView } from './components/EventsNetworkingView';
 import { TelescopeView } from './components/TelescopeView';
 import { SkillSyncTeamView } from './components/SkillSyncTeamView';
+import { AmbientGuide } from './components/AmbientGuide';
 import { canAccessAdminConfig, fetchPublicConfig } from './services/adminApi';
 import { cloneBrandConfig, getBrandModuleCopy, hexToRgba } from './config/brandSystem.js';
 
@@ -39,6 +40,11 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   brand: cloneBrandConfig(),
   operations: {
     cjs_enabled: true,
+  },
+  voice: {
+    elevenlabs_enabled: false,
+    elevenlabs_agent_id: '',
+    active_panel: 'gemini_live',
   },
 };
 
@@ -105,6 +111,8 @@ const App: React.FC = () => {
 
   const modalScrollRef = useRef<HTMLDivElement>(null);
   const launchQueryHandledRef = useRef(false);
+  const [shellScrollDepth, setShellScrollDepth] = useState(0);
+  const [modalScrollDepth, setModalScrollDepth] = useState(0);
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState(false);
@@ -127,6 +135,34 @@ const App: React.FC = () => {
   useEffect(() => {
     refreshPublicConfig();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleScroll = () => {
+      setShellScrollDepth(window.scrollY || 0);
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const node = modalScrollRef.current;
+    if (!node || !openModuleId) {
+      setModalScrollDepth(0);
+      return;
+    }
+
+    const handleScroll = () => {
+      setModalScrollDepth(node.scrollTop || 0);
+    };
+
+    handleScroll();
+    node.addEventListener('scroll', handleScroll, { passive: true });
+    return () => node.removeEventListener('scroll', handleScroll);
+  }, [openModuleId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -225,6 +261,8 @@ const App: React.FC = () => {
     () => (openModule ? getBrandModuleCopy(brand, openModule.id) : null),
     [brand, openModule]
   );
+  const shellHeaderDimmed = openModuleId !== null || shellScrollDepth > 56;
+  const modalHeaderCollapsed = modalScrollDepth > 36;
 
   const isLocked = (m: SuiteModule) => {
     if (m.id === 'intake' || m.id === 'roadmap') return false;
@@ -399,7 +437,14 @@ const App: React.FC = () => {
       )}
 
       {/* Header */}
-      <header className="fixed top-0 left-0 z-10 flex w-full items-center justify-between px-4 py-4 backdrop-blur-[2px] sm:px-5 sm:py-5">
+      <header
+        className={`fixed top-0 left-0 z-10 flex w-full items-center justify-between px-4 py-4 transition-all duration-500 sm:px-5 sm:py-5 ${
+          shellHeaderDimmed ? 'opacity-0 -translate-y-4 pointer-events-none' : 'opacity-100 translate-y-0'
+        }`}
+        style={{
+          backdropFilter: shellHeaderDimmed ? 'blur(0px)' : 'blur(2px)',
+        }}
+      >
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
             {brand.toggles.show_logo_mark && brand.identity.logo_url && (
@@ -571,8 +616,41 @@ const App: React.FC = () => {
             className="relative flex h-full max-h-[92vh] w-full max-w-[1460px] flex-col overflow-y-auto shadow-2xl ring-1 ring-black/5 md:overflow-hidden"
             style={{ backgroundColor: brand.colors.surface_background }}
           >
+            <div
+              className={`pointer-events-none absolute right-4 top-4 z-20 flex items-center gap-3 transition-all duration-400 ${
+                modalHeaderCollapsed ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'
+              }`}
+            >
+              <div
+                className="hidden border px-3 py-2 text-[10px] uppercase tracking-[0.18em] sm:block"
+                style={{
+                  borderColor: hexToRgba(brand.colors.ink, 0.08),
+                  backgroundColor: hexToRgba(brand.colors.surface_background, 0.88),
+                  color: hexToRgba(brand.colors.ink, 0.58),
+                  backdropFilter: 'blur(14px)',
+                }}
+              >
+                {openModule.index} / {String(visibleModules.length).padStart(2, '0')} · {displayedOpenModule?.detail_title || openModule.title}
+              </div>
+              <button
+                onClick={handleCloseModal}
+                className="pointer-events-auto px-4 py-3 text-[10px] uppercase tracking-[0.24em] transition-colors"
+                style={{
+                  border: `1px solid ${hexToRgba(brand.colors.ink, 0.08)}`,
+                  backgroundColor: hexToRgba(brand.colors.surface_background, 0.88),
+                  color: hexToRgba(brand.colors.ink, 0.72),
+                  backdropFilter: 'blur(14px)',
+                }}
+              >
+                Close
+              </button>
+            </div>
             <header
-              className="shrink-0 border-b border-black/10 px-4 py-3 sm:px-5 sm:py-4 md:px-6"
+              className={`shrink-0 overflow-hidden border-b border-black/10 px-4 transition-all duration-500 sm:px-5 md:px-6 ${
+                modalHeaderCollapsed
+                  ? 'max-h-0 border-b-0 py-0 opacity-0 -translate-y-4 pointer-events-none'
+                  : 'max-h-[250px] py-2.5 opacity-100 translate-y-0 sm:py-3'
+              }`}
               style={{
                 background:
                   brand.hierarchy.overlay_style === 'cinematic'
@@ -581,8 +659,8 @@ const App: React.FC = () => {
                 color: brand.colors.overlay_text,
               }}
             >
-              <div className="flex flex-col gap-3 border-b pb-3 sm:pb-4 xl:flex-row xl:items-start xl:justify-between" style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}>
-                <div className="space-y-3">
+              <div className="flex flex-col gap-3 border-b pb-2.5 sm:pb-3 xl:flex-row xl:items-start xl:justify-between" style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}>
+                <div className="space-y-2">
                   <div className="hidden flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em] sm:flex" style={{ color: hexToRgba(brand.colors.overlay_text, 0.48) }}>
                     <span>
                       {openModule.index} / {String(visibleModules.length).padStart(2, '0')}
@@ -598,125 +676,95 @@ const App: React.FC = () => {
                     {displayedOpenModule?.detail_title || openModule.title}
                   </h2>
                   <p
-                    className="max-w-4xl text-sm leading-6 md:text-base md:leading-7"
+                    className="max-w-3xl text-sm leading-6 md:max-w-4xl"
                     style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}
                   >
                     {displayedOpenModule?.description || openModule.subtitle}
                   </p>
                 </div>
 
-                <div className="flex items-start gap-3">
-                  <div
-                    className="hidden px-4 py-3 text-right lg:block"
+                <div
+                  className="hidden px-3 py-2 text-right xl:block"
+                  style={{
+                    border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
+                    backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
+                  }}
+                >
+                  <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
+                    {brand.copy.modal_account_label}
+                  </div>
+                  <div className="mt-2 text-xs" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
+                    {user.email ?? user.uid}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-2 flex flex-wrap gap-2">
+                <AmbientGuide
+                  label="Current framing"
+                  message={displayedOpenModule?.detail_quote || displayedOpenModule?.description || openModule.subtitle}
+                >
+                  <span
+                    className="inline-flex max-w-[420px] items-center gap-2 border px-3 py-2 text-[10px] uppercase tracking-[0.18em]"
                     style={{
                       border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
                       backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
+                      color: hexToRgba(brand.colors.overlay_text, 0.78),
                     }}
                   >
-                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
-                      {brand.copy.modal_account_label}
-                    </div>
-                    <div className="mt-2 text-xs" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
-                      {user.email ?? user.uid}
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleCloseModal}
-                    className="px-4 py-3 text-[10px] uppercase tracking-[0.24em] transition-colors"
+                    <span style={{ color: brand.colors.accent }}>Framing</span>
+                    <span className="truncate normal-case tracking-normal opacity-80">
+                      {displayedOpenModule?.detail_quote || displayedOpenModule?.description || openModule.subtitle}
+                    </span>
+                  </span>
+                </AmbientGuide>
+
+                {(openModule.relatedIds || []).slice(0, 3).map((relatedId) => {
+                  const relatedModule = visibleModules.find((module) => module.id === relatedId);
+                  return relatedModule ? (
+                    <AmbientGuide
+                      key={relatedId}
+                      label={relatedModule.title}
+                      message={relatedModule.subtitle}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => openModuleById(relatedId)}
+                        className="inline-flex px-3 py-2 text-[10px] uppercase tracking-[0.18em] transition-colors"
+                        style={{
+                          border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
+                          backgroundColor: hexToRgba(brand.colors.overlay_text, 0.05),
+                          color: hexToRgba(brand.colors.overlay_text, 0.72),
+                        }}
+                      >
+                        {relatedModule.title}
+                      </button>
+                    </AmbientGuide>
+                  ) : null;
+                })}
+
+                <AmbientGuide
+                  label="Session posture"
+                  align="right"
+                  message={
+                    isLocked(openModule)
+                      ? 'This module is visible for context, but the journey remains locked until intake is complete.'
+                      : isAdminUser
+                        ? 'Operator-safe controls are available where appropriate while the client experience remains the default.'
+                        : 'This is the client-safe surface. Behind-the-scenes controls stay hidden from the user.'
+                  }
+                >
+                  <span
+                    className="inline-flex items-center gap-2 border px-3 py-2 text-[10px] uppercase tracking-[0.18em]"
                     style={{
-                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.18)}`,
+                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
                       backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
                       color: hexToRgba(brand.colors.overlay_text, 0.72),
                     }}
                   >
-                    Close
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-3 hidden gap-3 lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.82fr)]">
-                {brand.toggles.show_detail_quotes ? (
-                  <div
-                    className="px-4 py-4"
-                    style={{
-                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
-                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
-                    }}
-                  >
-                    <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: brand.colors.accent }}>
-                      Current framing
-                    </div>
-                    <p className="mt-3 font-editorial text-xl italic leading-tight" style={{ color: brand.colors.overlay_text }}>
-                      "{displayedOpenModule?.detail_quote || openModule.subtitle}"
-                    </p>
-                  </div>
-                ) : (
-                  <div
-                    className="px-4 py-4"
-                    style={{
-                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
-                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
-                    }}
-                  >
-                    <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: brand.colors.accent }}>
-                      Current framing
-                    </div>
-                    <p className="mt-3 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
-                      {displayedOpenModule?.description || openModule.subtitle}
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div
-                    className="px-3 py-3"
-                    style={{
-                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
-                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
-                    }}
-                  >
-                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
-                      Related modules
-                    </div>
-                    <div className="mt-2 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
-                      {(openModule.relatedIds || []).slice(0, 3).map((relatedId) => {
-                        const relatedModule = visibleModules.find((module) => module.id === relatedId);
-                        return relatedModule ? (
-                          <button
-                            key={relatedId}
-                            type="button"
-                            onClick={() => openModuleById(relatedId)}
-                            className="mr-2 mt-2 inline-flex px-3 py-2 text-[10px] uppercase tracking-[0.18em] transition-colors"
-                            style={{
-                              border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
-                              backgroundColor: hexToRgba(brand.colors.overlay_text, 0.05),
-                              color: hexToRgba(brand.colors.overlay_text, 0.72),
-                            }}
-                          >
-                            {relatedModule.title}
-                          </button>
-                        ) : null;
-                      })}
-                    </div>
-                  </div>
-                  <div
-                    className="px-3 py-3"
-                    style={{
-                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
-                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
-                    }}
-                  >
-                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
-                      Session
-                    </div>
-                    <div className="mt-2 text-sm leading-6" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
-                      {isAdminUser ? 'Operator controls available where appropriate.' : 'Client-safe view active.'}
-                    </div>
-                    <div className="mt-3 text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
-                      {isLocked(openModule) ? 'Complete intake to unlock artifacts.' : 'Ready for review and demo.'}
-                    </div>
-                  </div>
-                </div>
+                    {isAdminUser ? 'Operator-aware view' : 'Client-safe view'}
+                  </span>
+                </AmbientGuide>
               </div>
             </header>
 
@@ -727,6 +775,7 @@ const App: React.FC = () => {
                   tier={clientTier}
                   client={client}
                   isAdminUser={isAdminUser}
+                  voiceConfig={publicConfig.voice}
                   onComplete={(nextModuleId, payload) => {
                     // Update local client state so tiles unlock immediately.
                     setClient((prev) =>

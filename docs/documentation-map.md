@@ -21,6 +21,7 @@
 - `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`: committed path to 90% confidence plus the new Lucid tile/module scope, AC, and tests
 - `docs/mvp/google_workspace_operator_automation_spec.md`: deferred operator-side Gmail, Calendar, Docs, and Sheets automation via Google Workspace CLI
 - `docs/mvp/voice_runtime_hardening_and_external_lanes_spec.md`: Gemini Live hardening decisions, Sesame gating, sample-persona password policy, and queued ElevenLabs/Manus lanes
+- `docs/mvp/episodes_hero_critical_audit_2026-03-09.md`: critical findings, model-routing stance, and remaining gap list for the Episodes hero flow
 - `docs/documentation-map.md`: update matrix for future work
 
 ## Update Matrix
@@ -150,6 +151,20 @@
 - Gmail/Calendar/Docs/Sheets use cases change materially
 - dry-run or admin-governance rules for Workspace automation change
 
+### Update `docs/mvp/episodes_hero_critical_audit_2026-03-09.md` when
+
+- the Episodes hero baseline materially changes
+- model-routing guidance for Episodes changes
+- the scene-level media gap is closed or reframed
+- Lucid/Jim audit conclusions for the hero flow change
+
+### Update `docs/mvp/global_interaction_density_and_guidance_spec.md` when
+
+- the shared modal shell hierarchy changes
+- ambient guidance / tooltip behavior changes
+- roadmap or admin density rules change materially
+- mobile/tablet chrome-retreat behavior changes
+
 ## Code-to-Docs Mapping
 
 - `api/` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`
@@ -159,6 +174,7 @@
 - `components/admin/BrandStudioSection.tsx` -> `docs/career-concierge-os.md`, `docs/operations-runbook.md`, `docs/mvp/editorial-grid_brand-studio_spec.md`
 - `components/BingeFeedView.tsx` -> `docs/mvp/cinematic_episodes_player_spec.md`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
 - `components/RoadmapView.tsx` -> `docs/backlog-ledger.md`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
+- `components/AmbientGuide.tsx` -> `docs/mvp/global_interaction_density_and_guidance_spec.md`, `docs/career-concierge-os.md`
 - confidence-closure and Lucid tile planning -> `docs/mvp/confidence_closure_and_lucid_module_expansion_spec.md`, `docs/backlog-ledger.md`, `docs/mvp/demo_master_tasklist.md`, `docs/progress-log.md`
 - staff/orchestration product planning -> `docs/mvp/agentic_staff_operating_model_spec.md`, `docs/mvp/agentic_staffing_roadmap.md`, `docs/career-concierge-os.md`, `docs/decision-log.md`
 - stakeholder baseline audit and operator guidance -> `docs/mvp/agentic_execution_charter.md`

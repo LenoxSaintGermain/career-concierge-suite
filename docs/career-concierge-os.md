@@ -116,13 +116,21 @@ It uses:
 - a single-column editorial content stack so controls do not compress or overlap on medium-width laptop views
 - a lane-readiness voice studio that treats Gemini Live as the active rail, Sesame as explicitly gated off, and ElevenLabs/Manus as planned future lanes
 - Cloud Run API env staging for Manus credentials plus ElevenLabs agent metadata so Admin can report external-lane readiness without mislabeling those lanes as live providers
+- the public concierge intake can now mount the configured ElevenLabs Chief of Staff widget from API-served public config, and admin exposes a dedicated public-intake lane selector so operators can flip between Gemini and ElevenLabs without touching env vars
+- the intake concierge step itself now shows a live lane switcher when ElevenLabs is available so the team can choose between Gemini and ElevenLabs in-session
+- the public-intake lane selector is now the persisted global default, so `/v1/public/config` reflects the saved admin choice instead of forcing Gemini when ElevenLabs is available
 - a top-command admin layout instead of a permanent desktop side rail so the operating canvas scales on laptop-width modals
 - a top-command client module shell instead of the old split left-rail modal so episodes, TV, and artifact modules have a wider presentation canvas
+- the client module shell now collapses its large editorial header once the user scrolls into the module body so cinematic surfaces are not covered by persistent chrome
 - mobile and tablet module shells now retreat secondary chrome so the narrative stage stays primary when media is present
 - a persistent save rail with explicit unsaved-state feedback
 - collapsible media-library editing so large libraries do not overwhelm the modal
 - taxonomy shortcut chips inside the media-library editor so reusable media can be tagged consistently instead of relying only on free-form tag entry
 - a one-click starter media pack so operators can seed reusable episode routes without hand-authoring every initial library item
+- the Episodes module now loads routed curated media for free-tier/demo users as well, so the cinematic stage remains visible instead of dropping to text-only beats
+- the Episodes client player now treats media as beat-aware stage slots rather than one persistent companion clip, and it renders designed fallback stills/cards whenever a beat has no routed asset yet
+- Brand Studio preview now mirrors the actual suite shell plus module-overlay composition instead of a left-rail-only proof block
+- the shared modal shell now follows a viewport-first density rule: compact editorial header, inline context chips, and paused-hover ambient guidance instead of oversized stacked framing blocks
 - a future media-pipeline operations section that can inherit the same compact control-tower structure
 
 The operating surface still comes first, but it now behaves like a structured backstage OS instead of a stacked settings page.
@@ -142,6 +150,7 @@ Story-level status plus execution history is tracked in `docs/backlog-ledger.md`
 Demo task sequencing by persona is tracked in `docs/mvp/demo_master_tasklist.md`.
 The roadmap validation module mirrors these logs, so all three must be updated in the same pass as product changes.
 The in-app roadmap now carries the shipped client-facing Episodes player plus the still-queued Content Director media pipeline so product delivery and future architecture work remain visible together.
+The roadmap overview now prefers compact phase cards over full-width strips so the operator can scan more of the execution plan without extra scroll.
 
 Episodes now default to a client-facing cinematic player. Admins can still access BTS media-routing and generation controls, but only through an explicit operator mode inside the Episodes module.
 That operator rail now also surfaces the library-first media resolver summary:
@@ -213,7 +222,14 @@ The Express API under `api/` handles:
 - Gemini-backed generation routes
 - Gemini Live is the default active voice lane
 - Sesame remains feature-flagged off until a dedicated service exists
-- ElevenLabs and Manus remain queued external lanes, not active runtime dependencies
+- ElevenLabs is now a live selectable public-intake lane when the Cloud Run API env exposes an agent ID and the saved admin config chooses it
+- Gemini Live remains the internal runtime voice transport for the native live panel and token route
+- Manus remains a queued external lane, not an active runtime dependency
+- the Cloud Run API runtime now depends on Firestore data access via `roles/datastore.user` on the service account; without that role, admin config writes and admin telemetry surfaces will fail with `PERMISSION_DENIED`
+- admin media-pipeline status messaging now translates known provider/config mismatches into operator-safe language instead of leaking raw Gemini option errors
+- model routing is now governed by a shared Gemini/Veo catalog rather than ad hoc raw defaults, and Admin exposes quick presets for `Demo Quality`, `Balanced Production`, and `High Throughput`
+- stable `Gemini 2.5` routes are now the production defaults for suite, episode, and still-generation work; `Gemini 3.x` and `3.1` preview ids remain visible as explicit migration/testing options rather than silent defaults
+- the current Episodes audit is documented in `docs/mvp/episodes_hero_critical_audit_2026-03-09.md`; the headline conclusion is that the player is demo-ready but the backend is still not truly scene-native because media packs remain one-image/one-video per episode
 - public HTTPS entrypoint expected for SPA and mobile clients
 
 The frontend now resolves its API origin in this order:

@@ -411,3 +411,44 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Added Cloud Run API env staging for `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`, `ELEVENLABS_AGENT_BRANCH_ID`, `MANUS_API_KEY`, and `MANUS_API_URL`.
 - Admin system overview now reports ElevenLabs and Manus readiness from API runtime env.
 - Gemini Live remains the only active voice provider; ElevenLabs and Manus are still staged lanes until their adapters ship.
+
+### Delivery: ElevenLabs Intake Widget
+
+- `/v1/public/config` now exposes the public ElevenLabs agent ID when configured in Cloud Run API env.
+- Admin voice controls now expose a dedicated public-intake lane selector so the team can flip between Gemini and ElevenLabs.
+- The intake concierge step now mounts the ElevenLabs conversational widget for the Chief of Staff voice lane when that selector is set to ElevenLabs and the API env exposes a public agent ID.
+- The intake concierge step also exposes a live lane switcher so the team can toggle between Gemini and ElevenLabs without leaving the flow.
+- This makes the public voice entry usable end to end without changing the internal Gemini Live token/session flow.
+
+### Delivery: Demo UX Hardening + Admin Firestore Repair
+
+- The saved admin `Public intake lane` now persists through `/v1/public/config`, so the global public default can actually be switched between Gemini and ElevenLabs.
+- The client module shell now collapses its large editorial header on scroll so the episode and module content are not trapped under persistent chrome.
+- Free-tier/demo Episodes now load the routed curated media library as well, which restores the cinematic video stage instead of showing only text/script beats.
+- Brand Studio preview now mirrors the live suite shell plus module overlay composition instead of the older left-rail proof layout.
+- The Cloud Run API runtime service account was granted `roles/datastore.user`, resolving the Firestore `PERMISSION_DENIED` failures that were breaking admin config saves plus the media/orchestration/sample-persona admin surfaces.
+
+### Delivery: Episodes Beat-Stage Pass
+
+- The Episodes player now treats each beat as its own stage slot instead of pinning one companion clip across the entire flow.
+- When a beat has no routed video/still yet, the client view now renders a designed cinematic fallback card so the experience stays polished instead of degrading to repeated media or raw text.
+- Admin queue/pipeline messaging now rewrites known Gemini config mismatches into operator-safe language.
+- The image generation route also stopped sending the unsupported `enhancePrompt` option so the queue is less likely to degrade on Gemini image generation.
+
+### Delivery: Gemini Routing Hardening + Episodes Critical Audit
+
+- Added a shared Gemini/Veo model catalog so API defaults, env examples, and admin controls no longer drift independently.
+- Moved production defaults onto stable `Gemini 2.5` routes for suite, Episodes, and image generation while keeping preview `Gemini 3.x` and `3.1` ids available for controlled testing.
+- Admin now exposes quick routing presets plus cleaner save-error copy so operators can switch model posture without typing raw ids.
+- Published a critical Episodes audit that explicitly records the remaining gap: the player is beat-aware, but backend media packs still generate one image and one video per episode instead of a true per-beat manifest.
+
+### Delivery: Backlog Sync Cleanup
+
+- Updated stale roadmap and tasklist copy that still described already-shipped onboarding, booking, Episodes, media-pipeline, and orchestration work as queued.
+- The remaining backlog is now framed correctly as proof capture, mobile completion, and deeper Episodes/media polish rather than missing base implementation.
+
+### Delivery: Global Interaction Density + Ambient Guidance
+
+- The shared module modal shell now uses a compressed editorial header with inline context chips so the active content lands closer to the top of the viewport.
+- Added a reusable `AmbientGuide` interaction primitive that reveals a quiet conversational tooltip only after the user pauses on a control.
+- Roadmap panel switching now uses the same ambient guidance layer, and the roadmap overview is documented under a new global density and guidance spec.

@@ -5,6 +5,7 @@ import {
   markAdminSamplePersonaProof,
   reseedAdminSamplePersona,
 } from '../services/adminApi';
+import { AmbientGuide } from './AmbientGuide';
 import { AdminSamplePersonaOverview } from '../types';
 
 type DeliveryStatus = 'done' | 'in_progress' | 'queued' | 'blocked';
@@ -932,7 +933,7 @@ const CHARTER_CHECKPOINTS: CharterCheckpoint[] = [
     lane: 'Journey OS',
     title: 'Public AI Concierge onboarding',
     source: 'Lucid',
-    note: 'Voice-led pre-auth entry is partially modeled today; the full public concierge, tier selection, and handoff flow is now a dedicated closure-pass epic.',
+    note: 'Voice-led pre-auth entry, tier capture, and concierge handoff are now live. Remaining work is proof capture and operator UX refinement.',
     epics: ['E13'],
     tasks: ['MTL-15'],
     minimumScore: 0.45,
@@ -942,7 +943,7 @@ const CHARTER_CHECKPOINTS: CharterCheckpoint[] = [
     lane: 'Journey OS',
     title: 'Concierge scheduling + booking ops',
     source: 'Jim',
-    note: 'Calendar/date-time onboarding and booking visibility now have explicit backlog scope, but the implementation is still fully queued.',
+    note: 'Structured date/time/timezone booking and admin booking review are now live. Remaining work is proof capture and polish.',
     epics: ['E13'],
     tasks: ['MTL-15'],
   },
@@ -951,7 +952,7 @@ const CHARTER_CHECKPOINTS: CharterCheckpoint[] = [
     lane: 'Episodes + Media',
     title: 'DNA-linked binge learning',
     source: 'Jim',
-    note: 'Episode generation exists; final cinematic player is still queued.',
+    note: 'Episode generation and the client-facing cinematic player are live. Remaining work is scene-native media orchestration and proof capture.',
     epics: ['E03', 'E08'],
     tasks: ['MTL-04', 'MTL-10'],
   },
@@ -960,7 +961,7 @@ const CHARTER_CHECKPOINTS: CharterCheckpoint[] = [
     lane: 'Episodes + Media',
     title: 'Library-first bespoke media pipeline',
     source: 'Shared',
-    note: 'Reusable library, lineage, and admin media ops are defined but not shipped.',
+    note: 'Reusable library routing, lineage, jobs/manifests, queue controls, and admin media ops are live. Remaining work is scene-level media planning polish.',
     epics: ['E09'],
     tasks: ['MTL-11'],
   },
@@ -969,7 +970,7 @@ const CHARTER_CHECKPOINTS: CharterCheckpoint[] = [
     lane: 'Staff + Ops',
     title: 'Chief of Staff orchestration loop',
     source: 'Jim',
-    note: 'Summary logging ships today; full control-plane visibility remains queued.',
+    note: 'Summary logging and the orchestration control plane are live. Remaining work is deeper proof capture and handoff observability polish.',
     epics: ['E02', 'E10'],
     tasks: ['MTL-03', 'MTL-12'],
   },
@@ -1218,12 +1219,12 @@ export const RoadmapView: React.FC = () => {
 
   return (
     <section className="space-y-4">
-      <header className="border border-black/10 bg-white px-4 py-4 md:px-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <header className="border border-black/10 bg-white px-4 py-3 md:px-5">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] text-brand-teal">Roadmap + Charter Surface</div>
-            <h3 className="mt-2 text-2xl leading-none font-editorial italic md:text-3xl">Execution map for the OS.</h3>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-black/55">
+            <h3 className="mt-1.5 text-[26px] leading-none font-editorial italic md:text-[30px]">Execution map for the OS.</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-black/55">
               Compact operator view of the roadmap, charter confidence, and validation surfaces. Confidence updates as
               epic and task states move.
             </p>
@@ -1247,19 +1248,24 @@ export const RoadmapView: React.FC = () => {
         {panelOptions.map((option) => {
           const isActive = panel === option.id;
           return (
-            <button
+            <AmbientGuide
               key={option.id}
-              type="button"
-              onClick={() => setPanel(option.id)}
-              className={`border px-3 py-2 text-left transition ${
-                isActive
-                  ? 'border-brand-teal bg-[#eaf8f7] text-brand-teal'
-                  : 'border-black/10 bg-white text-black/55 hover:border-brand-teal/35 hover:text-black'
-              }`}
+              label={option.label}
+              message={`${option.helper}. Pause here when you want this panel to lead the conversation instead of making you search for it.`}
             >
-              <div className="text-[11px] uppercase tracking-[0.22em]">{option.label}</div>
-              <div className="mt-1 text-xs">{option.helper}</div>
-            </button>
+              <button
+                type="button"
+                onClick={() => setPanel(option.id)}
+                className={`border px-3 py-2 text-left transition ${
+                  isActive
+                    ? 'border-brand-teal bg-[#eaf8f7] text-brand-teal'
+                    : 'border-black/10 bg-white text-black/55 hover:border-brand-teal/35 hover:text-black'
+                }`}
+              >
+                <div className="text-[11px] uppercase tracking-[0.22em]">{option.label}</div>
+                <div className="mt-1 text-xs">{option.helper}</div>
+              </button>
+            </AmbientGuide>
           );
         })}
       </div>
