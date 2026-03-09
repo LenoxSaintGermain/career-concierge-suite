@@ -1333,37 +1333,62 @@ export const RoadmapView: React.FC = () => {
             ))}
           </div>
 
-          <div className="space-y-4">
-            {ROADMAP_NODES.map((node) => (
-              <article key={node.id} className={`border p-3 md:p-4 ${statusTone[node.status]} ${nodeGlow[node.status]}`}>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {ROADMAP_NODES.map((node) => {
+              const visibleStories = node.stories.slice(0, 3);
+              const remainingStories = Math.max(node.stories.length - visibleStories.length, 0);
+              return (
+                <article
+                  key={node.id}
+                  className={`flex min-h-[252px] flex-col justify-between border p-3 ${statusTone[node.status]} ${nodeGlow[node.status]}`}
+                >
                   <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.22em]">
-                      <span>{node.phase}</span>
-                      <span className="opacity-55">{node.window}</span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.2em]">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{node.phase}</span>
+                        <span className="opacity-55">{node.window}</span>
+                      </div>
                       <span className="flex items-center gap-2">
                         <span className={`h-2.5 w-2.5 rounded-full ${dotTone[node.status]}`} />
                         {statusLabel[node.status]}
                       </span>
                     </div>
-                    <h4 className="text-[30px] leading-[1.04] font-editorial italic">{node.headline}</h4>
-                    <div className="text-[10px] uppercase tracking-[0.18em] opacity-70">Epics · {node.epics.join(' · ')}</div>
+
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className="max-w-[14ch] text-[26px] leading-[1.06] font-editorial italic">{node.headline}</h4>
+                      <div className="min-w-[88px] border border-current/15 bg-white/35 px-2 py-2 text-right text-[10px] uppercase tracking-[0.16em]">
+                        <div className="opacity-70">Coverage</div>
+                        <div className="mt-2 text-2xl font-editorial normal-case">{node.stories.length}</div>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] uppercase tracking-[0.16em] opacity-70">Epics · {node.epics.join(' · ')}</div>
                   </div>
-                  <div className="min-w-[180px] border border-current/15 bg-white/35 px-3 py-3 text-[10px] uppercase tracking-[0.18em]">
-                    <div className="opacity-70">Story coverage</div>
-                    <div className="mt-2 text-2xl font-editorial normal-case">{node.stories.length}</div>
-                    <div className="mt-1 opacity-70">mapped delivery nodes</div>
+
+                  <div className="mt-4 space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {visibleStories.map((story) => (
+                        <span key={story} className="border border-current/20 px-2 py-1 text-[10px] uppercase tracking-[0.16em]">
+                          {story}
+                        </span>
+                      ))}
+                      {remainingStories > 0 ? (
+                        <span className="border border-current/20 px-2 py-1 text-[10px] uppercase tracking-[0.16em] opacity-70">
+                          +{remainingStories} more
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-xs leading-relaxed opacity-70">
+                      {node.status === 'done'
+                        ? 'Proof captured and ready for operator demo.'
+                        : node.status === 'in_progress'
+                          ? 'Active pass. Focus operator review here next.'
+                          : 'Queued for the next closure pass.'}
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {node.stories.map((story) => (
-                    <span key={story} className="border border-current/20 px-2 py-1 text-[10px] uppercase tracking-[0.16em]">
-                      {story}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
 
           <div className="grid grid-cols-1 gap-4">

@@ -164,6 +164,15 @@ const labelize = (value: string) =>
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
+const describeOptionalAdminError = (error: unknown, surfaceLabel: string) => {
+  const message =
+    error && typeof error === 'object' && 'message' in error ? String((error as { message?: unknown }).message ?? '') : '';
+  if (/404|Cannot GET|<!DOCTYPE html/i.test(message)) {
+    return `${surfaceLabel} is not available on the current API revision yet. Core admin controls are still available.`;
+  }
+  return message || `Unable to load ${surfaceLabel.toLowerCase()}.`;
+};
+
 const shortScope = (scope: string) =>
   scope
     .replace('clients/{uid}/', '')
@@ -451,6 +460,29 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   const currentFingerprint = useMemo(() => (config ? JSON.stringify(config) : ''), [config]);
   const hasUnsavedChanges = !!config && !!baselineFingerprint && currentFingerprint !== baselineFingerprint;
 
+  const loadOptionalOverviews = async () => {
+    const [pipelineResult, orchestrationResult] = await Promise.allSettled([
+      fetchAdminMediaPipelineOverview(),
+      fetchAdminOrchestrationOverview(),
+    ]);
+
+    if (pipelineResult.status === 'fulfilled') {
+      setMediaPipeline(pipelineResult.value);
+      setMediaPipelineError(null);
+    } else {
+      setMediaPipeline(null);
+      setMediaPipelineError(describeOptionalAdminError(pipelineResult.reason, 'Media pipeline'));
+    }
+
+    if (orchestrationResult.status === 'fulfilled') {
+      setOrchestrationOverview(orchestrationResult.value);
+      setOrchestrationError(null);
+    } else {
+      setOrchestrationOverview(null);
+      setOrchestrationError(describeOptionalAdminError(orchestrationResult.reason, 'Orchestration control plane'));
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -459,18 +491,15 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     setOrchestrationError(null);
     setShowAdvancedVoice(false);
     try {
-      const [cfg, nextOverview, nextPipeline, nextOrchestration] = await Promise.all([
+      const [cfg, nextOverview] = await Promise.all([
         fetchAdminConfig(),
         fetchAdminSystemOverview(),
-        fetchAdminMediaPipelineOverview(),
-        fetchAdminOrchestrationOverview(),
       ]);
       setConfig(cfg);
       setOverview(nextOverview);
-      setMediaPipeline(nextPipeline);
-      setOrchestrationOverview(nextOrchestration);
       setBaselineFingerprint(JSON.stringify(cfg));
       setExpandedMediaId(cfg.media.curated_library[0]?.id ?? null);
+      await loadOptionalOverviews();
     } catch (e: any) {
       setError(e?.message ?? 'Unable to load admin config.');
     } finally {
@@ -591,14 +620,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
       const nextConfig = cloneConfig(saved);
       setConfig(nextConfig);
       setBaselineFingerprint(JSON.stringify(nextConfig));
-      const [nextOverview, nextPipeline, nextOrchestration] = await Promise.all([
-        fetchAdminSystemOverview(),
-        fetchAdminMediaPipelineOverview(),
-        fetchAdminOrchestrationOverview(),
-      ]);
+      const [nextOverview] = await Promise.all([fetchAdminSystemOverview()]);
       setOverview(nextOverview);
-      setMediaPipeline(nextPipeline);
-      setOrchestrationOverview(nextOrchestration);
+      await loadOptionalOverviews();
       setSuccess('Configuration saved.');
       onSaved?.();
     } catch (e: any) {
@@ -614,7 +638,8 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
       const next = await fetchAdminMediaPipelineOverview();
       setMediaPipeline(next);
     } catch (e: any) {
-      setMediaPipelineError(e?.message ?? 'Unable to load media pipeline.');
+      setMediaPipeline(null);
+      setMediaPipelineError(describeOptionalAdminError(e, 'Media pipeline'));
     }
   };
 
@@ -624,7 +649,8 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
       const next = await fetchAdminOrchestrationOverview();
       setOrchestrationOverview(next);
     } catch (e: any) {
-      setOrchestrationError(e?.message ?? 'Unable to load orchestration control plane.');
+      setOrchestrationOverview(null);
+      setOrchestrationError(describeOptionalAdminError(e, 'Orchestration control plane'));
     }
   };
 
