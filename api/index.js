@@ -27,8 +27,8 @@ import {
   DEMO_PERSONA_SHARED_PASSWORD,
   GEMINI_LIVE_MODEL_OPTIONS,
   GEMINI_LIVE_VOICE_OPTIONS,
-} from '../config/voiceRuntime.js';
-import { STARTER_MEDIA_LIBRARY_PACK } from '../config/starterMediaLibrary.js';
+} from './config/voiceRuntime.js';
+import { STARTER_MEDIA_LIBRARY_PACK } from './config/starterMediaLibrary.js';
 
 const app = express();
 
