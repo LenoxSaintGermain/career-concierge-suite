@@ -809,7 +809,7 @@ export interface AppConfig {
     voice_agent_enabled?: boolean;
     voice_agent_persona?: string;
     voice_arc_sections?: string[];
-    voice_model?: 'elevenlabs_conversational' | 'gemini_live';
+    voice_model?: 'elevenlabs_ghost' | 'gemini_live';
     voice_agent_voice_id?: string;
     voice_transcription_visible?: boolean;
     voice_to_form_autofill?: boolean;
@@ -1169,6 +1169,14 @@ export interface GeminiLiveTokenResponse {
   proactive_audio_enabled: boolean;
   issued_at: string;
   expires_at: string;
+}
+
+export interface ElevenLabsSessionResponse {
+  agent_id: string;
+  signed_url: string;
+  user_id: string;
+  client_name?: string;
+  issued_at: string;
 }
 
 export interface IntakeTranscriptExtractionResponse {

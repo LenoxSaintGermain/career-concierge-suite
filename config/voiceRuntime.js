@@ -3,8 +3,8 @@ export const DEMO_PERSONA_SHARED_PASSWORD = 'CareerDemo!2026';
 export const GEMINI_LIVE_MODEL_OPTIONS = [
   {
     id: 'gemini-2.5-flash-native-audio-preview-12-2025',
-    label: 'Gemini 2.5 Flash Native Audio',
-    note: 'Current recommended Gemini Live native-audio preview model.',
+    label: 'Gemini 2.5 Flash Native Audio API',
+    note: 'Current recommended Gemini native live audio model.',
   },
 ];
 
@@ -44,15 +44,15 @@ export const GEMINI_LIVE_VOICE_OPTIONS = [
 export const VOICE_RUNTIME_LANES = [
   {
     id: 'gemini_live',
-    label: 'Gemini Live',
+    label: 'Gemini Native Live API',
     state: 'active',
-    summary: 'Default live interview and concierge voice rail for the OS.',
+    summary: 'Default first-party live interview and concierge voice rail for the OS.',
   },
   {
     id: 'elevenlabs',
-    label: 'ElevenLabs',
-    state: 'planned',
-    summary: 'Secondary premium voice lane once credentials and adapter work are implemented.',
+    label: 'ElevenLabs Ghost',
+    state: 'ready',
+    summary: 'Ghost agent lane for spoken intake, guided screen actions, and voice-to-form capture.',
   },
   {
     id: 'sesame',

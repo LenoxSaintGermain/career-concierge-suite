@@ -73,6 +73,9 @@ type SelectOption = {
   description?: string;
 };
 
+const normalizeDnaVoiceModel = (value: AppConfig['professional_dna']['voice_model'] | string | undefined) =>
+  value === 'elevenlabs_ghost' || value === 'elevenlabs_conversational' ? 'elevenlabs_ghost' : 'gemini_live';
+
 const cloneConfig = (config: AppConfig): AppConfig => JSON.parse(JSON.stringify(config));
 
 const VOICE_PRESETS: VoicePreset[] = [
@@ -278,7 +281,7 @@ const PROMPT_OVERLAY_FIELDS = [
     key: 'live_appendix',
     eyebrow: 'Live voice and video',
     label: 'Live voice / video overlay',
-    description: 'Applies only to the live interaction layer for Gemini Live and operator-facing voice behaviors.',
+    description: 'Applies only to the native Gemini live API lane and operator-facing voice behaviors.',
     minHeight: 'min-h-20',
   },
   {
@@ -1275,7 +1278,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             {[
               { label: 'Gemini', ok: runtime.gemini_configured },
               { label: 'Sesame', ok: runtime.sesame_configured },
-              { label: 'ElevenLabs', ok: runtime.elevenlabs_api_configured || runtime.elevenlabs_agent_configured },
+              { label: 'ElevenLabs Ghost', ok: runtime.elevenlabs_api_configured || runtime.elevenlabs_agent_configured },
               { label: 'Manus', ok: runtime.manus_configured },
               { label: 'Storage', ok: !!runtime.storage_bucket },
               { label: 'Voice', ok: configSummary.voice_enabled },
@@ -1727,7 +1730,31 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       ))}
                     </div>
                     <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                      <SelectField label="Voice model" value={config.professional_dna.voice_model ?? 'gemini_live'} options={[{ value: 'gemini_live', label: 'Gemini Live' }, { value: 'elevenlabs_conversational', label: 'ElevenLabs' }]} onChange={(v) => setConfig((prev) => prev ? { ...prev, professional_dna: { ...prev.professional_dna, voice_model: v === 'elevenlabs_conversational' ? 'elevenlabs_conversational' : 'gemini_live' } } : prev)} />
+                      <SelectField
+                        label="Voice model"
+                        value={normalizeDnaVoiceModel(config.professional_dna.voice_model)}
+                        options={[
+                          { value: 'gemini_live', label: 'Gemini Native Live API' },
+                          { value: 'elevenlabs_ghost', label: 'ElevenLabs Ghost Agent' },
+                        ]}
+                        onChange={(v) =>
+                          setConfig((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  professional_dna: {
+                                    ...prev.professional_dna,
+                                    voice_model: v === 'elevenlabs_ghost' ? 'elevenlabs_ghost' : 'gemini_live',
+                                  },
+                                  voice: {
+                                    ...prev.voice,
+                                    public_panel_provider: v === 'elevenlabs_ghost' ? 'elevenlabs' : 'gemini_live',
+                                  },
+                                }
+                              : prev
+                          )
+                        }
+                      />
                       <TextField label="Voice ID" value={config.professional_dna.voice_agent_voice_id ?? ''} onChange={(v) => setConfig((prev) => prev ? { ...prev, professional_dna: { ...prev.professional_dna, voice_agent_voice_id: v } } : prev)} />
                     </div>
                     <TextAreaField label="Voice arc sections (one per line)" value={(config.professional_dna.voice_arc_sections ?? []).join('\n')} onChange={(v) => setConfig((prev) => prev ? { ...prev, professional_dna: { ...prev.professional_dna, voice_arc_sections: v.split('\n').map((e) => e.trim().toLowerCase()).filter(Boolean) } } : prev)} minHeight="min-h-12" />
@@ -2247,15 +2274,6 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
 
   const renderVoice = () => {
     if (!config) return null;
-    const providerOptions = [
-      'gemini_live',
-      ...(overview?.runtime.elevenlabs_agent_configured ? (['elevenlabs'] as const) : []),
-      ...(config.voice.sesame_enabled ? (['sesame'] as const) : []),
-    ];
-    const publicPanelOptions = [
-      'gemini_live',
-      ...(overview?.runtime.elevenlabs_agent_configured ? (['elevenlabs'] as const) : []),
-    ];
     const selectedVoiceMeta =
       GEMINI_LIVE_VOICE_OPTIONS.find((voice) => voice.name === config.voice.gemini_voice_name) ??
       GEMINI_LIVE_VOICE_OPTIONS.find((voice) => voice.name === 'Aoede');
@@ -2289,14 +2307,14 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </div>
         </Panel>
 
-        <Panel title="Voice lane readiness" eyebrow="Runtime map" meta="Gemini live now, others gated">
+        <Panel title="Voice lane readiness" eyebrow="Runtime map" meta="Gemini live + Ghost lane ready">
           <div className="grid gap-1.5">
             {VOICE_RUNTIME_LANES.map((lane) => {
               const isSelected = lane.id === config.voice.provider;
               const stateLabel =
                 lane.id === 'elevenlabs'
                   ? overview?.runtime.elevenlabs_agent_configured
-                    ? 'agent ready'
+                    ? 'ghost ready'
                     : 'missing'
                   : lane.id === 'sesame'
                   ? config.voice.sesame_enabled
@@ -2367,7 +2385,13 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
               <SelectField
                 label="Provider"
                 value={config.voice.provider}
-                options={providerOptions}
+                options={[
+                  { value: 'gemini_live', label: 'Gemini Native Live API' },
+                  ...(overview?.runtime.elevenlabs_agent_configured
+                    ? [{ value: 'elevenlabs', label: 'ElevenLabs Ghost' }]
+                    : []),
+                  ...(config.voice.sesame_enabled ? [{ value: 'sesame', label: 'Sesame' }] : []),
+                ]}
                 onChange={(value) =>
                   setConfig((prev) =>
                     prev
@@ -2390,7 +2414,12 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
               <SelectField
                 label="Public intake lane"
                 value={config.voice.public_panel_provider}
-                options={publicPanelOptions}
+                options={[
+                  { value: 'gemini_live', label: 'Gemini Native Live API' },
+                  ...(overview?.runtime.elevenlabs_agent_configured
+                    ? [{ value: 'elevenlabs', label: 'ElevenLabs Ghost' }]
+                    : []),
+                ]}
                 onChange={(value) =>
                   setConfig((prev) =>
                     prev
@@ -2399,6 +2428,10 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                           voice: {
                             ...prev.voice,
                             public_panel_provider: value === 'elevenlabs' ? 'elevenlabs' : 'gemini_live',
+                          },
+                          professional_dna: {
+                            ...prev.professional_dna,
+                            voice_model: value === 'elevenlabs' ? 'elevenlabs_ghost' : 'gemini_live',
                           },
                         }
                       : prev
@@ -2411,8 +2444,8 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                     config.voice.provider === 'sesame'
                       ? 'Sesame API URL (Cerebrium endpoint)'
                       : config.voice.provider === 'elevenlabs'
-                        ? 'ElevenLabs route notes'
-                      : 'Gemini Live route notes'
+                        ? 'ElevenLabs Ghost route notes'
+                      : 'Gemini native live API route notes'
                   }
                   value={config.voice.api_url}
                   onChange={(value) =>
@@ -2422,8 +2455,8 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                     config.voice.provider === 'sesame'
                       ? 'https://api.cortex.cerebrium.ai/v4/PROJECT/APP/generate_audio'
                       : config.voice.provider === 'elevenlabs'
-                        ? 'Widget route is handled by ELEVENLABS_AGENT_ID via /v1/public/config.'
-                      : 'Optional operator note. Live route is handled by Gemini config below.'
+                        ? 'Ghost session is resolved from ELEVENLABS_AGENT_ID and the ElevenLabs briefing routes.'
+                        : 'Optional operator note. Native Gemini route is handled by the config below.'
                   }
                 />
               </div>
@@ -2441,7 +2474,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 placeholder="Maya"
               />
               <SelectField
-                label="Gemini Live model"
+                label="Gemini native live model"
                 value={config.voice.gemini_live_model}
                 options={GEMINI_LIVE_MODEL_OPTIONS.map((option) => ({
                   value: option.id,
@@ -2452,7 +2485,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 }
               />
               <SelectField
-                label="Gemini voice name"
+                label="Gemini native voice name"
                 value={config.voice.gemini_voice_name}
                 options={GEMINI_VOICE_NAMES}
                 onChange={(value) =>

@@ -69,6 +69,14 @@ const BRAND_SUBHEADER_SCALE_SET = new Set<BrandSubheaderScale>(BRAND_SUBHEADER_S
 const BRAND_BODY_DENSITY_SET = new Set<BrandBodyDensity>(BRAND_BODY_DENSITIES as BrandBodyDensity[]);
 const BRAND_TILE_EMPHASIS_SET = new Set<BrandTileEmphasis>(BRAND_TILE_EMPHASES as BrandTileEmphasis[]);
 const BRAND_OVERLAY_STYLE_SET = new Set<BrandOverlayStyle>(BRAND_OVERLAY_STYLES as BrandOverlayStyle[]);
+const normalizeDnaVoiceModel = (value: unknown): AppConfig['professional_dna']['voice_model'] =>
+  value === 'elevenlabs_ghost' || value === 'elevenlabs_conversational' ? 'elevenlabs_ghost' : 'gemini_live';
+
+const resolveCanonicalDnaVoiceModel = (
+  value: unknown,
+  publicPanelProvider: unknown,
+): AppConfig['professional_dna']['voice_model'] =>
+  publicPanelProvider === 'elevenlabs' ? 'elevenlabs_ghost' : normalizeDnaVoiceModel(value);
 
 const cleanList = (input: unknown): string[] =>
   Array.isArray(input)
@@ -334,6 +342,7 @@ const adminRequest = async (path: string, init: RequestInit, label: string): Pro
 const normalizeAdminConfig = (input: any): AppConfig => {
   const source = input && typeof input === 'object' ? input : {};
   const defaultGeminiLiveModel = GEMINI_LIVE_MODEL_OPTIONS[0]?.id || 'gemini-2.5-flash-native-audio-preview-12-2025';
+  const publicPanelProvider = source?.voice?.public_panel_provider === 'elevenlabs' ? 'elevenlabs' : 'gemini_live';
   return {
     generation: {
       suite_model: String(source?.generation?.suite_model ?? DEFAULT_GEMINI_SUITE_MODEL),
@@ -419,10 +428,7 @@ const normalizeAdminConfig = (input: any): AppConfig => {
       voice_arc_sections: Array.isArray(source?.professional_dna?.voice_arc_sections)
         ? source.professional_dna.voice_arc_sections.map((entry: unknown) => String(entry).trim()).filter(Boolean)
         : ['anchor', 'intent', 'proof', 'market', 'friction', 'context', 'close'],
-      voice_model:
-        source?.professional_dna?.voice_model === 'elevenlabs_conversational'
-          ? 'elevenlabs_conversational'
-          : 'gemini_live',
+      voice_model: resolveCanonicalDnaVoiceModel(source?.professional_dna?.voice_model, publicPanelProvider),
       voice_agent_voice_id: String(source?.professional_dna?.voice_agent_voice_id ?? ''),
       voice_transcription_visible: Boolean(source?.professional_dna?.voice_transcription_visible ?? false),
       voice_to_form_autofill: Boolean(source?.professional_dna?.voice_to_form_autofill ?? true),
@@ -466,7 +472,7 @@ const normalizeAdminConfig = (input: any): AppConfig => {
           : source?.voice?.provider === 'sesame' && Boolean(source?.voice?.sesame_enabled)
             ? 'sesame'
             : 'gemini_live',
-      public_panel_provider: source?.voice?.public_panel_provider === 'elevenlabs' ? 'elevenlabs' : 'gemini_live',
+      public_panel_provider: publicPanelProvider,
       api_url: String(source?.voice?.api_url ?? ''),
       speaker: String(source?.voice?.speaker ?? 'Concierge'),
       gemini_live_model: String(source?.voice?.gemini_live_model ?? defaultGeminiLiveModel),
@@ -531,10 +537,7 @@ export const fetchPublicConfig = async (): Promise<PublicConfig> => {
       journey_guide_video_url: String(source?.professional_dna?.journey_guide_video_url ?? ''),
       journey_guide_video_title: String(source?.professional_dna?.journey_guide_video_title ?? ''),
       voice_agent_enabled: Boolean(source?.professional_dna?.voice_agent_enabled ?? true),
-      voice_model:
-        source?.professional_dna?.voice_model === 'elevenlabs_conversational'
-          ? 'elevenlabs_conversational'
-          : 'gemini_live',
+      voice_model: resolveCanonicalDnaVoiceModel(source?.professional_dna?.voice_model, source?.voice?.public_panel_provider),
       voice_transcription_visible: Boolean(source?.professional_dna?.voice_transcription_visible ?? false),
       voice_to_form_autofill: Boolean(source?.professional_dna?.voice_to_form_autofill ?? true),
     },

@@ -61,6 +61,10 @@ const storageBucketName =
   process.env.STORAGE_BUCKET ||
   process.env.FIREBASE_STORAGE_BUCKET ||
   (process.env.GOOGLE_CLOUD_PROJECT ? `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com` : '');
+const normalizeDnaVoiceModel = (value) =>
+  value === 'elevenlabs_ghost' || value === 'elevenlabs_conversational' ? 'elevenlabs_ghost' : 'gemini_live';
+const resolveCanonicalDnaVoiceModel = (value, publicPanelProvider) =>
+  publicPanelProvider === 'elevenlabs' ? 'elevenlabs_ghost' : normalizeDnaVoiceModel(value);
 
 const requireAuth = async (req, res, next) => {
   const authHeader = req.header('authorization') ?? '';
@@ -87,6 +91,8 @@ app.get('/health', (_req, res) => res.status(200).send('OK'));
 
 app.get('/v1/public/config', async (_req, res) => {
   const config = await loadAppConfig();
+  const activePublicPanel =
+    config.voice?.public_panel_provider === 'elevenlabs' && elevenlabsAgentId ? 'elevenlabs' : 'gemini_live';
   return res.json({
     config: {
       ui: config.ui,
@@ -118,10 +124,7 @@ app.get('/v1/public/config', async (_req, res) => {
           typeof config.professional_dna?.voice_agent_enabled === 'boolean'
             ? config.professional_dna.voice_agent_enabled
             : true,
-        voice_model:
-          config.professional_dna?.voice_model === 'elevenlabs_conversational'
-            ? 'elevenlabs_conversational'
-            : 'gemini_live',
+        voice_model: resolveCanonicalDnaVoiceModel(config.professional_dna?.voice_model, activePublicPanel),
         voice_transcription_visible: Boolean(config.professional_dna?.voice_transcription_visible),
         voice_to_form_autofill:
           typeof config.professional_dna?.voice_to_form_autofill === 'boolean'
@@ -131,12 +134,7 @@ app.get('/v1/public/config', async (_req, res) => {
       voice: {
         elevenlabs_enabled: Boolean(elevenlabsAgentId),
         elevenlabs_agent_id: elevenlabsAgentId || '',
-        active_panel:
-          (config.professional_dna?.voice_model === 'elevenlabs_conversational' ||
-            config.voice?.public_panel_provider === 'elevenlabs') &&
-          elevenlabsAgentId
-            ? 'elevenlabs'
-            : 'gemini_live',
+        active_panel: activePublicPanel,
       },
     },
   });
@@ -886,6 +884,32 @@ const toDisplayName = (user) => {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
 };
+const getClientDisplayName = (clientData) =>
+  nonEmpty(clientData?.display_name) ||
+  nonEmpty(clientData?.demo_profile?.name) ||
+  toDisplayName({ email: clientData?.email }) ||
+  '';
+const hydrateClientIdentity = async (uid, clientData) => {
+  const needsEmail = !nonEmpty(clientData?.email);
+  const needsDisplayName = !nonEmpty(clientData?.display_name) && !nonEmpty(clientData?.demo_profile?.name);
+  if (!needsEmail && !needsDisplayName) return clientData;
+  try {
+    const authUser = await admin.auth().getUser(uid);
+    const patch = {};
+    if (needsEmail && nonEmpty(authUser.email)) patch.email = nonEmpty(authUser.email);
+    if (needsDisplayName) {
+      const displayName = nonEmpty(authUser.displayName) || toDisplayName({ email: authUser.email });
+      if (displayName) patch.display_name = displayName;
+    }
+    if (Object.keys(patch).length) {
+      await db.collection('clients').doc(uid).set(patch, { merge: true });
+      return { ...clientData, ...patch };
+    }
+  } catch (_error) {
+    // Non-blocking: Ghost should still respond even if Auth lookup is unavailable.
+  }
+  return clientData;
+};
 const defaultAdminEmails = [
   'operator@thirdsignal.ai',
   'gws@conciergecareerservices.com',
@@ -1409,10 +1433,7 @@ const normalizeConfig = (input = {}) => {
         Array.isArray(professionalDna.voice_arc_sections) && professionalDna.voice_arc_sections.length
           ? professionalDna.voice_arc_sections.map((entry) => String(entry).trim().toLowerCase()).filter(Boolean)
           : [...DEFAULT_APP_CONFIG.professional_dna.voice_arc_sections],
-      voice_model:
-        professionalDna.voice_model === 'elevenlabs_conversational'
-          ? 'elevenlabs_conversational'
-          : DEFAULT_APP_CONFIG.professional_dna.voice_model,
+      voice_model: normalizeDnaVoiceModel(professionalDna.voice_model),
       voice_agent_voice_id: String(professionalDna.voice_agent_voice_id ?? '').trim(),
       voice_transcription_visible:
         typeof professionalDna.voice_transcription_visible === 'boolean'
@@ -5615,6 +5636,61 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
   }
 });
 
+app.post('/v1/voice/elevenlabs/session', requireAuth, async (req, res) => {
+  const runtimeConfig = await loadAppConfig();
+  if (!runtimeConfig.voice.enabled) {
+    return res.status(503).json({ error: 'voice_disabled' });
+  }
+  if (!elevenlabsAgentId) {
+    return res.status(503).json({ error: 'missing_elevenlabs_agent_id' });
+  }
+  if (!elevenlabsApiKey) {
+    return res.status(503).json({ error: 'missing_elevenlabs_api_key' });
+  }
+
+  const clientName = toDisplayName(req.user);
+  const issuedAt = new Date();
+
+  try {
+    const signedUrlResp = await fetch(
+      `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(elevenlabsAgentId)}`,
+      {
+        method: 'GET',
+        headers: {
+          'xi-api-key': elevenlabsApiKey,
+        },
+      }
+    );
+
+    if (!signedUrlResp.ok) {
+      const detail = await signedUrlResp.text().catch(() => signedUrlResp.statusText);
+      return res.status(502).json({
+        error: 'elevenlabs_session_failed',
+        detail: detail || signedUrlResp.statusText,
+      });
+    }
+
+    const body = await signedUrlResp.json();
+    const signedUrl = nonEmpty(body?.signed_url);
+    if (!signedUrl) {
+      return res.status(502).json({ error: 'elevenlabs_signed_url_missing' });
+    }
+
+    return res.json({
+      agent_id: elevenlabsAgentId,
+      signed_url: signedUrl,
+      user_id: req.user.uid,
+      client_name: clientName || undefined,
+      issued_at: issuedAt.toISOString(),
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: 'elevenlabs_session_failed',
+      detail: sanitizeError(error, 'elevenlabs_session_failed'),
+    });
+  }
+});
+
 app.post('/v1/intake/extract', requireAuth, async (req, res) => {
   const transcript = String(req.body?.transcript ?? '').trim();
   const existingAnswers =
@@ -6080,7 +6156,7 @@ app.post('/v1/ghost/briefing', requireGhostAuth, async (req, res) => {
   try {
     const uid = req.ghostUid;
     const clientSnap = await db.collection('clients').doc(uid).get();
-    const clientData = clientSnap.exists ? clientSnap.data() : {};
+    const clientData = await hydrateClientIdentity(uid, clientSnap.exists ? clientSnap.data() : {});
 
     // Fetch gaps artifact for top gaps
     const gapsSnap = await db.collection('clients').doc(uid).collection('artifacts').doc('gaps').get();
@@ -6097,7 +6173,7 @@ app.post('/v1/ghost/briefing', requireGhostAuth, async (req, res) => {
     const aiData = aiSnap.exists ? aiSnap.data() : {};
 
     const briefing = buildGhostBriefing({
-      displayName: clientData.display_name || clientData.email || 'Unknown',
+      displayName: getClientDisplayName(clientData) || 'Client',
       tier: readinessData.content?.tier_recommendation || null,
       topGaps: [...nearTerm, ...forTarget].slice(0, 3),
       stance: aiData.content?.stance || 'copilot',
@@ -6167,6 +6243,23 @@ app.post('/v1/ghost/drive', requireGhostAuth, async (req, res) => {
 
 app.get('/v1/ghost/tools', requireAuth, async (_req, res) => {
   return res.json({ client_tools: GHOST_CLIENT_TOOLS, server_tools: GHOST_SERVER_TOOLS });
+});
+
+app.post('/v1/ghost/sync-docs', requireGhostAuth, async (req, res) => {
+  try {
+    const uid = req.ghostUid;
+    const artifactTypes = ['brief', 'profile', 'plan', 'gaps', 'readiness', 'ai_profile', 'suite_distilled', 'cjs_execution', 'resume_review', 'search_strategy'];
+    const artifacts = {};
+    for (const type of artifactTypes) {
+      const snap = await db.collection('clients').doc(uid).collection('artifacts').doc(type).get();
+      if (snap.exists) artifacts[type] = snap.data();
+    }
+    const result = await syncArtifactsToGoogleDocs(db, uid, artifacts);
+    return res.json(result);
+  } catch (err) {
+    console.error('ghost_sync_docs_error', err);
+    return res.status(500).json({ error: 'sync_failed', message: err.message });
+  }
 });
 
 // ── End Ghost Voice Agent ───────────────────────────────────────────────────

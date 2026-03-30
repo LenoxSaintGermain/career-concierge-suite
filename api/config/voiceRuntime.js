@@ -3,8 +3,8 @@ export const DEMO_PERSONA_SHARED_PASSWORD = 'CareerDemo!2026';
 export const GEMINI_LIVE_MODEL_OPTIONS = [
   {
     id: 'gemini-2.5-flash-native-audio-preview-12-2025',
-    label: 'Gemini 2.5 Flash Native Audio',
-    note: 'Current recommended Gemini Live native-audio preview model.',
+    label: 'Gemini 2.5 Flash Native Audio API',
+    note: 'Current recommended Gemini native live audio model.',
   },
 ];
 

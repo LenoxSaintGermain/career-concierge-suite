@@ -181,17 +181,25 @@ Optional external-lane envs in the API deploy file:
 - `MANUS_API_KEY`
 - `MANUS_API_URL`
 
-These now support a live public-intake ElevenLabs lane plus Manus readiness visibility.
-They do not replace the internal Gemini Live runtime path until a separate adapter ships.
+These now support a live public-intake ElevenLabs Ghost lane plus Manus readiness visibility.
+Gemini Live remains the native first-party runtime. ElevenLabs Ghost now runs as an SDK-backed signed-session lane for intake and demo use.
 
 Current public-intake behavior:
 
 - if `ELEVENLABS_AGENT_ID` is present, `/v1/public/config` exposes the public agent ID
 - admin voice controls expose a `Public intake lane` selector with `gemini_live` and `elevenlabs`
 - `/v1/public/config` now follows the saved `voice.public_panel_provider` default from Firestore
-- the intake concierge step follows that selector and mounts the ElevenLabs conversational widget when `elevenlabs` is selected and a public agent ID is available
+- the intake concierge step follows that selector and mounts the chosen lane directly inside the Smart Start workspace
 - the intake concierge step also exposes a visible lane switcher so operators can flip between the two rails live without reopening Admin
-- Gemini Live remains the internal native-audio session path used by the existing live panel and token route
+- admin `Voice model` and `Public intake lane` controls now save in lockstep so the public lane does not drift from the saved Professional DNA voice choice
+- Gemini Native Live API remains the internal native-audio session path used by the existing live panel and token route
+- `POST /v1/voice/elevenlabs/session` now provides signed ElevenLabs session URLs for authenticated users when `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` are present
+- the ElevenLabs intake lane now runs on the ElevenLabs React SDK with contextual updates, action feed telemetry, and intake-safe client tools for screen movement and field entry
+- the Smart Start workspace is now a single guided intake surface with:
+  - sticky voice rail on the left
+  - section navigation
+  - section-aware field highlighting
+  - a locked processing state that ends live voice before artifact generation
 - Smart Start Intake now also reads public-facing Professional DNA config for:
   - optional hero video / fallback image rendering
   - optional journey-guide video provider / ID / URL / title values for the signed-in home briefing overlay
@@ -199,12 +207,31 @@ Current public-intake behavior:
   - transcript visibility inside Gemini Live
   - voice-to-form autofill behavior
 - Gemini Live Smart Start sessions now hit `POST /v1/intake/extract` after session close to map transcript signals into empty intake fields without overwriting user edits
+- ElevenLabs Ghost Smart Start sessions can now:
+  - jump between Smart Start screens
+  - focus specific fields
+  - set text, choice, multi-select, and boolean values
+  - clear fields
+  - set intent, pace, and focus preferences
+  - summarize the intake state so far
 - the signed-in home `Your Journey Guide` now uses two persistence keys in browser storage:
   - `career_concierge_journey_guide_dismissed`
   - `career_concierge_journey_guide_visits`
 - operator implication:
   - the guide copy rotates by returning-visit count while staying client-context aware
   - the media slot is globally configured in admin and reused as the default briefing asset for new users
+
+Ghost/GWS identity policy:
+
+- user-facing Ghost and Google Workspace surfaces must never expose Firebase UIDs or internal document IDs
+- preferred identity order is:
+  - `clients/{uid}.display_name`
+  - `clients/{uid}.demo_profile.name`
+  - Firebase Auth `displayName`
+  - email-local-part derived readable name
+  - generic fallback like `Client`
+- client folder names and Google Doc titles should use a human-readable name when available; raw UIDs are backend-only
+- if a legacy client document is sparse, the server now attempts to backfill `email` and `display_name` from Firebase Auth during Ghost briefing and Google Doc sync
 
 Current Professional DNA behavior:
 
@@ -577,7 +604,7 @@ Use the reset workflow instead of repeating blind imports.
 - suite generation
 - live token generation
 - Gemini Live should remain the active real-time voice provider for demo readiness
-- ElevenLabs can be the active public-intake presentation lane for demo readiness when the team wants the Chief of Staff widget instead of Gemini Live
+- ElevenLabs Ghost can be the active public-intake presentation lane for demo readiness when the team wants the Chief of Staff agent lane instead of Gemini Live
 - Sesame should remain feature-flagged off until its dedicated Cloud Run service exists
 - SkillSync AI TV should render an actual staged viewing surface in client mode, not only metadata cards
 - if no curated library has been saved yet, the API should fall back to the shipped starter pack, which now includes local Veo-generated clips under `public/demo-media/`

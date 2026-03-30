@@ -138,6 +138,25 @@ const JOURNEY_ACTS: Array<{
 
 const toText = (value: unknown) => String(value ?? '').trim();
 
+const deriveDisplayNameFromEmail = (email: string) => {
+  const localPart = toText(email).split('@')[0] || '';
+  const cleaned = localPart.replace(/[._-]+/g, ' ').replace(/\d+/g, ' ').trim();
+  if (!cleaned) return '';
+  return cleaned
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+};
+
+const getAccountLabel = (client: ClientDoc | null, user: User | null) =>
+  toText(client?.display_name) ||
+  toText(client?.demo_profile?.name) ||
+  toText(user?.displayName) ||
+  deriveDisplayNameFromEmail(toText(user?.email)) ||
+  toText(user?.email) ||
+  'Signed in';
+
 const getClientFirstName = (client: ClientDoc | null, user: User | null) => {
   const display = toText(client?.display_name) || toText(client?.demo_profile?.name);
   if (display) return display.split(/\s+/)[0];
@@ -342,7 +361,10 @@ const App: React.FC = () => {
         setIsAdminUser(false);
         return;
       }
-      const client = await getOrCreateClient(user.uid);
+      const client = await getOrCreateClient(user.uid, {
+        email: user.email,
+        displayName: user.displayName,
+      });
       setClient(client);
       setClientLoaded(true);
       if (!client.intro_seen_at) setIntroPhase('prologue');
@@ -382,6 +404,7 @@ const App: React.FC = () => {
     () => (openModule ? getBrandModuleCopy(brand, openModule.id) : null),
     [brand, openModule]
   );
+  const accountLabel = useMemo(() => getAccountLabel(client, user), [client, user]);
   const shellHeaderDimmed = openModuleId !== null || shellScrollDepth > 56;
 
   const isLocked = (m: SuiteModule) => {
@@ -808,7 +831,7 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{user.email ?? user.uid}</span>
+          <span className="text-[10px] uppercase tracking-widest opacity-40 hidden sm:inline">{accountLabel}</span>
           <button
             onClick={() => {
               if (!isAdminUser) return;
@@ -1384,7 +1407,7 @@ const App: React.FC = () => {
                     {brand.copy.modal_account_label}
                   </div>
                   <div className="mt-2 text-xs" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
-                    {user.email ?? user.uid}
+                    {accountLabel}
                   </div>
                 </div>
               </div>

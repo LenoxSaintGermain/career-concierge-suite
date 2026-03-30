@@ -1,148 +1,270 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ConversationProvider, useConversation } from '@elevenlabs/react';
+import { createElevenLabsSession } from '../services/voiceApi';
 import { useGhostVoice, type GhostCallbacks } from '../hooks/useGhostVoice';
 import { GhostActionFeed } from './GhostActionFeed';
 
-const ELEVENLABS_WIDGET_SCRIPT_ID = 'elevenlabs-convai-widget';
-const ELEVENLABS_WIDGET_SRC = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
+type GhostRuntimeState = 'idle' | 'connecting' | 'connected' | 'error';
 
-/**
- * ElevenLabs Ghost Voice Panel
- *
- * Two modes:
- * 1. SDK mode (@elevenlabs/react) — when package is installed, uses useConversation
- *    with full client tool bindings. This is the target state.
- * 2. Widget mode (current) — uses the convai-widget-embed custom element as fallback.
- *    Client tools are not available in this mode, but the agent still works for voice.
- *
- * The panel always renders the Ghost Action Feed when tools fire.
- */
-export function ElevenLabsConvaiPanel({
+type GhostMessage = {
+  id: string;
+  role: 'user' | 'agent';
+  message: string;
+};
+
+const withFallback = (value: unknown, fallback: string) => {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+};
+
+function GhostSdkSurface({
   agentId,
   userUid,
+  sessionContext,
   ghostCallbacks,
+  onStateChange,
+  interactionLocked,
+  lockedMessage,
 }: {
   agentId: string;
   userUid?: string;
-  ghostCallbacks?: GhostCallbacks;
+  sessionContext?: string;
+  ghostCallbacks: GhostCallbacks;
+  onStateChange?: (state: GhostRuntimeState) => void;
+  interactionLocked?: boolean;
+  lockedMessage?: string;
 }) {
-  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<GhostMessage[]>([]);
+  const [transport, setTransport] = useState<'signed' | 'public-fallback' | null>(null);
+  const contextSentRef = useRef('');
 
-  const defaultCallbacks: GhostCallbacks = useMemo(() => ({
-    onNavigateModule: (t) => console.log('ghost:navigate', t),
-    onCloseModule: () => console.log('ghost:close'),
-    onToggleAdmin: () => console.log('ghost:toggle_admin'),
-    onDispatchAgent: (c) => console.log('ghost:dispatch', c),
-    onUpdateStance: (s) => console.log('ghost:stance', s),
-    onAddressGap: (g) => console.log('ghost:address_gap', g),
-  }), []);
+  const { clientTools, actionLog } = useGhostVoice(ghostCallbacks);
+  const {
+    startSession,
+    endSession,
+    sendContextualUpdate,
+    status,
+    mode,
+  } = useConversation({
+    clientTools,
+    onConnect: () => {
+      setError(null);
+    },
+    onDisconnect: () => {
+      contextSentRef.current = '';
+    },
+    onError: (message) => {
+      setError(withFallback(message, 'Ghost session failed.'));
+    },
+    onMessage: ({ role, message }) => {
+      const cleaned = String(message ?? '').trim();
+      if (!cleaned || (role !== 'user' && role !== 'agent')) return;
+      setMessages((prev) => [{ id: `${role}-${Date.now()}-${prev.length}`, role, message: cleaned }, ...prev].slice(0, 6));
+    },
+  });
 
-  const { clientTools, actionLog, connected, setConnected } = useGhostVoice(
-    ghostCallbacks || defaultCallbacks,
-  );
+  const mappedState: GhostRuntimeState =
+    status === 'connected'
+      ? 'connected'
+      : status === 'connecting'
+        ? 'connecting'
+        : error
+          ? 'error'
+          : 'idle';
 
-  // Widget embed loader (fallback until @elevenlabs/react is installed)
   useEffect(() => {
-    if (!agentId) {
-      setError('missing_agent_id');
+    onStateChange?.(mappedState);
+  }, [mappedState, onStateChange]);
+
+  useEffect(() => {
+    if (status !== 'connected') return;
+    const payload = String(sessionContext ?? '').trim();
+    if (!payload || payload === contextSentRef.current) return;
+    sendContextualUpdate(payload);
+    contextSentRef.current = payload;
+  }, [sendContextualUpdate, sessionContext, status]);
+
+  useEffect(() => {
+    if (!interactionLocked || status !== 'connected') return;
+    endSession();
+  }, [endSession, interactionLocked, status]);
+
+  const beginSession = useCallback(async () => {
+    setError(null);
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setError('Microphone access is required.');
       return;
     }
 
-    if (window.customElements?.get('elevenlabs-convai')) {
-      setReady(true);
-      return;
-    }
-
-    const existing = document.getElementById(ELEVENLABS_WIDGET_SCRIPT_ID) as HTMLScriptElement | null;
-    const handleLoad = () => setReady(true);
-    const handleError = () => setError('widget_load_failed');
-
-    if (existing) {
-      existing.addEventListener('load', handleLoad);
-      existing.addEventListener('error', handleError);
-      return () => {
-        existing.removeEventListener('load', handleLoad);
-        existing.removeEventListener('error', handleError);
-      };
-    }
-
-    const script = document.createElement('script');
-    script.id = ELEVENLABS_WIDGET_SCRIPT_ID;
-    script.src = ELEVENLABS_WIDGET_SRC;
-    script.async = true;
-    script.type = 'text/javascript';
-    script.addEventListener('load', handleLoad);
-    script.addEventListener('error', handleError);
-    document.head.appendChild(script);
-
-    return () => {
-      script.removeEventListener('load', handleLoad);
-      script.removeEventListener('error', handleError);
+    const baseOptions = {
+      userId: userUid,
+      dynamicVariables: userUid ? { uid: userUid } : undefined,
     };
-  }, [agentId]);
 
-  const widget = useMemo(() => {
-    if (!ready || !agentId) return null;
-    const attrs: Record<string, string> = { 'agent-id': agentId };
-    if (userUid) {
-      attrs['dynamic-variables'] = JSON.stringify({ uid: userUid });
+    try {
+      const session = await createElevenLabsSession();
+      setTransport('signed');
+      startSession({
+        signedUrl: session.signed_url,
+        ...baseOptions,
+      });
+      return;
+    } catch (sessionError: any) {
+      if (!agentId) {
+        setError(sessionError?.message ?? 'Unable to create session.');
+        return;
+      }
+      setTransport('public-fallback');
+      startSession({
+        agentId,
+        ...baseOptions,
+      });
     }
-    return React.createElement('elevenlabs-convai', attrs);
-  }, [agentId, userUid, ready]);
+  }, [agentId, startSession, userUid]);
+
+  const statusLabel =
+    status === 'connected'
+      ? mode === 'speaking'
+        ? 'Speaking'
+        : 'Listening'
+      : status === 'connecting'
+        ? 'Connecting...'
+        : 'Ready';
 
   return (
-    <section className="relative overflow-hidden border border-[#08242a] bg-[radial-gradient(circle_at_top,_rgba(27,208,191,0.15),_transparent_36%),linear-gradient(145deg,#041117_0%,#08242a_56%,#07181d_100%)] p-5 text-white shadow-[0_28px_70px_-48px_rgba(0,0,0,0.52)] md:p-6">
-      <div className="space-y-5">
-        <div className="space-y-2">
-          <div className="text-[10px] uppercase tracking-[0.26em] text-brand-teal">Chief of Staff Voice</div>
-          <h3 className="text-3xl font-editorial italic leading-none md:text-[42px]">Donna is live in the room.</h3>
-          <p className="max-w-2xl text-sm leading-6 text-white/72">
-            The Ghost operates your career intelligence system by voice. Navigate modules, dispatch agents,
-            fetch artifacts, and get strategic guidance — all hands-free.
-          </p>
+    <div className="relative">
+      {interactionLocked ? (
+        <div className="border border-white/10 bg-white/5 px-3 py-3 text-xs leading-relaxed text-white/70">
+          {lockedMessage || 'Donna has stepped out while the suite processes your intake.'}
         </div>
+      ) : null}
 
-        <div className="grid gap-3 text-[10px] uppercase tracking-[0.18em] text-white/70 sm:grid-cols-3">
-          <div className="border border-white/10 bg-white/5 px-3 py-3">
-            Lane ElevenLabs
-          </div>
-          <div className="border border-white/10 bg-white/5 px-3 py-3">
-            {ready ? 'Widget ready' : 'Loading widget'}
-          </div>
-          <div className="border border-white/10 bg-white/5 px-3 py-3">
-            {error ? 'Fallback needed' : `${Object.keys(clientTools).length} tools staged`}
-          </div>
-        </div>
-
-        <div className="border border-white/10 bg-white/5 p-4">
-          {error ? (
-            <div className="text-sm leading-6 text-white/72">
-              ElevenLabs widget failed to load. Refresh the page and confirm the public agent is still available.
-            </div>
-          ) : widget ? (
-            widget
-          ) : (
-            <div className="text-sm leading-6 text-white/72">
-              Loading the ElevenLabs Ghost agent for this Chief of Staff.
-            </div>
-          )}
-        </div>
-
-        {/* Ghost tool reference — visible when widget is active */}
-        {ready && !error && (
-          <div className="grid grid-cols-2 gap-2 text-[9px] font-mono uppercase tracking-[0.12em] text-white/40">
-            <div className="border border-white/8 bg-white/3 px-2 py-1.5">
-              Client: navigate · close · admin · dispatch · stance · gap
-            </div>
-            <div className="border border-white/8 bg-white/3 px-2 py-1.5">
-              Server: briefing · artifact · drive
-            </div>
-          </div>
+      {/* Controls row */}
+      <div className={`flex items-center gap-3 ${interactionLocked ? 'mt-3 opacity-55' : ''}`}>
+        {status === 'connected' ? (
+          <button
+            type="button"
+            onClick={() => endSession()}
+            disabled={interactionLocked}
+            className="border border-white/20 px-3 py-1.5 font-intake-mono text-[9px] uppercase tracking-[0.14em] text-white/70 transition-colors hover:border-red-400/50 hover:text-red-300"
+          >
+            End Session
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={beginSession}
+            disabled={interactionLocked}
+            className="border border-[var(--intake-teal)] bg-[var(--intake-teal)]/15 px-4 py-1.5 font-intake-mono text-[9px] uppercase tracking-[0.14em] text-[var(--intake-teal-light)] transition-colors hover:bg-[var(--intake-teal)]/25"
+          >
+            Talk to Donna
+          </button>
         )}
+
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-block h-1.5 w-1.5 rounded-full ${
+              status === 'connected'
+                ? mode === 'speaking'
+                  ? 'bg-[var(--intake-teal)] animate-pulse'
+                  : 'bg-[var(--intake-teal)]'
+                : 'bg-white/30'
+            }`}
+          />
+          <span className="font-intake-mono text-[8px] uppercase tracking-[0.14em] text-white/50">
+            {statusLabel}
+          </span>
+          {transport ? (
+            <span className="font-intake-mono text-[8px] uppercase tracking-[0.1em] text-white/30">
+              {transport === 'signed' ? 'signed' : 'public'}
+            </span>
+          ) : null}
+        </div>
       </div>
 
-      {/* Ghost Action Feed overlay */}
+      {error ? (
+        <div className="mt-2 text-[10px] text-amber-300/80">{error}</div>
+      ) : null}
+
+      {/* Transcript — only when connected and has messages */}
+      {status === 'connected' && messages.length > 0 ? (
+        <div className="mt-2 flex flex-col gap-1 max-h-[120px] overflow-y-auto">
+          {messages.slice(0, 4).map((entry) => (
+            <div
+              key={entry.id}
+              className={`px-2 py-1 text-xs leading-snug ${
+                entry.role === 'agent'
+                  ? 'bg-white/5 text-white/70'
+                  : 'bg-[var(--intake-teal)]/8 text-[var(--intake-teal-light)]/80'
+              }`}
+            >
+              <span className="font-intake-mono text-[7px] uppercase tracking-[0.12em] text-white/30 mr-1.5">
+                {entry.role === 'agent' ? 'Donna' : 'You'}
+              </span>
+              {entry.message}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <GhostActionFeed actions={actionLog} />
-    </section>
+    </div>
+  );
+}
+
+export function ElevenLabsConvaiPanel({
+  agentId,
+  userUid,
+  sessionContext,
+  ghostCallbacks,
+  onStateChange,
+  interactionLocked,
+  lockedMessage,
+}: {
+  agentId: string;
+  userUid?: string;
+  sessionContext?: string;
+  ghostCallbacks?: GhostCallbacks;
+  onStateChange?: (state: GhostRuntimeState) => void;
+  interactionLocked?: boolean;
+  lockedMessage?: string;
+}) {
+  const defaultCallbacks: GhostCallbacks = useMemo(
+    () => ({
+      onNavigateModule: (target) => `Navigation requested for ${target}.`,
+      onCloseModule: () => 'Overlay close requested.',
+      onToggleAdmin: () => 'Admin toggle requested.',
+      onDispatchAgent: (codename) => `Dispatch requested for ${codename}.`,
+      onUpdateStance: (stance) => `Stance update requested: ${stance}.`,
+      onAddressGap: (gapId) => `Gap update requested for ${gapId}.`,
+      onFocusIntakeField: (fieldId) => `Focus requested for ${fieldId}.`,
+      onJumpIntakeScreen: (screenId) => `Screen jump requested for ${screenId}.`,
+      onSetIntakeTextField: (fieldId, value) => `Text requested for ${fieldId}: ${value}.`,
+      onSetIntakeChoiceField: (fieldId, value) => `Choice requested for ${fieldId}: ${value}.`,
+      onSetIntakeMultiField: (fieldId, values) => `Multi-select requested for ${fieldId}: ${values.join(', ')}.`,
+      onSetIntakeBooleanField: (fieldId, value) => `Boolean requested for ${fieldId}: ${String(value)}.`,
+      onClearIntakeField: (fieldId) => `Clear requested for ${fieldId}.`,
+      onSetIntentRoute: (intent) => `Intent change requested: ${intent}.`,
+      onSetSupportPreference: (preference, value) => `${preference} preference change requested: ${value}.`,
+      onSummarizeIntakeState: () => 'No intake summary is connected yet.',
+    }),
+    [],
+  );
+
+  return (
+    <ConversationProvider>
+      <GhostSdkSurface
+        agentId={agentId}
+        userUid={userUid}
+        sessionContext={sessionContext}
+        ghostCallbacks={ghostCallbacks || defaultCallbacks}
+        onStateChange={onStateChange}
+        interactionLocked={interactionLocked}
+        lockedMessage={lockedMessage}
+      />
+    </ConversationProvider>
   );
 }

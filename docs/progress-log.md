@@ -4,6 +4,31 @@ This log tracks implementation progress against the V1 MVP backlog plus the queu
 Detailed story-level status and pass-by-pass execution entries now live in `docs/backlog-ledger.md`.
 Update both files in each delivery pass so roadmap visuals and implementation status stay aligned.
 
+## 2026-03-29
+
+### Delivery: Voice Lane Admin Sync Hardening
+
+- Tightened the admin save path so the Smart Start `Voice model` selector and the `Public intake lane` selector no longer drift apart.
+- `Gemini Live` and `ElevenLabs Ghost` now save as one coherent intake-lane choice:
+  - changing the DNA voice model updates the public intake lane
+  - changing the public intake lane updates the DNA voice model
+- Intake now follows the API-served `voice.active_panel` as the canonical lane choice instead of letting a stale DNA voice-model field silently override the operator’s saved public-lane selection.
+
+### Delivery: Ghost/GWS Demo Readiness Identity Cleanup
+
+- Hardened the client identity path so human-readable name/email data is now captured earlier and reused consistently:
+  - client records now hydrate `email` and `display_name` from the signed-in Firebase user on first load
+  - Ghost/GWS server flows now also attempt to backfill sparse client records from Firebase Auth during briefing/doc sync
+- Removed raw UID fallback from user-facing Ghost/GWS surfaces:
+  - Ghost briefing now falls back to `Client` instead of `Unknown` or backend identifiers
+  - Google Drive folder naming, Google Doc titles, and `Prepared for` headers now prefer `display_name`, `demo_profile.name`, or an email-derived readable label
+- Updated the Ghost system prompt to explicitly forbid surfacing backend identifiers to the client.
+- Replaced the placeholder Ghost/GWS E2E checklist with a status-bearing run record in `docs/E2E_TEST_PLAN.md`, including:
+  - verified webhook results
+  - verified doc-sync results
+  - explicit manual-browser items still pending
+  - removal of hardcoded webhook-secret examples
+
 ## 2026-03-15
 
 ### Delivery: Google Workspace Integration — Document Publisher Agent
@@ -610,27 +635,33 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - affective/proactive/thinking toggles
   - Sesame feature-flag posture
 - Sesame now stays disabled by default until its dedicated Cloud Run service exists.
-- ElevenLabs and Manus are now documented as queued lanes rather than implied live options.
+- ElevenLabs Ghost and Manus are now documented as explicit external lanes rather than implied hidden options.
 - Sample persona auth create/reseed paths now reset to a shared demo password, and the roadmap validation harness surfaces that password for manual login.
 - With `MTL-06`, `MTL-08`, and `MTL-09` now marked done, the roadmap execution confidence moves into the `95%+` range while `MTL-04` and `MTL-07` remain the primary residual demo risks.
 
 ### Delivery: External Lane Env Staging
 
 - Added Cloud Run API env staging for `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`, `ELEVENLABS_AGENT_BRANCH_ID`, `MANUS_API_KEY`, and `MANUS_API_URL`.
-- Admin system overview now reports ElevenLabs and Manus readiness from API runtime env.
-- Gemini Live remains the only active voice provider; ElevenLabs and Manus are still staged lanes until their adapters ship.
+- Admin system overview now reports ElevenLabs Ghost and Manus readiness from API runtime env.
+- Gemini Live remains the native real-time provider; ElevenLabs Ghost is the live agent lane and Manus remains staged until its operator automation path ships.
+
+### Delivery: ElevenLabs Ghost Admin Alignment
+
+- Normalized the Professional DNA voice-model config onto `elevenlabs_ghost` while preserving compatibility with older saved `elevenlabs_conversational` values.
+- Admin `Voice` and `Experience` rails now label the lane as `ElevenLabs Ghost` / `ElevenLabs Ghost Agent`, and the runtime map no longer describes it as an unimplemented future adapter.
+- Smart Start intake now resolves the saved Ghost model name correctly when deciding which voice lane to open first.
 
 ### Delivery: ElevenLabs Intake Widget
 
 - `/v1/public/config` now exposes the public ElevenLabs agent ID when configured in Cloud Run API env.
-- Admin voice controls now expose a dedicated public-intake lane selector so the team can flip between Gemini and ElevenLabs.
-- The intake concierge step now mounts the ElevenLabs conversational widget for the Chief of Staff voice lane when that selector is set to ElevenLabs and the API env exposes a public agent ID.
-- The intake concierge step also exposes a live lane switcher so the team can toggle between Gemini and ElevenLabs without leaving the flow.
+- Admin voice controls now expose a dedicated public-intake lane selector so the team can flip between Gemini and ElevenLabs Ghost.
+- The intake concierge step now mounts the ElevenLabs Ghost Chief of Staff lane when that selector is set to ElevenLabs and the API env exposes a public agent ID.
+- The intake concierge step also exposes a live lane switcher so the team can toggle between Gemini and ElevenLabs Ghost without leaving the flow.
 - This makes the public voice entry usable end to end without changing the internal Gemini Live token/session flow.
 
 ### Delivery: Demo UX Hardening + Admin Firestore Repair
 
-- The saved admin `Public intake lane` now persists through `/v1/public/config`, so the global public default can actually be switched between Gemini and ElevenLabs.
+- The saved admin `Public intake lane` now persists through `/v1/public/config`, so the global public default can actually be switched between Gemini and ElevenLabs Ghost.
 - The client module shell now collapses its large editorial header on scroll so the episode and module content are not trapped under persistent chrome.
 - Free-tier/demo Episodes now load the routed curated media library as well, which restores the cinematic video stage instead of showing only text/script beats.
 - Brand Studio preview now mirrors the live suite shell plus module overlay composition instead of the older left-rail proof layout.
@@ -660,3 +691,30 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - The shared module modal shell now uses a compressed editorial header with inline context chips so the active content lands closer to the top of the viewport.
 - Added a reusable `AmbientGuide` interaction primitive that reveals a quiet conversational tooltip only after the user pauses on a control.
 - Roadmap panel switching now uses the same ambient guidance layer, and the roadmap overview is documented under a new global density and guidance spec.
+
+### Delivery: Gemini / Ghost Voice Lane Parity
+
+- Canonicalized admin voice-lane saving so `Voice model` and `Public intake lane` no longer drift between Gemini Live and ElevenLabs Ghost.
+- `/v1/public/config` now follows the saved `voice.public_panel_provider` choice, and Intake no longer lets stale Professional DNA voice-model values override the active public lane.
+- Added `POST /v1/voice/elevenlabs/session` so authenticated ElevenLabs sessions can start from a signed URL instead of relying on a widget-only public lane.
+- Replaced the widget-based ElevenLabs intake panel with the ElevenLabs React SDK and added contextual updates plus action-feed telemetry.
+- Expanded Donna from a navigation-only Ghost into an intake-capable operator with Smart Start tools for:
+  - screen movement
+  - field focus
+  - text/choice/multi/boolean writes
+  - field clearing
+  - intent and support-preference changes
+  - intake-state summaries
+- Updated Ghost/GWS architecture docs and the end-to-end test plan so the repo now documents the real shipped runtime rather than the old 6-tool widget era.
+
+### Delivery: Smart Start Guided Workspace
+
+- Rebuilt Smart Start into one guided intake workspace with:
+  - sticky voice rail
+  - section navigation
+  - section-aware field highlighting
+  - one right-hand form canvas instead of the previous split utility layout
+- Restored Gemini as a real intake lane inside Smart Start instead of leaving the surface effectively ElevenLabs-only.
+- Added a compact Gemini embed posture so the native live API path fits the intake shell instead of opening as a separate cinematic studio.
+- Added a locked processing state that explicitly steps Donna or Gemini out before artifact generation finishes, so clients are not left in an awkward post-intake dead zone.
+- Updated operator-facing labels from the old `Gemini Live` phrasing to `Gemini Native Live API` so Admin better reflects the shipped runtime posture.

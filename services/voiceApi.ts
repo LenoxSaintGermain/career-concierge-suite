@@ -1,5 +1,10 @@
 import { auth } from './firebase';
-import { IntakeAnswers, IntakeTranscriptExtractionResponse, VoiceSynthesisResponse } from '../types';
+import {
+  ElevenLabsSessionResponse,
+  IntakeAnswers,
+  IntakeTranscriptExtractionResponse,
+  VoiceSynthesisResponse,
+} from '../types';
 import { resolveApiOrigin } from './apiOrigin';
 
 export const synthesizeConciergeVoice = async (text: string): Promise<VoiceSynthesisResponse> => {
@@ -63,4 +68,34 @@ export const extractIntakeFromTranscript = async (
   }
 
   return (await resp.json()) as IntakeTranscriptExtractionResponse;
+};
+
+export const createElevenLabsSession = async (): Promise<ElevenLabsSessionResponse> => {
+  const origin = resolveApiOrigin();
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not authenticated');
+  const token = await user.getIdToken();
+
+  let resp: Response;
+  try {
+    resp = await fetch(`${origin}/v1/voice/elevenlabs/session`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach API at ${origin}. Start the API server on port 8080 or update VITE_CONCIERGE_API_URL.`
+    );
+  }
+
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => '');
+    throw new Error(`ElevenLabs session error (${resp.status}): ${txt || resp.statusText}`);
+  }
+
+  return (await resp.json()) as ElevenLabsSessionResponse;
 };

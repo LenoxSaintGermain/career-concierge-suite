@@ -123,6 +123,9 @@ export function GeminiLivePanel(props: {
   onStateChange?: (state: LiveState) => void;
   onSessionComplete?: (payload: { transcript: string; sessionId?: string; completed: boolean }) => void;
   transcriptVisible?: boolean;
+  layout?: 'cinematic' | 'compact';
+  interactionLocked?: boolean;
+  lockedMessage?: string;
 }) {
   const [state, setState] = useState<LiveState>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +181,7 @@ export function GeminiLivePanel(props: {
     () => STORY_SCENES.find((scene) => scene.id === activeStoryScene) ?? STORY_SCENES[0],
     [activeStoryScene]
   );
+  const compactLayout = props.layout === 'compact';
   const appendTranscriptLine = (line: string) => {
     const cleaned = String(line || '').trim();
     if (!cleaned) return;
@@ -290,6 +294,11 @@ export function GeminiLivePanel(props: {
     pendingPcmChunksRef.current = [];
     pendingPcmBytesRef.current = 0;
   };
+
+  useEffect(() => {
+    if (!props.interactionLocked || state !== 'connected') return;
+    closeSession();
+  }, [props.interactionLocked, state]);
 
   const flushPendingPcm = (force = false) => {
     const sampleRate = playbackSampleRateRef.current || 24000;
@@ -666,6 +675,115 @@ export function GeminiLivePanel(props: {
       }
     };
   }, []);
+
+  if (compactLayout) {
+    return (
+      <section className="border border-[#163840] bg-[#07161a] p-4 text-[#dce7e8] shadow-[0_14px_40px_rgba(1,12,18,0.24)]">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Gemini Native Live API</div>
+              <div className="mt-2 text-lg font-editorial italic text-[#e7f1f2]">
+                Speak naturally. Gemini structures the intake in real time.
+              </div>
+            </div>
+            <div className="flex items-center gap-2 border border-[#22424a] bg-[#0d2329] px-3 py-2">
+              <div
+                className={`h-2 w-2 rounded-full ${
+                  state === 'connected' ? 'bg-brand-teal animate-pulse' : state === 'error' ? 'bg-red-500' : 'bg-white/30'
+                }`}
+              />
+              <div className="text-[10px] uppercase tracking-[0.18em] text-[#b5c5c8]">{statusLabel}</div>
+            </div>
+          </div>
+
+          {props.interactionLocked ? (
+            <div className="border border-[#274148] bg-[#0d2025] px-3 py-3 text-xs leading-relaxed text-[#cddadd]">
+              {props.lockedMessage || 'Gemini has stepped out while the suite processes your intake.'}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            {state !== 'connected' ? (
+              <button
+                type="button"
+                onClick={startSession}
+                disabled={state === 'connecting' || props.interactionLocked}
+                className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
+              >
+                {state === 'connecting' ? 'Opening Session…' : 'Start Gemini'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={closeSession}
+                disabled={props.interactionLocked}
+                className="px-4 py-2 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.22em] text-[#d0ddde] transition-colors hover:border-brand-teal"
+              >
+                End Session
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={micEnabled ? stopMic : startMic}
+              disabled={state !== 'connected' || props.interactionLocked}
+              className="px-4 py-2 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.22em] text-[#d0ddde] transition-colors disabled:opacity-45 hover:border-brand-teal"
+            >
+              {micEnabled ? 'Pause Mic' : 'Enable Mic'}
+            </button>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(220px,0.9fr)]">
+            <div className="border border-[#274148] bg-[#0d2025] p-4">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Conversation transcript</div>
+              <pre className="mt-3 min-h-[160px] max-h-[280px] overflow-y-auto whitespace-pre-wrap border border-[#274148] bg-[#09181c] p-3 text-xs leading-6 text-[#cfe0e1]">
+                {transcript || 'Once the session starts, Gemini transcription appears here.'}
+              </pre>
+            </div>
+
+            <div className="space-y-3">
+              <div className="border border-[#274148] bg-[#0d2025] p-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Session memory</div>
+                <div className="mt-2 text-sm leading-relaxed text-[#d0ddde]">
+                  {state === 'connected'
+                    ? 'Gemini is listening and structuring your answers for the suite.'
+                    : 'Open the session, then speak or type a guided turn to shape the intake.'}
+                </div>
+              </div>
+
+              <div className="border border-[#274148] bg-[#0d2025] p-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Guided prompt</div>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Ask Gemini to clarify, summarize, or reframe the current intake section..."
+                  className="mt-3 w-full min-h-24 border border-[#385257] bg-[#10272c] p-3 text-sm leading-relaxed text-[#d7e3e4] outline-none focus:border-brand-teal"
+                />
+                <button
+                  type="button"
+                  onClick={sendPrompt}
+                  disabled={state !== 'connected' || sending || !prompt.trim() || props.interactionLocked}
+                  className="mt-3 px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
+                >
+                  {sending ? 'Sending…' : 'Send Guided Turn'}
+                </button>
+              </div>
+
+              {(error || latencyMs || tokenInfo?.model) ? (
+                <div className="border border-[#274148] bg-[#0d2025] p-4 text-xs leading-relaxed text-[#c8d7d9]">
+                  <div>Model: {tokenInfo?.model ?? 'not connected'}</div>
+                  <div>Voice: {tokenInfo?.voice_name ?? 'n/a'}</div>
+                  <div>Latency: {latencyMs ? `${latencyMs} ms` : 'n/a'}</div>
+                  {error ? <div className="mt-2 text-red-300">{error}</div> : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="relative overflow-hidden border border-[#163840] bg-[#07161a] p-5 md:p-7 text-[#dce7e8] shadow-[0_14px_40px_rgba(1,12,18,0.32)]">

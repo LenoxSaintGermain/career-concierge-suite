@@ -1,6 +1,6 @@
 import * as gws from './gwsClient.js';
 import { getDocRegistryEntry, upsertDocRegistryEntry, markDocRegistryError } from './docRegistry.js';
-import { ensureClientFolder, getDocTitle } from './driveOrganizer.js';
+import { ensureClientFolder, getClientDisplayName, getDocTitle, resolveClientIdentity } from './driveOrganizer.js';
 import { buildDocRequests, hasTemplate } from './templateEngine.js';
 
 /**
@@ -17,11 +17,9 @@ export const syncArtifactsToGoogleDocs = async (db, uid, artifacts) => {
     return { status: 'disabled' };
   }
 
-  const clientRef = db.collection('clients').doc(uid);
-  const clientSnap = await clientRef.get();
-  const clientData = clientSnap.exists ? clientSnap.data() : {};
+  const clientData = await resolveClientIdentity(db, uid);
   const clientMeta = {
-    displayName: clientData.display_name || clientData.email || uid,
+    displayName: getClientDisplayName(clientData),
     email: clientData.email || '',
   };
 
@@ -63,10 +61,12 @@ const syncSingleArtifact = async (db, uid, artifactType, artifact, clientMeta, f
   const content = artifact?.content || artifact;
   const version = artifact?.version || 1;
   const registry = await getDocRegistryEntry(db, uid, artifactType);
+  const title = getDocTitle(artifactType, clientMeta.displayName);
 
   try {
     if (registry?.google_doc_id) {
       // Update existing doc
+      await gws.updateFileMetadata(registry.google_doc_id, { name: title });
       await gws.clearDocumentBody(registry.google_doc_id);
       const requests = buildDocRequests(artifactType, content, clientMeta);
       await gws.batchUpdate(registry.google_doc_id, requests);
@@ -81,20 +81,22 @@ const syncSingleArtifact = async (db, uid, artifactType, artifact, clientMeta, f
       return { status: 'updated', google_doc_id: registry.google_doc_id };
     }
 
-    // Create new doc
-    const title = getDocTitle(artifactType, clientMeta.displayName);
-    const { documentId } = await gws.createDocument(title);
+    // Create new doc directly in client folder
+    const { documentId } = await gws.createDocument(title, folderId);
 
     // Apply template content
     const requests = buildDocRequests(artifactType, content, clientMeta);
     await gws.batchUpdate(documentId, requests);
 
-    // Organize in Drive
-    await gws.moveToFolder(documentId, folderId);
-
     // Share with user
     if (clientMeta.email) {
-      await gws.shareWithUser(documentId, clientMeta.email, 'writer');
+      try {
+        await gws.shareWithUser(documentId, clientMeta.email, 'writer');
+      } catch (error) {
+        if (!String(error?.message || '').toLowerCase().includes('already')) {
+          throw error;
+        }
+      }
     }
 
     // Record in registry
@@ -124,11 +126,9 @@ export const syncSingleArtifactToDoc = async (db, uid, artifactType, content, ve
   if (process.env.GWS_DOCS_ENABLED !== 'true') return { status: 'disabled' };
   if (!hasTemplate(artifactType)) return { status: 'unsupported_type' };
 
-  const clientRef = db.collection('clients').doc(uid);
-  const clientSnap = await clientRef.get();
-  const clientData = clientSnap.exists ? clientSnap.data() : {};
+  const clientData = await resolveClientIdentity(db, uid);
   const clientMeta = {
-    displayName: clientData.display_name || clientData.email || uid,
+    displayName: getClientDisplayName(clientData),
     email: clientData.email || '',
   };
 

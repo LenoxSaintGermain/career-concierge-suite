@@ -77,12 +77,13 @@ The Lucid-added client modules are now first-class suite surfaces:
 
 The design target remains an editorial, cinematic workspace rather than a generic SaaS dashboard.
 Modules should feel like guided surfaces inside one OS, not isolated product pages.
-`Smart Start Intake` is now a four-screen premium dossier intake instead of a generic long-form field stack:
+`Smart Start Intake` is now a guided two-column workspace instead of a generic long-form field stack:
 
-- a configurable hero-video stage can appear at the top of Intake from public config
-- the voice rail now sits above the form path and can run Gemini Live or ElevenLabs depending on operator config
+- the voice rail now sits beside the intake form and can run Gemini Native Live API or ElevenLabs Ghost depending on operator config
+- the form is organized into explicit sections so the active voice lane can keep the user oriented to one act at a time
 - Gemini Live sessions can extract structured intake signals back into empty form fields, with visible `from voice session` provenance tags
-- the prepare state now shows a live intake/market/research progress rail rather than a generic loading card
+- the ElevenLabs Ghost lane now uses the React SDK plus a signed-session API route, contextual updates, and intake-safe client tools so Donna can move screens, focus fields, write answers, and summarize the intake state live
+- the processing state now explicitly steps Donna out before artifacts are available so the client is not left speaking into a dead transition
 - the signed-in landing experience now pairs that intake with a lighter editorial `Your Journey Guide` surface that:
   - opens as an opt-in four-act concierge briefing instead of a tutorial modal
   - personalizes the invite copy, act headlines, and context lines from the client dossier/intake context already on file
@@ -103,6 +104,12 @@ The `Brief` / `Profile` pair now also carries a research-grade Professional DNA 
   - a 72-hour war-room execution block and footer ticker for report freshness/evidence posture
 - the Brief now degrades safely against older or partially enriched dossier artifacts instead of hard-crashing when newer telemetry fields are missing
 - those UI metrics are source-backed or explicitly inferred from dossier evidence; the system no longer relies on decorative placeholder chart data
+
+The Ghost + Google Workspace document lane now also follows a stricter identity policy:
+
+- Ghost briefings and tool-assisted responses must use a human-readable client name or a generic fallback, never a Firebase UID
+- Google Drive client folders and Google Doc titles now resolve from stored `display_name`, `demo_profile.name`, Firebase Auth profile data, or an email-derived readable label
+- if older client records are sparse, the server backfills identity fields during Ghost briefing and document sync so the demo/user-facing experience stays legible
 
 `Suite Distilled` is no longer a flat two-column strategic recap:
 
@@ -168,11 +175,11 @@ It uses:
 - one active workspace at a time for generation, media, brand, voice, or governance edits
 - a single-column editorial content stack so controls do not compress or overlap on medium-width laptop views
 - a compact command header on smaller viewports so laptop and tablet operators still see active section context before the form fields
-- a lane-readiness voice studio that treats Gemini Live as the active rail, Sesame as explicitly gated off, and ElevenLabs/Manus as planned future lanes
-- Cloud Run API env staging for Manus credentials plus ElevenLabs agent metadata so Admin can report external-lane readiness without mislabeling those lanes as live providers
-- the public concierge intake can now mount the configured ElevenLabs Chief of Staff widget from API-served public config, and admin exposes a dedicated public-intake lane selector so operators can flip between Gemini and ElevenLabs without touching env vars
-- the intake concierge step itself now shows a live lane switcher when ElevenLabs is available so the team can choose between Gemini and ElevenLabs in-session
-- the public-intake lane selector is now the persisted global default, so `/v1/public/config` reflects the saved admin choice instead of forcing Gemini when ElevenLabs is available
+- a lane-readiness voice studio that treats Gemini Live as the native rail, ElevenLabs Ghost as the live agent lane, Sesame as explicitly gated off, and Manus as future operator automation
+- Cloud Run API env staging for Manus credentials plus ElevenLabs agent metadata so Admin can report Ghost-lane readiness without drifting back to the old conversational-widget posture
+- the public concierge intake can now mount the configured ElevenLabs Ghost lane from API-served public config, and admin exposes a dedicated public-intake lane selector so operators can flip between Gemini and ElevenLabs Ghost without touching env vars
+- the intake concierge step itself now shows a live lane switcher when ElevenLabs Ghost is available so the team can choose between Gemini and ElevenLabs Ghost in-session
+- the public-intake lane selector is now the persisted global default, so `/v1/public/config` reflects the saved admin choice instead of forcing Gemini when ElevenLabs Ghost is available
 - a top-command client module shell instead of the old split left-rail modal so episodes, TV, and artifact modules have a wider presentation canvas
 - the client module shell now keeps a stable editorial header and floating close rail instead of scroll-collapsing the header, which removes the desktop bounce/stutter issue when long module pages are scrolled
 - mobile and tablet module shells now retreat secondary chrome so the narrative stage stays primary when media is present
@@ -304,10 +311,12 @@ The Express API under `api/` handles:
 - Cloud Run service built from `api/`
 - Express + `firebase-admin`
 - Gemini-backed generation routes
-- Gemini Live is the default active voice lane
+- Gemini Native Live API is the default first-party voice lane
 - Sesame remains feature-flagged off until a dedicated service exists
-- ElevenLabs is now a live selectable public-intake lane when the Cloud Run API env exposes an agent ID and the saved admin config chooses it
-- Gemini Live remains the internal runtime voice transport for the native live panel and token route
+- ElevenLabs Ghost is now a live selectable public-intake lane when the Cloud Run API env exposes an agent ID, an API key, and the saved admin config chooses it
+- Gemini Native Live API remains the internal runtime voice transport for the native live panel and token route
+- the public-intake lane decision now follows `voice.public_panel_provider` as the canonical saved source instead of letting stale Professional DNA voice settings override the operator choice
+- `POST /v1/voice/elevenlabs/session` now creates signed ElevenLabs sessions for authenticated users so the Ghost lane can run as a real SDK surface instead of a widget-only fallback
 - Manus remains a queued external lane, not an active runtime dependency
 - the Cloud Run API runtime now depends on Firestore data access via `roles/datastore.user` on the service account; without that role, admin config writes and admin telemetry surfaces will fail with `PERMISSION_DENIED`
 - admin media-pipeline status messaging now translates known provider/config mismatches into operator-safe language instead of leaking raw Gemini option errors

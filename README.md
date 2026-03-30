@@ -37,15 +37,19 @@ Setup:
 ## Voice Engine Routing
 
 The onboarding flow supports concierge voice playback through `POST /v1/voice/synthesize` on the Cloud Run API.
-When `ELEVENLABS_AGENT_ID` is present in the API env, the public concierge intake can mount the ElevenLabs conversational widget from `/v1/public/config`.
-Admin voice controls expose a separate public-intake lane selector so the team can flip that step between Gemini and ElevenLabs without changing secrets.
+Gemini Native Live API remains the native first-party voice lane.
+When `ELEVENLABS_AGENT_ID` and `ELEVENLABS_API_KEY` are present in the API env, the public concierge intake can mount the ElevenLabs Ghost lane from `/v1/public/config` and open signed sessions through `POST /v1/voice/elevenlabs/session`.
+Admin voice controls expose a separate public-intake lane selector so the team can flip that step between Gemini and ElevenLabs without changing secrets, and the saved `Voice model` and `Public intake lane` now persist in lockstep.
 The intake concierge step also exposes an in-flow lane switcher when both lanes are available so operators can flip live during a session.
-Smart Start Intake now also supports transcript-to-form extraction through `POST /v1/intake/extract`, so Gemini Live intake sessions can prefill empty form fields without overwriting user-entered answers.
+Smart Start Intake now also supports transcript-to-form extraction through `POST /v1/intake/extract`, so Gemini Native Live API intake sessions can prefill empty form fields without overwriting user-entered answers.
+The ElevenLabs Ghost lane now runs on the ElevenLabs React SDK with client tools, contextual updates, a signed-session path, and intake-safe actions for voice-led form completion.
+The intake UI itself is now a single guided workspace with a sticky voice rail, visible section navigation, and a locked processing state while artifacts are generated.
 
 Provider options:
 
 - `sesame`
 - `gemini_live`
+- `elevenlabs_ghost`
 
 API env options for `sesame`:
 
@@ -65,16 +69,19 @@ API env options for `gemini_live`:
 - `GEMINI_LIVE_VAD_START`
 - `GEMINI_LIVE_VAD_END`
 
-API env options for staged external lanes:
+API env options for ElevenLabs Ghost:
 
 - `ELEVENLABS_API_KEY`
 - `ELEVENLABS_AGENT_ID`
 - `ELEVENLABS_AGENT_BRANCH_ID`
+
+API env options for staged external lanes:
+
 - `MANUS_API_KEY`
 - `MANUS_API_URL`
 
-These envs currently stage credential and agent metadata in the Cloud Run API and surface readiness in Admin.
-They do not activate ElevenLabs or Manus as runtime providers until a dedicated adapter is implemented.
+These envs surface readiness in Admin.
+ElevenLabs Ghost is now an active signed-session public-intake lane. Manus remains staged until a dedicated adapter is implemented.
 
 Admin controls expose:
 

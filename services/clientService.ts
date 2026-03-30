@@ -10,17 +10,50 @@ import { ClientDoc, ClientIntent, ClientPreferences, IntakeAnswers } from '../ty
 
 const CLIENTS_COLLECTION = 'clients';
 
-export const getOrCreateClient = async (uid: string): Promise<ClientDoc> => {
+const toText = (value: unknown) => String(value ?? '').trim();
+
+const deriveDisplayName = (email?: string | null) => {
+  const localPart = toText(email).split('@')[0] || '';
+  const cleaned = localPart.replace(/[._-]+/g, ' ').replace(/\d+/g, ' ').trim();
+  if (!cleaned) return '';
+  return cleaned
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+};
+
+export const getOrCreateClient = async (
+  uid: string,
+  profile?: { email?: string | null; displayName?: string | null },
+): Promise<ClientDoc> => {
   const ref = doc(db, CLIENTS_COLLECTION, uid);
   const snap = await getDoc(ref);
+  const email = toText(profile?.email) || undefined;
+  const displayName = toText(profile?.displayName) || deriveDisplayName(email) || undefined;
 
   if (snap.exists()) {
     const data = snap.data() as Omit<ClientDoc, 'uid'>;
-    return { uid, ...(data as any) } as ClientDoc;
+    const patch: Partial<ClientDoc> = {};
+    if (!toText(data.email) && email) patch.email = email;
+    if (!toText(data.display_name) && displayName) patch.display_name = displayName;
+    if (Object.keys(patch).length) {
+      await setDoc(
+        ref,
+        {
+          ...patch,
+          updated_at: Timestamp.now(),
+        },
+        { merge: true },
+      );
+    }
+    return { uid, ...(data as any), ...patch } as ClientDoc;
   }
 
   const now = Timestamp.now();
   const initial: Omit<ClientDoc, 'uid'> = {
+    ...(email ? { email } : {}),
+    ...(displayName ? { display_name: displayName } : {}),
     created_at: now,
     updated_at: now,
   };
@@ -53,4 +86,3 @@ export const saveIntake = async (uid: string, payload: {
     { merge: true }
   );
 };
-
