@@ -195,6 +195,7 @@ Current public-intake behavior:
 - Gemini Live now defaults to `gemini-3.1-flash-live-preview`, the current official Google Live model; `gemini-2.5-flash-native-audio-preview-12-2025` remains available only as a controlled fallback option
 - Gemini Smart Start sessions now share the same explicit intake-action tool contract as ElevenLabs Ghost, so Google Live can move sections, focus fields, write values, clear values, update route/preferences, and summarize the visible form through deterministic tool calls
 - Gemini compact Smart Start mode now suppresses live mic relay while Gemini is speaking, which prevents the lane from interrupting or clipping its own response mid-turn
+- Gemini compact Smart Start mode now opens with the first question on its own and only enables the mic after that opening turn, which removes the silent-start seam and reduces early session drops
 - Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; do not use `professional_dna.voice_agent_voice_id` to reason about the public Gemini voice lane
 - `POST /v1/voice/elevenlabs/session` now provides signed ElevenLabs session URLs for authenticated users when `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` are present
 - the ElevenLabs intake lane now runs on the ElevenLabs React SDK with contextual updates, action feed telemetry, and intake-safe client tools for screen movement and field entry

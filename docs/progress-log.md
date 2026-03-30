@@ -680,6 +680,7 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 ### Delivery: Gemini Live Turn-Stability Hardening
 
 - Gemini compact Smart Start mode now suppresses live mic relay while Gemini is actively speaking, which prevents the lane from hearing its own output and cutting a response off mid-turn.
+- Gemini compact Smart Start mode now opens with its own first question and only brings the mic online after that opening turn, which removes the silent-start seam and gives the rail one guarded retry if the session drops during the opening handoff.
 - This hardening stays local to the intake rail and does not change the saved model, voice, or shared intake tool contract.
 
 ### Delivery: Gemini Live Smart Start Tool Parity

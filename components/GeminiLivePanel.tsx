@@ -173,6 +173,9 @@ export function GeminiLivePanel(props: {
   const sessionContextRef = useRef('');
   const suppressMicInputRef = useRef(false);
   const suppressMicReleaseTimerRef = useRef<number | null>(null);
+  const expectedCloseRef = useRef(false);
+  const introTurnPendingRef = useRef(false);
+  const reconnectCountRef = useRef(0);
   const cameraReady = state === 'connected' && cameraEnabled;
   const micReady = state === 'connected' && micEnabled;
   const engagementReady = state === 'connected' && (micEnabled || prompt.trim().length > 0);
@@ -341,6 +344,31 @@ export function GeminiLivePanel(props: {
     }
   };
 
+  const sendOpeningTurn = useCallback(() => {
+    if (!sessionRef.current) return;
+    introTurnPendingRef.current = true;
+    promptSentAtRef.current = performance.now();
+    try {
+      sessionRef.current.sendClientContent({
+        turns: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text:
+                  'Open the Smart Start session now. Greet the client briefly in one sentence, then ask the single best first question for the currently visible section. Do not wait for the client to speak first.',
+              },
+            ],
+          },
+        ],
+        turnComplete: true,
+      });
+    } catch (error: any) {
+      introTurnPendingRef.current = false;
+      setError(error?.message ?? 'Unable to open the live intake turn.');
+    }
+  }, []);
+
   const setMicSuppressed = (suppressed: boolean, releaseDelayMs = 0) => {
     clearMicSuppressionTimer();
     if (!suppressed) {
@@ -412,6 +440,7 @@ export function GeminiLivePanel(props: {
   const closeSession = () => {
     notifyTranscriptReady(true);
     setMicSuppressed(false);
+    expectedCloseRef.current = true;
     try {
       sessionRef.current?.close?.();
     } catch {
@@ -430,6 +459,7 @@ export function GeminiLivePanel(props: {
     playbackSampleRateRef.current = 24000;
     pendingPcmChunksRef.current = [];
     pendingPcmBytesRef.current = 0;
+    introTurnPendingRef.current = false;
   };
 
   useEffect(() => {
@@ -532,6 +562,7 @@ export function GeminiLivePanel(props: {
     setActionLog([]);
     setMicSuppressed(false);
     setLatencyMs(null);
+    expectedCloseRef.current = false;
     transcriptDeliveredRef.current = false;
     audioChunksRef.current = [];
     firstByteAtRef.current = null;
@@ -611,6 +642,8 @@ export function GeminiLivePanel(props: {
               }
             }
             if (message?.serverContent?.turnComplete) {
+              const shouldStartMicAfterIntro = compactLayout && introTurnPendingRef.current && !micEnabled;
+              introTurnPendingRef.current = false;
               if (!audioMimeRef.current.toLowerCase().startsWith('audio/pcm')) {
                 await playTurnAudio();
               } else {
@@ -621,6 +654,16 @@ export function GeminiLivePanel(props: {
                   ? Math.max(220, Math.round((playbackCursorRef.current - playbackContext.currentTime) * 1000) + 140)
                   : 280;
                 setMicSuppressed(true, remainingMs);
+              }
+              if (shouldStartMicAfterIntro) {
+                window.setTimeout(() => {
+                  if (!sessionRef.current || micEnabled) return;
+                  void startMic()
+                    .then(() => {
+                      reconnectCountRef.current = 0;
+                    })
+                    .catch(() => undefined);
+                }, 220);
               }
             }
           },
@@ -633,10 +676,23 @@ export function GeminiLivePanel(props: {
             notifyTranscriptReady(true);
             stopMic();
             stopCamera();
-            setState('idle');
+            sessionRef.current = null;
+            const unexpected = !expectedCloseRef.current && !props.interactionLocked;
+            const shouldRecoverOpening = unexpected && compactLayout && !micEnabled && reconnectCountRef.current < 1;
+            if (shouldRecoverOpening) {
+              reconnectCountRef.current += 1;
+              setState('connecting');
+              setError('Reopening Gemini voice lane…');
+              window.setTimeout(() => {
+                void startSession();
+              }, 280);
+              return;
+            }
+            setState(unexpected ? 'error' : 'idle');
             if (event?.reason) {
               setError(String(event.reason));
             }
+            expectedCloseRef.current = false;
           },
         },
       });
@@ -645,11 +701,7 @@ export function GeminiLivePanel(props: {
       sessionContextRef.current = String(props.sessionContext || '').trim();
       setState('connected');
       if (compactLayout) {
-        try {
-          await startMic();
-        } catch {
-          // Mic start is best-effort in compact intake mode; keep the session alive if permissions are delayed.
-        }
+        sendOpeningTurn();
       }
     } catch (e: any) {
       setState('error');
