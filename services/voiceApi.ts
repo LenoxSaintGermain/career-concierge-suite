@@ -99,3 +99,31 @@ export const createElevenLabsSession = async (): Promise<ElevenLabsSessionRespon
 
   return (await resp.json()) as ElevenLabsSessionResponse;
 };
+
+export const syncClientGoogleDocs = async (): Promise<Record<string, unknown>> => {
+  const origin = resolveApiOrigin();
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not authenticated');
+  const token = await user.getIdToken();
+
+  let resp: Response;
+  try {
+    resp = await fetch(`${origin}/v1/gws/sync-docs`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach API at ${origin}. Start the API server on port 8080 or update VITE_CONCIERGE_API_URL.`
+    );
+  }
+
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => '');
+    throw new Error(`Google Docs sync error (${resp.status}): ${txt || resp.statusText}`);
+  }
+
+  return (await resp.json()) as Record<string, unknown>;
+};

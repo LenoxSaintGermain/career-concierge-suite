@@ -215,6 +215,7 @@ Current public-intake behavior:
   - transcript visibility inside Gemini Live
   - voice-to-form autofill behavior
 - Gemini Live Smart Start sessions now hit `POST /v1/intake/extract` after session close to map transcript signals into empty intake fields without overwriting user edits
+- paid Smart Start completion now also calls authenticated `POST /v1/gws/sync-docs`, so Drive docs are recreated immediately after artifact generation without requiring the Ghost-secret sync route
 - ElevenLabs Ghost Smart Start sessions can now:
   - jump between Smart Start screens
   - focus specific fields

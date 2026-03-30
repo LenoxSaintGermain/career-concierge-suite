@@ -89,6 +89,7 @@ Modules should feel like guided surfaces inside one OS, not isolated product pag
 - the client-facing Smart Start rail no longer renders the internal Ghost tool-action feed, and Gemini live transcript extraction now waits longer between passes so the UI does not thrash the extraction endpoint mid-conversation
 - the live transcript surfaces in both Gemini and ElevenLabs now render inside explicit dark cards so in-session text stays readable against the editorial intake canvas
 - the processing state now explicitly steps the active voice guide out before artifacts are available so the client is not left speaking into a dead transition
+- after paid intake completes and core artifacts are written, the signed-in app now triggers a first-party Google Docs sync so the client Drive folder is repopulated without relying on the Ghost-secret-only sync endpoint
 - the intake shell now uses a reduced Smart Start header so the form and live lane stay primary instead of losing height to module chrome
 - the signed-in landing experience now pairs that intake with a lighter editorial `Your Journey Guide` surface that:
   - opens as an opt-in four-act concierge briefing instead of a tutorial modal

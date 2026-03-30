@@ -6303,6 +6303,23 @@ app.post('/v1/ghost/sync-docs', requireGhostAuth, async (req, res) => {
   }
 });
 
+app.post('/v1/gws/sync-docs', requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const artifactTypes = ['brief', 'profile', 'plan', 'gaps', 'readiness', 'ai_profile', 'suite_distilled', 'cjs_execution', 'resume_review', 'search_strategy'];
+    const artifacts = {};
+    for (const type of artifactTypes) {
+      const snap = await db.collection('clients').doc(uid).collection('artifacts').doc(type).get();
+      if (snap.exists) artifacts[type] = snap.data();
+    }
+    const result = await syncArtifactsToGoogleDocs(db, uid, artifacts);
+    return res.json(result);
+  } catch (err) {
+    console.error('gws_sync_docs_error', err);
+    return res.status(500).json({ error: 'sync_failed', message: err.message });
+  }
+});
+
 // ── End Ghost Voice Agent ───────────────────────────────────────────────────
 
 app.get('/v1/cjs/assets', requireAuth, async (req, res) => {

@@ -30,7 +30,7 @@ import {
   generateSuiteDistilledDoc,
 } from '../services/stubGenerator';
 import { generateSuiteArtifacts } from '../services/suiteApi';
-import { extractIntakeFromTranscript } from '../services/voiceApi';
+import { extractIntakeFromTranscript, syncClientGoogleDocs } from '../services/voiceApi';
 import { ElevenLabsConvaiPanel } from './ElevenLabsConvaiPanel';
 import { GeminiLivePanel } from './GeminiLivePanel';
 
@@ -940,6 +940,12 @@ export function IntakeFlow(props: {
         upsertArtifact(props.uid, 'readiness', 'AI Readiness Assessment', generateReadinessDoc(nextAnswers)),
         upsertArtifact(props.uid, 'cjs_execution', 'ConciergeJobSearch Execution', generateCjsExecutionDoc(nextAnswers, nextIntent)),
       ]);
+
+      try {
+        await syncClientGoogleDocs();
+      } catch (syncError) {
+        console.warn('post_intake_gws_sync_failed', syncError);
+      }
 
       setStep('done');
       const nextModuleId: SuiteModuleId = nextIntent === 'not_sure' ? 'my_concierge' : 'brief';
