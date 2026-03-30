@@ -992,6 +992,7 @@ export function IntakeFlow(props: {
         key="gemini"
         layout="compact"
         sessionContext={ghostSessionContext}
+        ghostCallbacks={ghostCallbacks}
         transcriptVisible={props.intakeConfig.voice_transcription_visible !== false}
         interactionLocked={busy || step === 'plating'}
         lockedMessage="The voice guide has stepped out while your intake is being processed."

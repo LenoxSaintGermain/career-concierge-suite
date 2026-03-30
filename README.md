@@ -43,8 +43,10 @@ Admin voice controls expose a separate public-intake lane selector so the team c
 The Smart Start client UI no longer exposes an in-flow lane switcher; it follows the saved public lane and keeps the intake surface singular for the client.
 Smart Start Intake now also supports transcript-to-form extraction through `POST /v1/intake/extract`, so Gemini Live sessions can prefill empty form fields without overwriting user-entered answers.
 The ElevenLabs Ghost lane now runs on the ElevenLabs React SDK with client tools, contextual updates, a signed-session path, and intake-safe actions for voice-led form completion.
+Gemini Live now exposes the same Smart Start intake action set for real parity testing, so the Google lane can move sections, focus fields, write values, clear values, update route/preferences, and summarize the intake instead of only talking about those actions.
 The intake UI itself is now a single guided workspace with a compact Smart Start shell, one visible section at a time, and a locked processing state while artifacts are generated.
 Gemini is now aligned to Google’s current Live API family, with `gemini-3.1-flash-live-preview` as the default model and the older `gemini-2.5-flash-native-audio-preview-12-2025` retained only for controlled fallback and regression checks.
+Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; the legacy Professional DNA `voice_agent_voice_id` field no longer overrides the admin-selected Gemini voice.
 
 Provider options:
 

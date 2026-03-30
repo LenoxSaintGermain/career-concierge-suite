@@ -33,6 +33,7 @@ import {
   GEMINI_LIVE_MODEL_OPTIONS,
   GEMINI_LIVE_VOICE_OPTIONS,
 } from './config/voiceRuntime.js';
+import { LIVE_INTAKE_FUNCTION_DECLARATIONS, LIVE_INTAKE_TOOL_CONFIG } from '../config/liveIntakeTools.js';
 import {
   DEFAULT_GEMINI_BINGE_MODEL,
   DEFAULT_GEMINI_IMAGE_MODEL,
@@ -888,6 +889,8 @@ const buildGeminiLiveConnectConfig = ({
   activityHandling,
   startSensitivity,
   endSensitivity,
+  tools,
+  toolConfig,
 }) => {
   const config = {
     responseModalities: [Modality.AUDIO],
@@ -916,6 +919,8 @@ const buildGeminiLiveConnectConfig = ({
         },
       },
     },
+    tools,
+    toolConfig,
   };
   if (!isGemini31FlashLiveModel(model)) {
     config.enableAffectiveDialog = runtimeConfig.voice.gemini_affective_dialog_enabled || undefined;
@@ -1699,7 +1704,9 @@ const liveSystemInstruction = (runtimeConfig, clientName = '', liveContext = '')
 - Focus the question on today's priority and immediate pressure.
 - Never use the words: calibrated, calibration, assessment, or test.
 - Prefer "understanding your context" and "shaping your suite around you."
-- Keep tone composed, premium, and quietly encouraging.`,
+- Keep tone composed, premium, and quietly encouraging.
+- When Smart Start context exposes a visible field and you have enough information, use the available intake tools instead of merely claiming you updated the form.
+- Never tell the user to map the screen for you if field visibility has already been provided in context.`,
     liveContext
       ? `SMART START LIVE CONTEXT:
 - This context comes from the current intake surface and is authoritative for the visible section.
@@ -5255,7 +5262,7 @@ const synthesizeWithGeminiLive = async ({ runtimeConfig, text, clientName }) => 
   const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
   const voiceName =
     normalizeGeminiVoiceName(
-      runtimeConfig.professional_dna?.voice_agent_voice_id || runtimeConfig.voice.gemini_voice_name,
+      runtimeConfig.voice.gemini_voice_name,
       geminiLiveVoiceDefault
     ) || nonEmpty(runtimeConfig.voice.speaker) || geminiLiveVoiceDefault;
   const instruction = liveSystemInstruction(runtimeConfig, clientName);
@@ -5595,7 +5602,7 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
   const model = nonEmpty(runtimeConfig.voice.gemini_live_model) || geminiLiveModelDefault;
   const voiceName =
     normalizeGeminiVoiceName(
-      runtimeConfig.professional_dna?.voice_agent_voice_id || runtimeConfig.voice.gemini_voice_name,
+      runtimeConfig.voice.gemini_voice_name,
       geminiLiveVoiceDefault
     ) || nonEmpty(runtimeConfig.voice.speaker) || geminiLiveVoiceDefault;
   const clientName = toDisplayName(_req.user);
@@ -5623,6 +5630,8 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
     activityHandling,
     startSensitivity,
     endSensitivity,
+    tools: [{ functionDeclarations: LIVE_INTAKE_FUNCTION_DECLARATIONS }],
+    toolConfig: LIVE_INTAKE_TOOL_CONFIG,
   });
 
   try {

@@ -1759,7 +1759,23 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                           )
                         }
                       />
-                      <TextField label="Voice ID" value={config.professional_dna.voice_agent_voice_id ?? ''} onChange={(v) => setConfig((prev) => prev ? { ...prev, professional_dna: { ...prev.professional_dna, voice_agent_voice_id: v } } : prev)} />
+                      {normalizeDnaVoiceModel(config.professional_dna.voice_model) === 'elevenlabs_ghost' ? (
+                        <TextField
+                          label="Ghost agent voice note"
+                          value={config.professional_dna.voice_agent_voice_id ?? ''}
+                          onChange={(v) =>
+                            setConfig((prev) =>
+                              prev ? { ...prev, professional_dna: { ...prev.professional_dna, voice_agent_voice_id: v } } : prev
+                            )
+                          }
+                          placeholder="Optional ElevenLabs-only operator note"
+                        />
+                      ) : (
+                        <div className="border border-black/10 bg-[#fbfcfa] px-3 py-2 text-[11px] leading-relaxed text-black/55">
+                          Gemini voice is controlled in <span className="font-medium text-[#09161a]">Voice identity → Gemini voice name</span>.
+                          This DNA rail no longer overrides the public Gemini voice lane.
+                        </div>
+                      )}
                     </div>
                     <TextAreaField label="Voice arc sections (one per line)" value={(config.professional_dna.voice_arc_sections ?? []).join('\n')} onChange={(v) => setConfig((prev) => prev ? { ...prev, professional_dna: { ...prev.professional_dna, voice_arc_sections: v.split('\n').map((e) => e.trim().toLowerCase()).filter(Boolean) } } : prev)} minHeight="min-h-12" />
                     <TextAreaField label="Voice persona appendix" value={config.professional_dna.voice_agent_persona ?? ''} onChange={(v) => setConfig((prev) => prev ? { ...prev, professional_dna: { ...prev.professional_dna, voice_agent_persona: v } } : prev)} minHeight="min-h-12" />

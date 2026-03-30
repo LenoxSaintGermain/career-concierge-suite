@@ -677,6 +677,13 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - The intake concierge step also exposes a live lane switcher so the team can toggle between Gemini and ElevenLabs Ghost without leaving the flow.
 - This makes the public voice entry usable end to end without changing the internal Gemini Live token/session flow.
 
+### Delivery: Gemini Live Smart Start Tool Parity
+
+- Added a shared Smart Start intake tool contract for Gemini Live so the Google lane now has the same deterministic section-jump, field-focus, value-write, clear, route/preference, and summary actions that ElevenLabs Ghost already had.
+- Gemini Live tokens now carry that tool contract from the API, and the client rail now executes tool calls against the existing intake mutation callbacks instead of relying only on transcript extraction or conversational compliance.
+- Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly. The older Professional DNA `voice_agent_voice_id` field no longer shadows the saved Gemini voice during public intake sessions.
+- Admin now clarifies that Gemini voice is controlled from the dedicated `Voice identity` controls, while the DNA rail keeps its ElevenLabs-specific note field without overriding the Gemini lane.
+
 ### Delivery: Demo UX Hardening + Admin Firestore Repair
 
 - The saved admin `Public intake lane` now persists through `/v1/public/config`, so the global public default can actually be switched between Gemini and ElevenLabs Ghost.

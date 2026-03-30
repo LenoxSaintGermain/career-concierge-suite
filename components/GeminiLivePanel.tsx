@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { createGeminiLiveToken } from '../services/liveApi';
 import { GeminiLiveTokenResponse } from '../types';
+import type { GhostAction, GhostCallbacks } from '../hooks/useGhostVoice';
+import { GhostActionFeed } from './GhostActionFeed';
 
 type LiveState = 'idle' | 'connecting' | 'connected' | 'error';
 const PCM_SMOOTHING_BUFFER_MS = 70;
@@ -128,6 +130,7 @@ export function GeminiLivePanel(props: {
   sessionContext?: string;
   interactionLocked?: boolean;
   lockedMessage?: string;
+  ghostCallbacks?: GhostCallbacks;
 }) {
   const [state, setState] = useState<LiveState>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +144,7 @@ export function GeminiLivePanel(props: {
   const [showProTools, setShowProTools] = useState(false);
   const [loadingSceneIndex, setLoadingSceneIndex] = useState(0);
   const [activeStoryScene, setActiveStoryScene] = useState<StorySceneId>('arrival');
+  const [actionLog, setActionLog] = useState<GhostAction[]>([]);
 
   const sessionRef = useRef<any>(null);
   const storyRailRef = useRef<HTMLDivElement | null>(null);
@@ -165,6 +169,8 @@ export function GeminiLivePanel(props: {
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const transcriptRef = useRef('');
   const transcriptDeliveredRef = useRef(false);
+  const actionCounterRef = useRef(0);
+  const sessionContextRef = useRef('');
   const cameraReady = state === 'connected' && cameraEnabled;
   const micReady = state === 'connected' && micEnabled;
   const engagementReady = state === 'connected' && (micEnabled || prompt.trim().length > 0);
@@ -189,6 +195,105 @@ export function GeminiLivePanel(props: {
     if (!cleaned) return;
     setTranscript((prev) => `${prev}${prev ? '\n' : ''}${cleaned}`);
   };
+  const defaultCallbacks: GhostCallbacks = useMemo(
+    () => ({
+      onNavigateModule: (target) => `Navigation requested for ${target}.`,
+      onCloseModule: () => 'Overlay close requested.',
+      onToggleAdmin: () => 'Admin toggle requested.',
+      onDispatchAgent: (codename) => `Dispatch requested for ${codename}.`,
+      onUpdateStance: (stance) => `Stance update requested: ${stance}.`,
+      onAddressGap: (gapId) => `Gap update requested for ${gapId}.`,
+      onFocusIntakeField: (fieldId) => `Focus requested for ${fieldId}.`,
+      onJumpIntakeScreen: (screenId) => `Screen jump requested for ${screenId}.`,
+      onSetIntakeTextField: (fieldId, value) => `Text requested for ${fieldId}: ${value}.`,
+      onSetIntakeChoiceField: (fieldId, value) => `Choice requested for ${fieldId}: ${value}.`,
+      onSetIntakeMultiField: (fieldId, values) => `Multi-select requested for ${fieldId}: ${values.join(', ')}.`,
+      onSetIntakeBooleanField: (fieldId, value) => `Boolean requested for ${fieldId}: ${String(value)}.`,
+      onClearIntakeField: (fieldId) => `Clear requested for ${fieldId}.`,
+      onSetIntentRoute: (intent) => `Intent change requested: ${intent}.`,
+      onSetSupportPreference: (preference, value) => `${preference} preference change requested: ${value}.`,
+      onSummarizeIntakeState: () => 'No intake summary is connected yet.',
+    }),
+    [],
+  );
+  const ghostCallbacks = props.ghostCallbacks || defaultCallbacks;
+  const logAction = useCallback((tool: string, params: Record<string, unknown>) => {
+    const id = `gemini-${++actionCounterRef.current}`;
+    const action: GhostAction = { id, tool, params, timestamp: Date.now() };
+    setActionLog((prev) => [action, ...prev].slice(0, 20));
+    return action;
+  }, []);
+  const resolveToolResult = (result: unknown, fallback: string) => {
+    if (result === undefined || result === null || result === '') return fallback;
+    return typeof result === 'string' || typeof result === 'number' ? result : fallback;
+  };
+  const executeToolCall = useCallback(
+    async (toolName: string, args: Record<string, unknown>) => {
+      logAction(toolName, args);
+      switch (toolName) {
+        case 'focus_intake_field':
+          return resolveToolResult(
+            ghostCallbacks.onFocusIntakeField(String(args.field_id || '')),
+            'Field focused.',
+          );
+        case 'jump_intake_screen':
+          return resolveToolResult(
+            ghostCallbacks.onJumpIntakeScreen(String(args.screen_id || '')),
+            'Screen changed.',
+          );
+        case 'set_intake_text_field':
+          return resolveToolResult(
+            ghostCallbacks.onSetIntakeTextField(String(args.field_id || ''), String(args.value || '')),
+            'Text field updated.',
+          );
+        case 'set_intake_choice_field':
+          return resolveToolResult(
+            ghostCallbacks.onSetIntakeChoiceField(String(args.field_id || ''), String(args.value || '')),
+            'Choice field updated.',
+          );
+        case 'set_intake_multi_field':
+          return resolveToolResult(
+            ghostCallbacks.onSetIntakeMultiField(
+              String(args.field_id || ''),
+              Array.isArray(args.values) ? args.values.map((value) => String(value)) : [],
+              args.mode === 'add' || args.mode === 'remove' ? args.mode : 'replace',
+            ),
+            'Multi-select field updated.',
+          );
+        case 'set_intake_boolean_field':
+          return resolveToolResult(
+            ghostCallbacks.onSetIntakeBooleanField(String(args.field_id || ''), Boolean(args.value)),
+            'Boolean field updated.',
+          );
+        case 'clear_intake_field':
+          return resolveToolResult(
+            ghostCallbacks.onClearIntakeField(String(args.field_id || '')),
+            'Field cleared.',
+          );
+        case 'set_intake_intent':
+          return resolveToolResult(
+            ghostCallbacks.onSetIntentRoute(String(args.intent || '')),
+            'Intent updated.',
+          );
+        case 'set_support_preference':
+          return resolveToolResult(
+            ghostCallbacks.onSetSupportPreference(
+              args.preference === 'focus' ? 'focus' : 'pace',
+              String(args.value || ''),
+            ),
+            'Support preference updated.',
+          );
+        case 'summarize_intake_state':
+          return resolveToolResult(
+            ghostCallbacks.onSummarizeIntakeState(),
+            'Intake summary ready.',
+          );
+        default:
+          throw new Error(`Unsupported Gemini tool: ${toolName}`);
+      }
+    },
+    [ghostCallbacks, logAction],
+  );
   transcriptRef.current = transcript;
   const liveMood =
     state === 'connected'
@@ -291,6 +396,7 @@ export function GeminiLivePanel(props: {
     setState('idle');
     stopMic();
     stopCamera();
+    sessionContextRef.current = '';
     if (playbackContextRef.current) {
       void playbackContextRef.current.close().catch(() => undefined);
       playbackContextRef.current = null;
@@ -395,6 +501,7 @@ export function GeminiLivePanel(props: {
     setError(null);
     setState('connecting');
     setTranscript('');
+    setActionLog([]);
     setLatencyMs(null);
     transcriptDeliveredRef.current = false;
     audioChunksRef.current = [];
@@ -425,6 +532,30 @@ export function GeminiLivePanel(props: {
         model: token.model,
         callbacks: {
           onmessage: async (message: any) => {
+            if (Array.isArray(message?.toolCall?.functionCalls) && message.toolCall.functionCalls.length) {
+              const functionResponses = await Promise.all(
+                message.toolCall.functionCalls.map(async (call: any) => {
+                  const name = String(call?.name || '').trim();
+                  try {
+                    const result = await executeToolCall(name, call?.args || {});
+                    return {
+                      id: call?.id,
+                      name,
+                      response: { output: result },
+                    };
+                  } catch (toolError: any) {
+                    return {
+                      id: call?.id,
+                      name,
+                      response: {
+                        error: toolError?.message || `Tool ${name || 'unknown'} failed.`,
+                      },
+                    };
+                  }
+                }),
+              );
+              sessionRef.current?.sendToolResponse({ functionResponses });
+            }
             const parts = message?.serverContent?.modelTurn?.parts || [];
             const inputTranscript = String(message?.serverContent?.inputTranscription?.text || '').trim();
             const outputTranscript = String(message?.serverContent?.outputTranscription?.text || '').trim();
@@ -476,6 +607,7 @@ export function GeminiLivePanel(props: {
       });
 
       sessionRef.current = session;
+      sessionContextRef.current = String(props.sessionContext || '').trim();
       setState('connected');
       if (compactLayout) {
         try {
@@ -659,6 +791,21 @@ export function GeminiLivePanel(props: {
   }, [state]);
 
   useEffect(() => {
+    if (state !== 'connected' || !sessionRef.current) return;
+    const nextContext = String(props.sessionContext || '').trim();
+    if (!nextContext || nextContext === sessionContextRef.current) return;
+    try {
+      sessionRef.current.sendClientContent({
+        turns: [{ role: 'user', parts: [{ text: `SMART_START_CONTEXT_REFRESH\n${nextContext}` }] }],
+        turnComplete: false,
+      });
+      sessionContextRef.current = nextContext;
+    } catch {
+      // Suppress transient socket timing issues while the live session settles.
+    }
+  }, [props.sessionContext, state]);
+
+  useEffect(() => {
     const rail = storyRailRef.current;
     if (!rail) return;
     const nodes: NodeListOf<HTMLElement> = rail.querySelectorAll('[data-story-scene]');
@@ -798,6 +945,7 @@ export function GeminiLivePanel(props: {
             </div>
           </div>
         </div>
+        <GhostActionFeed actions={actionLog} />
       </section>
     );
   }
@@ -1059,6 +1207,7 @@ export function GeminiLivePanel(props: {
           )}
         </div>
       </div>
+      <GhostActionFeed actions={actionLog} />
     </section>
   );
 }

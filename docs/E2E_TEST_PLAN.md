@@ -123,8 +123,14 @@ curl -s -X POST "$SIGNAL_ATLAS_URL/v1/ghost/sync-docs" \
 - [ ] Smart Start header remains compact enough that the form starts above the fold on laptop
 - [ ] Gemini compact mode stays embedded in the left rail rather than opening the older cinematic full-panel surface
 - [ ] Gemini compact mode starts microphone capture without a second manual enable step
+- [ ] Gemini uses live intake tools rather than merely claiming a field or section changed
+- [ ] Gemini visibly focuses the correct field when asked to orient the user
+- [ ] Gemini can change a visible single-choice or multi-select field and the UI updates immediately
+- [ ] Gemini can jump between Smart Start acts and continue from the newly visible section without asking the user to describe the screen again
+- [ ] Gemini session context refresh keeps the active section synchronized after manual section changes
 - [ ] Gemini transcript autofill writes into empty intake fields while the session is active
 - [ ] Gemini 3.1 lane does not error when the saved config still contains proactive-audio or affective-dialog toggles
+- [ ] Gemini voice output matches the saved admin `Gemini voice name`
 - [ ] ElevenLabs transcript/action text remains readable against the intake canvas during the first live turn
 - [ ] `fetch_artifact` responses cite the live artifact content
 - [ ] `fetch_drive_documents` responses cite the live Drive docs
@@ -175,6 +181,8 @@ When this journey is run manually, the success bar is:
 | 3 | Voice/browser interaction coverage was implied but not actually recorded | Medium | Explicitly marked manual/pending |
 | 4 | Gemini versus ElevenLabs lane switching was previously able to drift because different saved config fields could disagree | High | Fixed in code; manual browser validation still required |
 | 5 | Smart Start exposed a client-visible lane chooser and too many simultaneous form sections, which made live voice guidance ambiguous | High | Fixed in code; manual browser validation still required |
+| 6 | Gemini previously lacked deterministic intake tool execution, so it could claim UI mutations that never happened | High | Fixed in code; manual browser validation still required |
+| 7 | Gemini public-lane voice selection could be shadowed by the Professional DNA `voice_agent_voice_id` field | Medium | Fixed in code; manual browser validation still required |
 
 ## Sign-Off
 

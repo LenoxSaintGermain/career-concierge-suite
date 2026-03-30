@@ -82,6 +82,7 @@ Modules should feel like guided surfaces inside one OS, not isolated product pag
 - the voice rail now sits beside the intake form and follows the single admin-selected public lane instead of exposing a client-side lane switcher
 - the form is organized into explicit sections and now shows one act at a time so the active voice lane can keep the user oriented
 - Gemini Live sessions can extract structured intake signals back into empty form fields, with visible `from voice session` provenance tags
+- Gemini Live now shares the same explicit intake-action tool contract as ElevenLabs Ghost, so the Google lane can focus fields, move acts, write values, clear values, update route/preferences, and summarize the visible form instead of only narrating those actions
 - the compact Gemini intake rail now auto-starts the microphone when the live session opens so the client is not asked to connect twice
 - the ElevenLabs Ghost lane now uses the React SDK plus a signed-session API route, contextual updates, and intake-safe client tools so Donna can move screens, focus fields, write answers, and summarize the intake state live
 - the live transcript surfaces in both Gemini and ElevenLabs now render inside explicit dark cards so in-session text stays readable against the editorial intake canvas
@@ -319,6 +320,7 @@ The Express API under `api/` handles:
 - ElevenLabs Ghost is now a live selectable public-intake lane when the Cloud Run API env exposes an agent ID, an API key, and the saved admin config chooses it
 - Gemini Live now defaults to Google’s current `gemini-3.1-flash-live-preview` model; the older `gemini-2.5-flash-native-audio-preview-12-2025` lane remains available only as a controlled fallback
 - the public-intake lane decision now follows `voice.public_panel_provider` as the canonical saved source instead of letting stale Professional DNA voice settings override the operator choice
+- Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; the older Professional DNA `voice_agent_voice_id` field is no longer allowed to shadow the saved Gemini voice
 - `POST /v1/voice/elevenlabs/session` now creates signed ElevenLabs sessions for authenticated users so the Ghost lane can run as a real SDK surface instead of a widget-only fallback
 - Manus remains a queued external lane, not an active runtime dependency
 - Google Workspace doc sync now prefers human-readable folder/document names, refuses UUID-like display names during auth backfill, reuses matching docs when registry entries are missing, and archives same-title duplicates into `_Legacy duplicates` during sync instead of spraying new docs into the active folder
