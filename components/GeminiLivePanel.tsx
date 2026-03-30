@@ -3,7 +3,6 @@ import { GoogleGenAI } from '@google/genai';
 import { createGeminiLiveToken } from '../services/liveApi';
 import { GeminiLiveTokenResponse } from '../types';
 import type { GhostAction, GhostCallbacks } from '../hooks/useGhostVoice';
-import { GhostActionFeed } from './GhostActionFeed';
 
 type LiveState = 'idle' | 'connecting' | 'connected' | 'error';
 const PCM_SMOOTHING_BUFFER_MS = 70;
@@ -1073,7 +1072,6 @@ export function GeminiLivePanel(props: {
             </div>
           </div>
         </div>
-        <GhostActionFeed actions={actionLog} />
       </section>
     );
   }
@@ -1335,7 +1333,6 @@ export function GeminiLivePanel(props: {
           )}
         </div>
       </div>
-      <GhostActionFeed actions={actionLog} />
     </section>
   );
 }

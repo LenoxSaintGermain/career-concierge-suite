@@ -47,6 +47,7 @@ Gemini Live now exposes the same Smart Start intake action set for real parity t
 Gemini compact intake mode now suppresses live mic relay while Gemini is actively speaking, which prevents the lane from clipping its own response mid-turn in the Smart Start shell.
 Gemini compact intake mode now also opens with its own first question instead of waiting silently for the client, and it only enables the live mic after that opening turn finishes.
 Gemini Smart Start text turns now use Live realtime text input instead of the older client-content turn path, which avoids the `1007 invalid argument` session close that was interrupting the opening question on `gemini-3.1-flash-live-preview`.
+The client-facing Smart Start rail no longer exposes the internal Ghost tool-action overlay, and Gemini live transcript extraction is now throttled so the UI does not churn `/v1/intake/extract` requests while the conversation is still unfolding.
 The intake UI itself is now a single guided workspace with a compact Smart Start shell, one visible section at a time, and a locked processing state while artifacts are generated.
 Gemini is now aligned to Google’s current Live API family, with `gemini-3.1-flash-live-preview` as the default model and the older `gemini-2.5-flash-native-audio-preview-12-2025` retained only for controlled fallback and regression checks.
 Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; the legacy Professional DNA `voice_agent_voice_id` field no longer overrides the admin-selected Gemini voice.

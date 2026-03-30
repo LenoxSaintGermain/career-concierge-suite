@@ -819,6 +819,12 @@ export function IntakeFlow(props: {
     if (!props.intakeConfig.voice_to_form_autofill || step !== 'active') return;
     const cleaned = transcript.trim();
     if (!cleaned || cleaned.length < 24) return;
+    if (voiceAutofillBusy) return;
+    const previous = lastGeminiProcessedTranscriptRef.current.trim();
+    if (previous) {
+      const delta = cleaned.length - previous.length;
+      if (delta < 80 && cleaned !== previous) return;
+    }
     latestGeminiTranscriptRef.current = cleaned;
     if (geminiAutofillTimerRef.current) {
       window.clearTimeout(geminiAutofillTimerRef.current);
@@ -836,7 +842,7 @@ export function IntakeFlow(props: {
       } finally {
         setVoiceAutofillBusy(false);
       }
-    }, 900);
+    }, 2200);
   };
 
   const handleVoiceSessionComplete = async (payload: { transcript: string; sessionId?: string; completed: boolean }) => {

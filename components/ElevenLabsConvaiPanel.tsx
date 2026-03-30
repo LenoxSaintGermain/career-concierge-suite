@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConversationProvider, useConversation } from '@elevenlabs/react';
 import { createElevenLabsSession } from '../services/voiceApi';
 import { useGhostVoice, type GhostCallbacks } from '../hooks/useGhostVoice';
-import { GhostActionFeed } from './GhostActionFeed';
 
 type GhostRuntimeState = 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -215,7 +214,6 @@ function GhostSdkSurface({
         </div>
       ) : null}
 
-      <GhostActionFeed actions={actionLog} />
     </div>
   );
 }
