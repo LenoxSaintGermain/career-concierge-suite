@@ -354,19 +354,9 @@ export function GeminiLivePanel(props: {
     openingTurnSentRef.current = true;
     promptSentAtRef.current = performance.now();
     try {
-      sessionRef.current.sendClientContent({
-        turns: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text:
-                  'Open the Smart Start session now. Greet the client briefly in one sentence, then ask the single best first question for the currently visible section. Do not wait for the client to speak first.',
-              },
-            ],
-          },
-        ],
-        turnComplete: true,
+      sessionRef.current.sendRealtimeInput({
+        text:
+          'Open the Smart Start session now. Greet the client briefly in one sentence, then ask the single best first question for the currently visible section. Do not wait for the client to speak first.',
       });
     } catch (error: any) {
       console.warn('[GeminiLive] Opening turn failed:', error?.message);
@@ -376,15 +366,12 @@ export function GeminiLivePanel(props: {
     }
   }, []);
 
-  const sendClientTurn = useCallback(
-    (payload: { turns: Array<{ role: 'user'; parts: Array<{ text: string }> }>; turnComplete: boolean }) => {
-      if (!sessionRef.current || !setupCompleteRef.current) {
-        throw new Error('Gemini live session is not ready.');
-      }
-      sessionRef.current.sendClientContent(payload);
-    },
-    [],
-  );
+  const sendTextTurn = useCallback((text: string) => {
+    if (!sessionRef.current || !setupCompleteRef.current) {
+      throw new Error('Gemini live session is not ready.');
+    }
+    sessionRef.current.sendRealtimeInput({ text });
+  }, []);
 
   const setMicSuppressed = (suppressed: boolean, releaseDelayMs = 0) => {
     clearMicSuppressionTimer();
@@ -776,10 +763,7 @@ export function GeminiLivePanel(props: {
     firstByteAtRef.current = null;
     promptSentAtRef.current = performance.now();
     try {
-      sendClientTurn({
-        turns: [{ role: 'user', parts: [{ text: prompt.trim() }] }],
-        turnComplete: true,
-      });
+      sendTextTurn(prompt.trim());
       setPrompt('');
     } catch (e: any) {
       setError(e?.message ?? 'Unable to send prompt to Live session.');
@@ -941,10 +925,7 @@ export function GeminiLivePanel(props: {
     const nextContext = String(props.sessionContext || '').trim();
     if (!nextContext || nextContext === sessionContextRef.current) return;
     try {
-      sendClientTurn({
-        turns: [{ role: 'user', parts: [{ text: `SMART_START_CONTEXT_REFRESH\n${nextContext}` }] }],
-        turnComplete: false,
-      });
+      sendTextTurn(`SMART_START_CONTEXT_REFRESH\n${nextContext}`);
       sessionContextRef.current = nextContext;
     } catch {
       // Suppress transient socket timing issues while the live session settles.

@@ -84,6 +84,7 @@ Modules should feel like guided surfaces inside one OS, not isolated product pag
 - Gemini Live sessions can extract structured intake signals back into empty form fields, with visible `from voice session` provenance tags
 - Gemini Live now shares the same explicit intake-action tool contract as ElevenLabs Ghost, so the Google lane can focus fields, move acts, write values, clear values, update route/preferences, and summarize the visible form instead of only narrating those actions
 - the compact Gemini intake rail now auto-starts the microphone when the live session opens so the client is not asked to connect twice
+- Gemini Smart Start text prompts and context refreshes now flow through Live realtime text input instead of the older client-content turn path, which prevents `1007 invalid argument` socket closes during the opening question on `gemini-3.1-flash-live-preview`
 - the ElevenLabs Ghost lane now uses the React SDK plus a signed-session API route, contextual updates, and intake-safe client tools so Donna can move screens, focus fields, write answers, and summarize the intake state live
 - the live transcript surfaces in both Gemini and ElevenLabs now render inside explicit dark cards so in-session text stays readable against the editorial intake canvas
 - the processing state now explicitly steps the active voice guide out before artifacts are available so the client is not left speaking into a dead transition
