@@ -158,9 +158,20 @@ export const listFolderContents = async (folderId) => {
   const drv = await getDrive();
   const res = await drv.files.list({
     q: `'${folderId}' in parents and trashed = false`,
-    fields: 'files(id,name,mimeType,modifiedTime,webViewLink)',
+    fields: 'files(id,name,mimeType,modifiedTime,webViewLink,appProperties)',
   });
   return res.data.files || [];
+};
+
+/** Set appProperties on a Drive file (for UID-based ownership). */
+export const setAppProperties = async (fileId, properties) => {
+  const drv = await getDrive();
+  const res = await drv.files.update({
+    fileId,
+    requestBody: { appProperties: properties },
+    fields: 'id,appProperties',
+  });
+  return res.data;
 };
 
 /** Clear all body content from a Google Doc (for re-rendering). */

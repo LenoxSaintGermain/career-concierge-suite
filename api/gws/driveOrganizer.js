@@ -107,28 +107,48 @@ export const ensureClientFolder = async (db, uid) => {
   const email = nonEmpty(clientData.email);
   const folderName = getClientFolderName(clientData);
 
-  // Return cached folder ID if present
+  // Return cached folder ID if present and still valid
   if (clientData.drive_folder_id) {
-    if (folderName) {
-      await gws.updateFileMetadata(clientData.drive_folder_id, { name: folderName });
+    try {
+      if (folderName) {
+        await gws.updateFileMetadata(clientData.drive_folder_id, { name: folderName });
+      }
+      // Stamp UID on existing folder for future lookups (idempotent)
+      await gws.setAppProperties(clientData.drive_folder_id, { cc_uid: uid }).catch(() => {});
+      await safeShareWithUser(clientData.drive_folder_id, email);
+      return clientData.drive_folder_id;
+    } catch (err) {
+      // Cached folder may have been deleted — fall through to create
+      console.warn(`[drive-organizer] Cached folder ${clientData.drive_folder_id} for ${uid} not accessible:`, err.message);
     }
-    await safeShareWithUser(clientData.drive_folder_id, email);
-    return clientData.drive_folder_id;
   }
 
   const parentId = CLIENTS_FOLDER_ID() || ROOT_FOLDER_ID();
   if (parentId) {
     const siblings = await gws.listFolderContents(parentId);
+    // Match by UID property first (reliable), then fall back to name match
+    // only if the folder also has no cc_uid set (unclaimed legacy folder)
     const existingFolder = siblings.find(
-      (item) => item.mimeType === 'application/vnd.google-apps.folder' && item.name === folderName,
+      (item) =>
+        item.mimeType === 'application/vnd.google-apps.folder' &&
+        item.appProperties?.cc_uid === uid,
+    ) || siblings.find(
+      (item) =>
+        item.mimeType === 'application/vnd.google-apps.folder' &&
+        item.name === folderName &&
+        !item.appProperties?.cc_uid,
     );
     if (existingFolder?.id) {
+      await gws.setAppProperties(existingFolder.id, { cc_uid: uid }).catch(() => {});
       await safeShareWithUser(existingFolder.id, email);
       await clientRef.set({ drive_folder_id: existingFolder.id }, { merge: true });
       return existingFolder.id;
     }
   }
   const folder = await gws.createFolder(folderName, parentId);
+
+  // Stamp the UID on the new folder for reliable future lookups
+  await gws.setAppProperties(folder.id, { cc_uid: uid }).catch(() => {});
 
   // Share the folder with the client if we have their email
   await safeShareWithUser(folder.id, email);
