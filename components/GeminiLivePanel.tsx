@@ -178,6 +178,7 @@ export function GeminiLivePanel(props: {
   const reconnectCountRef = useRef(0);
   const socketReadyRef = useRef(false);
   const openingTurnSentRef = useRef(false);
+  const setupCompleteRef = useRef(false);
   const cameraReady = state === 'connected' && cameraEnabled;
   const micReady = state === 'connected' && micEnabled;
   const engagementReady = state === 'connected' && (micEnabled || prompt.trim().length > 0);
@@ -347,7 +348,8 @@ export function GeminiLivePanel(props: {
   };
 
   const sendOpeningTurn = useCallback(() => {
-    if (!sessionRef.current || !socketReadyRef.current || openingTurnSentRef.current) return;
+    if (!sessionRef.current || !setupCompleteRef.current || openingTurnSentRef.current) return;
+    console.info('[GeminiLive] Sending opening turn');
     introTurnPendingRef.current = true;
     openingTurnSentRef.current = true;
     promptSentAtRef.current = performance.now();
@@ -367,6 +369,7 @@ export function GeminiLivePanel(props: {
         turnComplete: true,
       });
     } catch (error: any) {
+      console.warn('[GeminiLive] Opening turn failed:', error?.message);
       introTurnPendingRef.current = false;
       openingTurnSentRef.current = false;
       setError(error?.message ?? 'Unable to open the live intake turn.');
@@ -375,7 +378,7 @@ export function GeminiLivePanel(props: {
 
   const sendClientTurn = useCallback(
     (payload: { turns: Array<{ role: 'user'; parts: Array<{ text: string }> }>; turnComplete: boolean }) => {
-      if (!sessionRef.current || !socketReadyRef.current) {
+      if (!sessionRef.current || !setupCompleteRef.current) {
         throw new Error('Gemini live session is not ready.');
       }
       sessionRef.current.sendClientContent(payload);
@@ -441,7 +444,7 @@ export function GeminiLivePanel(props: {
       micStreamRef.current.getTracks().forEach((track) => track.stop());
       micStreamRef.current = null;
     }
-    if (sessionRef.current) {
+    if (sessionRef.current && setupCompleteRef.current) {
       try {
         sessionRef.current.sendRealtimeInput?.({ audioStreamEnd: true });
       } catch {
@@ -466,6 +469,7 @@ export function GeminiLivePanel(props: {
     stopCamera();
     sessionContextRef.current = '';
     socketReadyRef.current = false;
+    setupCompleteRef.current = false;
     if (playbackContextRef.current) {
       void playbackContextRef.current.close().catch(() => undefined);
       playbackContextRef.current = null;
@@ -579,6 +583,7 @@ export function GeminiLivePanel(props: {
     setLatencyMs(null);
     expectedCloseRef.current = false;
     socketReadyRef.current = false;
+    setupCompleteRef.current = false;
     openingTurnSentRef.current = false;
     transcriptDeliveredRef.current = false;
     audioChunksRef.current = [];
@@ -609,13 +614,30 @@ export function GeminiLivePanel(props: {
         model: token.model,
         callbacks: {
           onopen: () => {
+            console.info('[GeminiLive] WebSocket open — awaiting setupComplete');
             socketReadyRef.current = true;
-            setState('connected');
-            if (compactLayout && sessionRef.current) {
-              sendOpeningTurn();
-            }
           },
           onmessage: async (message: any) => {
+            // --- Setup handshake: wait for server to confirm session is ready ---
+            if (message?.setupComplete) {
+              console.info('[GeminiLive] setupComplete received', message.setupComplete?.sessionId ? `session=${message.setupComplete.sessionId}` : '');
+              setupCompleteRef.current = true;
+              setState('connected');
+              if (compactLayout) {
+                sendOpeningTurn();
+              }
+              return;
+            }
+            // --- GoAway: server is about to disconnect ---
+            if (message?.goAway) {
+              console.warn('[GeminiLive] goAway received — timeLeft:', message.goAway.timeLeft);
+              return;
+            }
+            // --- Guard: ignore content before setup is done ---
+            if (!setupCompleteRef.current) {
+              console.debug('[GeminiLive] Ignoring message before setupComplete:', Object.keys(message || {}));
+              return;
+            }
             if (Array.isArray(message?.toolCall?.functionCalls) && message.toolCall.functionCalls.length) {
               const functionResponses = await Promise.all(
                 message.toolCall.functionCalls.map(async (call: any) => {
@@ -638,7 +660,13 @@ export function GeminiLivePanel(props: {
                   }
                 }),
               );
-              sessionRef.current?.sendToolResponse({ functionResponses });
+              if (sessionRef.current && setupCompleteRef.current) {
+                try {
+                  sessionRef.current.sendToolResponse({ functionResponses });
+                } catch (e: any) {
+                  console.warn('[GeminiLive] sendToolResponse failed:', e?.message);
+                }
+              }
             }
             const parts = message?.serverContent?.modelTurn?.parts || [];
             const inputTranscript = String(message?.serverContent?.inputTranscription?.text || '').trim();
@@ -693,30 +721,37 @@ export function GeminiLivePanel(props: {
           },
           onerror: (event: any) => {
             const detail = String(event?.message || event?.error || 'Live session error');
+            console.error('[GeminiLive] onerror:', detail);
+            setupCompleteRef.current = false;
             setError(detail);
             setState('error');
           },
           onclose: (event: any) => {
+            const code = event?.code ?? 'unknown';
+            const reason = event?.reason ?? '';
+            console.info(`[GeminiLive] onclose code=${code} reason="${reason}" expected=${expectedCloseRef.current}`);
             notifyTranscriptReady(true);
             stopMic();
             stopCamera();
             sessionRef.current = null;
             socketReadyRef.current = false;
+            setupCompleteRef.current = false;
             openingTurnSentRef.current = false;
             const unexpected = !expectedCloseRef.current && !props.interactionLocked;
             const shouldRecoverOpening = unexpected && compactLayout && !micEnabled && reconnectCountRef.current < 1;
             if (shouldRecoverOpening) {
               reconnectCountRef.current += 1;
+              console.info('[GeminiLive] Auto-reconnecting (attempt', reconnectCountRef.current, ')');
               setState('connecting');
               setError('Reopening Gemini voice lane…');
               window.setTimeout(() => {
                 void startSession();
-              }, 280);
+              }, 800);
               return;
             }
             setState(unexpected ? 'error' : 'idle');
-            if (event?.reason) {
-              setError(String(event.reason));
+            if (reason) {
+              setError(String(reason));
             }
             expectedCloseRef.current = false;
           },
@@ -725,9 +760,8 @@ export function GeminiLivePanel(props: {
 
       sessionRef.current = session;
       sessionContextRef.current = String(props.sessionContext || '').trim();
-      if (compactLayout && socketReadyRef.current) {
-        sendOpeningTurn();
-      }
+      // Opening turn is now sent from the setupComplete handler in onmessage,
+      // NOT here — sending before setupComplete causes protocol violations.
     } catch (e: any) {
       setState('error');
       setError(e?.message ?? 'Unable to start the live voice session.');
@@ -807,7 +841,7 @@ export function GeminiLivePanel(props: {
     gain.gain.value = 0;
 
     processor.onaudioprocess = (event: AudioProcessingEvent) => {
-      if (!sessionRef.current || suppressMicInputRef.current) return;
+      if (!sessionRef.current || !setupCompleteRef.current || suppressMicInputRef.current) return;
       const channel = event.inputBuffer.getChannelData(0);
       if (!channel?.length) return;
       const pcmBytes = float32ToPcm16(channel);
@@ -844,7 +878,7 @@ export function GeminiLivePanel(props: {
     const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     mediaRecorderRef.current = recorder;
     recorder.ondataavailable = (event) => {
-      if (!event.data || event.data.size === 0 || !sessionRef.current || suppressMicInputRef.current) return;
+      if (!event.data || event.data.size === 0 || !sessionRef.current || !setupCompleteRef.current || suppressMicInputRef.current) return;
       void (async () => {
         try {
           const audioMime = event.data.type || recorder.mimeType || mimeType || 'audio/webm';
