@@ -325,7 +325,7 @@ The Express API under `api/` handles:
 - Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; the older Professional DNA `voice_agent_voice_id` field is no longer allowed to shadow the saved Gemini voice
 - `POST /v1/voice/elevenlabs/session` now creates signed ElevenLabs sessions for authenticated users so the Ghost lane can run as a real SDK surface instead of a widget-only fallback
 - Manus remains a queued external lane, not an active runtime dependency
-- Google Workspace doc sync now prefers human-readable folder/document names, refuses UUID-like display names during auth backfill, reuses matching docs when registry entries are missing, and archives same-title duplicates into `_Legacy duplicates` during sync instead of spraying new docs into the active folder
+- Google Workspace doc sync now prefers human-readable folder/document names, refuses UUID-like display names during auth backfill, reuses matching docs when registry entries are missing, recreates cleanly when a registry entry points at a deleted/inaccessible Google Doc, and archives same-title duplicates into `_Legacy duplicates` during sync instead of spraying new docs into the active folder
 - the Cloud Run API runtime now depends on Firestore data access via `roles/datastore.user` on the service account; without that role, admin config writes and admin telemetry surfaces will fail with `PERMISSION_DENIED`
 - admin media-pipeline status messaging now translates known provider/config mismatches into operator-safe language instead of leaking raw Gemini option errors
 - model routing is now governed by a shared Gemini/Veo catalog rather than ad hoc raw defaults, and Admin exposes quick presets for `Demo Quality`, `Balanced Production`, and `High Throughput`

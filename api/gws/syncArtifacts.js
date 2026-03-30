@@ -63,6 +63,16 @@ const findExistingArtifactDoc = async (folderId, baseTitle) => {
   return matches[0] || null;
 };
 
+const isMissingDriveEntityError = (error) => {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    message.includes('not found') ||
+    message.includes('requested entity was not found') ||
+    message.includes('insufficient file permissions') ||
+    message.includes('cannot find file')
+  );
+};
+
 /**
  * Sync all artifacts for a client to Google Docs.
  * Non-blocking — errors are recorded in the registry, never thrown.
@@ -126,20 +136,28 @@ const syncSingleArtifact = async (db, uid, artifactType, artifact, clientMeta, f
 
   try {
     if (registry?.google_doc_id) {
-      // Update existing doc
-      await gws.updateFileMetadata(registry.google_doc_id, { name: title });
-      await gws.clearDocumentBody(registry.google_doc_id);
-      await gws.batchUpdate(registry.google_doc_id, requests);
-      await archiveDuplicateDocs(folderId, title, registry.google_doc_id);
+      try {
+        await gws.updateFileMetadata(registry.google_doc_id, { name: title });
+        await gws.clearDocumentBody(registry.google_doc_id);
+        await gws.batchUpdate(registry.google_doc_id, requests);
+        await archiveDuplicateDocs(folderId, title, registry.google_doc_id);
 
-      await upsertDocRegistryEntry(db, uid, artifactType, {
-        artifact_version: version,
-        last_synced_at: new Date().toISOString(),
-        status: 'synced',
-        error_detail: null,
-      });
+        await upsertDocRegistryEntry(db, uid, artifactType, {
+          artifact_version: version,
+          last_synced_at: new Date().toISOString(),
+          status: 'synced',
+          error_detail: null,
+        });
 
-      return { status: 'updated', google_doc_id: registry.google_doc_id };
+        return { status: 'updated', google_doc_id: registry.google_doc_id };
+      } catch (registryError) {
+        if (!isMissingDriveEntityError(registryError)) {
+          throw registryError;
+        }
+        console.warn(
+          `[doc-publisher] Registry doc missing or inaccessible for ${uid}/${artifactType}; recreating from folder state.`,
+        );
+      }
     }
 
     const existingDoc = await findExistingArtifactDoc(folderId, title);
