@@ -281,7 +281,7 @@ const PROMPT_OVERLAY_FIELDS = [
     key: 'live_appendix',
     eyebrow: 'Live voice and video',
     label: 'Live voice / video overlay',
-    description: 'Applies only to the native Gemini live API lane and operator-facing voice behaviors.',
+    description: 'Applies only to the Gemini fallback audio lane and operator-facing voice behaviors.',
     minHeight: 'min-h-20',
   },
   {
@@ -1734,7 +1734,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                         label="Voice model"
                         value={normalizeDnaVoiceModel(config.professional_dna.voice_model)}
                         options={[
-                          { value: 'gemini_live', label: 'Gemini Native Live API' },
+                          { value: 'gemini_live', label: 'Gemini Audio Intake (fallback)' },
                           { value: 'elevenlabs_ghost', label: 'ElevenLabs Ghost Agent' },
                         ]}
                         onChange={(v) =>
@@ -2307,7 +2307,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </div>
         </Panel>
 
-        <Panel title="Voice lane readiness" eyebrow="Runtime map" meta="Gemini live + Ghost lane ready">
+        <Panel title="Voice lane readiness" eyebrow="Runtime map" meta="Ghost primary + Gemini fallback">
           <div className="grid gap-1.5">
             {VOICE_RUNTIME_LANES.map((lane) => {
               const isSelected = lane.id === config.voice.provider;
@@ -2386,10 +2386,10 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 label="Provider"
                 value={config.voice.provider}
                 options={[
-                  { value: 'gemini_live', label: 'Gemini Native Live API' },
                   ...(overview?.runtime.elevenlabs_agent_configured
                     ? [{ value: 'elevenlabs', label: 'ElevenLabs Ghost' }]
                     : []),
+                  { value: 'gemini_live', label: 'Gemini Audio Intake (fallback)' },
                   ...(config.voice.sesame_enabled ? [{ value: 'sesame', label: 'Sesame' }] : []),
                 ]}
                 onChange={(value) =>
@@ -2405,7 +2405,20 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                                 : value === 'sesame' && prev.voice.sesame_enabled
                                   ? 'sesame'
                                   : 'gemini_live',
+                            public_panel_provider:
+                              value === 'sesame'
+                                ? prev.voice.public_panel_provider
+                                : value === 'elevenlabs'
+                                  ? 'elevenlabs'
+                                  : 'gemini_live',
                           },
+                          professional_dna:
+                            value === 'sesame'
+                              ? prev.professional_dna
+                              : {
+                                  ...prev.professional_dna,
+                                  voice_model: value === 'elevenlabs' ? 'elevenlabs_ghost' : 'gemini_live',
+                                },
                         }
                       : prev
                   )
@@ -2415,10 +2428,10 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 label="Public intake lane"
                 value={config.voice.public_panel_provider}
                 options={[
-                  { value: 'gemini_live', label: 'Gemini Native Live API' },
                   ...(overview?.runtime.elevenlabs_agent_configured
                     ? [{ value: 'elevenlabs', label: 'ElevenLabs Ghost' }]
                     : []),
+                  { value: 'gemini_live', label: 'Gemini Audio Intake (fallback)' },
                 ]}
                 onChange={(value) =>
                   setConfig((prev) =>
@@ -2427,6 +2440,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                           ...prev,
                           voice: {
                             ...prev.voice,
+                            provider: value === 'elevenlabs' ? 'elevenlabs' : 'gemini_live',
                             public_panel_provider: value === 'elevenlabs' ? 'elevenlabs' : 'gemini_live',
                           },
                           professional_dna: {
@@ -2445,7 +2459,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       ? 'Sesame API URL (Cerebrium endpoint)'
                       : config.voice.provider === 'elevenlabs'
                         ? 'ElevenLabs Ghost route notes'
-                      : 'Gemini native live API route notes'
+                      : 'Gemini fallback route notes'
                   }
                   value={config.voice.api_url}
                   onChange={(value) =>
@@ -2456,14 +2470,14 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       ? 'https://api.cortex.cerebrium.ai/v4/PROJECT/APP/generate_audio'
                       : config.voice.provider === 'elevenlabs'
                         ? 'Ghost session is resolved from ELEVENLABS_AGENT_ID and the ElevenLabs briefing routes.'
-                        : 'Optional operator note. Native Gemini route is handled by the config below.'
+                        : 'Optional operator note. Gemini stays available as the fallback audio intake lane.'
                   }
                 />
               </div>
             </div>
           </Panel>
 
-          <Panel title="Voice identity" eyebrow="Narration" meta={config.voice.gemini_live_model}>
+          <Panel title="Voice identity" eyebrow="Gemini fallback" meta={config.voice.gemini_live_model}>
             <div className="grid gap-2">
               <TextField
                 label="Speaker"
@@ -2474,7 +2488,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 placeholder="Maya"
               />
               <SelectField
-                label="Gemini native live model"
+                label="Gemini fallback model"
                 value={config.voice.gemini_live_model}
                 options={GEMINI_LIVE_MODEL_OPTIONS.map((option) => ({
                   value: option.id,
@@ -2485,7 +2499,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 }
               />
               <SelectField
-                label="Gemini native voice name"
+                label="Gemini fallback voice name"
                 value={config.voice.gemini_voice_name}
                 options={GEMINI_VOICE_NAMES}
                 onChange={(value) =>

@@ -96,11 +96,11 @@ curl -s -X POST "$SIGNAL_ATLAS_URL/v1/ghost/sync-docs" \
 
 ### Manual Browser Validation Still Required
 
-- [ ] Admin `Voice model` save and `Public intake lane` save stay in sync between Gemini Live and ElevenLabs Ghost
+- [ ] Admin `Voice model`, `Provider`, and `Public intake lane` stay in sync between ElevenLabs Ghost and Gemini audio fallback
 - [ ] ElevenLabs signed session route succeeds for the signed-in user
 - [ ] SDK panel loads for the signed-in user
 - [ ] Dynamic user context is passed into the Ghost session
-- [ ] Contextual intake summary is sent after the session connects
+- [ ] Structured current-section / visible-field context is sent after the session connects
 - [ ] Donna greets the user with a human-readable name or generic client-safe fallback
 - [ ] `navigate_module` works from voice
 - [ ] `close_module` works from voice
@@ -121,6 +121,7 @@ curl -s -X POST "$SIGNAL_ATLAS_URL/v1/ghost/sync-docs" \
 - [ ] `fetch_artifact` responses cite the live artifact content
 - [ ] `fetch_drive_documents` responses cite the live Drive docs
 - [ ] the guided section nav makes it obvious where the live lane is currently working
+- [ ] only one intake section is visible at a time during the voice-guided flow
 - [ ] field focus visibly pulls the user to the correct section instead of leaving the form visually ambiguous
 - [ ] submitting intake cleanly locks the live lane and holds the user in processing until artifacts are ready
 
@@ -165,6 +166,7 @@ When this journey is run manually, the success bar is:
 | 2 | Earlier test-plan draft embedded the webhook secret directly in examples | High | Fixed in docs |
 | 3 | Voice/browser interaction coverage was implied but not actually recorded | Medium | Explicitly marked manual/pending |
 | 4 | Gemini versus ElevenLabs lane switching was previously able to drift because different saved config fields could disagree | High | Fixed in code; manual browser validation still required |
+| 5 | Smart Start exposed a client-visible lane chooser and too many simultaneous form sections, which made live voice guidance ambiguous | High | Fixed in code; manual browser validation still required |
 
 ## Sign-Off
 

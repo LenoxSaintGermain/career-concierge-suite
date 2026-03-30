@@ -79,9 +79,9 @@ The design target remains an editorial, cinematic workspace rather than a generi
 Modules should feel like guided surfaces inside one OS, not isolated product pages.
 `Smart Start Intake` is now a guided two-column workspace instead of a generic long-form field stack:
 
-- the voice rail now sits beside the intake form and can run Gemini Native Live API or ElevenLabs Ghost depending on operator config
-- the form is organized into explicit sections so the active voice lane can keep the user oriented to one act at a time
-- Gemini Live sessions can extract structured intake signals back into empty form fields, with visible `from voice session` provenance tags
+- the voice rail now sits beside the intake form and follows the single admin-selected public lane instead of exposing a client-side lane switcher
+- the form is organized into explicit sections and now shows one act at a time so the active voice lane can keep the user oriented
+- Gemini fallback sessions can extract structured intake signals back into empty form fields, with visible `from voice session` provenance tags
 - the ElevenLabs Ghost lane now uses the React SDK plus a signed-session API route, contextual updates, and intake-safe client tools so Donna can move screens, focus fields, write answers, and summarize the intake state live
 - the processing state now explicitly steps Donna out before artifacts are available so the client is not left speaking into a dead transition
 - the signed-in landing experience now pairs that intake with a lighter editorial `Your Journey Guide` surface that:
@@ -175,10 +175,10 @@ It uses:
 - one active workspace at a time for generation, media, brand, voice, or governance edits
 - a single-column editorial content stack so controls do not compress or overlap on medium-width laptop views
 - a compact command header on smaller viewports so laptop and tablet operators still see active section context before the form fields
-- a lane-readiness voice studio that treats Gemini Live as the native rail, ElevenLabs Ghost as the live agent lane, Sesame as explicitly gated off, and Manus as future operator automation
+- a lane-readiness voice studio that treats ElevenLabs Ghost as the primary guided intake lane, Gemini audio as the fallback rail, Sesame as explicitly gated off, and Manus as future operator automation
 - Cloud Run API env staging for Manus credentials plus ElevenLabs agent metadata so Admin can report Ghost-lane readiness without drifting back to the old conversational-widget posture
 - the public concierge intake can now mount the configured ElevenLabs Ghost lane from API-served public config, and admin exposes a dedicated public-intake lane selector so operators can flip between Gemini and ElevenLabs Ghost without touching env vars
-- the intake concierge step itself now shows a live lane switcher when ElevenLabs Ghost is available so the team can choose between Gemini and ElevenLabs Ghost in-session
+- the intake concierge step now follows the saved admin lane cleanly instead of showing a client-visible lane switcher
 - the public-intake lane selector is now the persisted global default, so `/v1/public/config` reflects the saved admin choice instead of forcing Gemini when ElevenLabs Ghost is available
 - a top-command client module shell instead of the old split left-rail modal so episodes, TV, and artifact modules have a wider presentation canvas
 - the client module shell now keeps a stable editorial header and floating close rail instead of scroll-collapsing the header, which removes the desktop bounce/stutter issue when long module pages are scrolled
@@ -311,10 +311,10 @@ The Express API under `api/` handles:
 - Cloud Run service built from `api/`
 - Express + `firebase-admin`
 - Gemini-backed generation routes
-- Gemini Native Live API is the default first-party voice lane
+- ElevenLabs Ghost is now the primary guided intake lane when configured
 - Sesame remains feature-flagged off until a dedicated service exists
 - ElevenLabs Ghost is now a live selectable public-intake lane when the Cloud Run API env exposes an agent ID, an API key, and the saved admin config chooses it
-- Gemini Native Live API remains the internal runtime voice transport for the native live panel and token route
+- Gemini audio intake remains the internal runtime fallback path used by the native live panel and token route
 - the public-intake lane decision now follows `voice.public_panel_provider` as the canonical saved source instead of letting stale Professional DNA voice settings override the operator choice
 - `POST /v1/voice/elevenlabs/session` now creates signed ElevenLabs sessions for authenticated users so the Ghost lane can run as a real SDK surface instead of a widget-only fallback
 - Manus remains a queued external lane, not an active runtime dependency

@@ -37,13 +37,13 @@ Setup:
 ## Voice Engine Routing
 
 The onboarding flow supports concierge voice playback through `POST /v1/voice/synthesize` on the Cloud Run API.
-Gemini Native Live API remains the native first-party voice lane.
+ElevenLabs Ghost is the primary guided intake lane when configured.
 When `ELEVENLABS_AGENT_ID` and `ELEVENLABS_API_KEY` are present in the API env, the public concierge intake can mount the ElevenLabs Ghost lane from `/v1/public/config` and open signed sessions through `POST /v1/voice/elevenlabs/session`.
-Admin voice controls expose a separate public-intake lane selector so the team can flip that step between Gemini and ElevenLabs without changing secrets, and the saved `Voice model` and `Public intake lane` now persist in lockstep.
-The intake concierge step also exposes an in-flow lane switcher when both lanes are available so operators can flip live during a session.
-Smart Start Intake now also supports transcript-to-form extraction through `POST /v1/intake/extract`, so Gemini Native Live API intake sessions can prefill empty form fields without overwriting user-entered answers.
+Admin voice controls expose a separate public-intake lane selector so the team can flip that step between Gemini and ElevenLabs without changing secrets, and the saved `Voice model`, `Provider`, and `Public intake lane` now persist in lockstep.
+The Smart Start client UI no longer exposes an in-flow lane switcher; it follows the saved public lane and keeps the intake surface singular for the client.
+Smart Start Intake now also supports transcript-to-form extraction through `POST /v1/intake/extract`, so Gemini audio fallback sessions can prefill empty form fields without overwriting user-entered answers.
 The ElevenLabs Ghost lane now runs on the ElevenLabs React SDK with client tools, contextual updates, a signed-session path, and intake-safe actions for voice-led form completion.
-The intake UI itself is now a single guided workspace with a sticky voice rail, visible section navigation, and a locked processing state while artifacts are generated.
+The intake UI itself is now a single guided workspace with a sticky voice rail, one visible section at a time, and a locked processing state while artifacts are generated.
 
 Provider options:
 

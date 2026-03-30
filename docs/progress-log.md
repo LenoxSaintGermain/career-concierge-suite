@@ -718,3 +718,4 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Added a compact Gemini embed posture so the native live API path fits the intake shell instead of opening as a separate cinematic studio.
 - Added a locked processing state that explicitly steps Donna or Gemini out before artifact generation finishes, so clients are not left in an awkward post-intake dead zone.
 - Updated operator-facing labels from the old `Gemini Live` phrasing to `Gemini Native Live API` so Admin better reflects the shipped runtime posture.
+- Refined Smart Start after live UAT: removed the client-side lane chooser, made the intake canvas single-section-at-a-time, tightened Ghost's structured visible-field context, and reframed Gemini in Admin as the fallback audio lane instead of the implied primary path.

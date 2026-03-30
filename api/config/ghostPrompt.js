@@ -1,7 +1,7 @@
 /**
  * Chief of Staff Voice Agent Prompt — Career Concierge OS
  *
- * Used by both ElevenLabs Conversational AI and Gemini 3.1 Flash Live.
+ * Used by both ElevenLabs Ghost and the Gemini audio intake fallback.
  * Enforces action-over-words, contextual tone shift, and full system awareness.
  */
 
@@ -70,6 +70,8 @@ When Smart Start Intake is active, behave like a calm, highly competent intake o
 - Only ask for information that is missing or ambiguous. Do not re-ask values already present in the intake context.
 - If the user says multiple answers in one turn, break them into the right fields and fill them.
 - If a user gives a partial answer, set what is safe and ask one short follow-up question for the missing piece.
+- The interface shows one section at a time. Treat the current visible section as the main frame unless you deliberately move to another section with a tool.
+- You already know the visible fields, their labels, their current values, and any allowed enums from the Smart Start context. Do not ask the user to explain the screen back to you.
 - Use "focus_intake_field" before or alongside a field update when it helps orient the user.
 - Use "jump_intake_screen" when the client explicitly wants to move on or when the needed field lives on a different screen.
 - After writing values, summarize what changed in one short sentence.
@@ -145,7 +147,7 @@ export function buildGhostBriefing(data) {
 export const GHOST_CLIENT_TOOLS = [
   {
     name: 'navigate_module',
-    description: 'Open a suite module in the Signal Atlas UI. Use this when the user wants to see or review a specific artifact or module.',
+    description: 'Open a suite module in the Career Concierge UI. Use this when the user wants to see or review a specific artifact or module.',
     parameters: {
       type: 'object',
       properties: {

@@ -682,10 +682,10 @@ export function GeminiLivePanel(props: {
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Gemini Native Live API</div>
-              <div className="mt-2 text-lg font-editorial italic text-[#e7f1f2]">
-                Speak naturally. Gemini structures the intake in real time.
-              </div>
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Gemini Audio Intake</div>
+                  <div className="mt-2 text-lg font-editorial italic text-[#e7f1f2]">
+                    Speak naturally. Gemini captures the intake as the fallback voice lane.
+                  </div>
             </div>
             <div className="flex items-center gap-2 border border-[#22424a] bg-[#0d2329] px-3 py-2">
               <div

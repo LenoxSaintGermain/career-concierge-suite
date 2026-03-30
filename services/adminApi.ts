@@ -343,6 +343,10 @@ const normalizeAdminConfig = (input: any): AppConfig => {
   const source = input && typeof input === 'object' ? input : {};
   const defaultGeminiLiveModel = GEMINI_LIVE_MODEL_OPTIONS[0]?.id || 'gemini-2.5-flash-native-audio-preview-12-2025';
   const publicPanelProvider = source?.voice?.public_panel_provider === 'elevenlabs' ? 'elevenlabs' : 'gemini_live';
+  const normalizedVoiceProvider =
+    source?.voice?.provider === 'sesame' && Boolean(source?.voice?.sesame_enabled)
+      ? 'sesame'
+      : publicPanelProvider;
   return {
     generation: {
       suite_model: String(source?.generation?.suite_model ?? DEFAULT_GEMINI_SUITE_MODEL),
@@ -466,12 +470,7 @@ const normalizeAdminConfig = (input: any): AppConfig => {
     voice: {
       enabled: Boolean(source?.voice?.enabled ?? false),
       sesame_enabled: Boolean(source?.voice?.sesame_enabled ?? false),
-      provider:
-        source?.voice?.provider === 'elevenlabs'
-          ? 'elevenlabs'
-          : source?.voice?.provider === 'sesame' && Boolean(source?.voice?.sesame_enabled)
-            ? 'sesame'
-            : 'gemini_live',
+      provider: normalizedVoiceProvider,
       public_panel_provider: publicPanelProvider,
       api_url: String(source?.voice?.api_url ?? ''),
       speaker: String(source?.voice?.speaker ?? 'Concierge'),

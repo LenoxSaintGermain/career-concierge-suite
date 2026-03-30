@@ -190,14 +190,15 @@ Current public-intake behavior:
 - admin voice controls expose a `Public intake lane` selector with `gemini_live` and `elevenlabs`
 - `/v1/public/config` now follows the saved `voice.public_panel_provider` default from Firestore
 - the intake concierge step follows that selector and mounts the chosen lane directly inside the Smart Start workspace
-- the intake concierge step also exposes a visible lane switcher so operators can flip between the two rails live without reopening Admin
+- the intake concierge step no longer exposes a client-visible lane switcher; the live lane is now fully controlled from Admin
 - admin `Voice model` and `Public intake lane` controls now save in lockstep so the public lane does not drift from the saved Professional DNA voice choice
-- Gemini Native Live API remains the internal native-audio session path used by the existing live panel and token route
+- Gemini audio intake remains the internal native-audio session path used by the existing live panel and token route
 - `POST /v1/voice/elevenlabs/session` now provides signed ElevenLabs session URLs for authenticated users when `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` are present
 - the ElevenLabs intake lane now runs on the ElevenLabs React SDK with contextual updates, action feed telemetry, and intake-safe client tools for screen movement and field entry
 - the Smart Start workspace is now a single guided intake surface with:
   - sticky voice rail on the left
   - section navigation
+  - one visible section at a time
   - section-aware field highlighting
   - a locked processing state that ends live voice before artifact generation
 - Smart Start Intake now also reads public-facing Professional DNA config for:

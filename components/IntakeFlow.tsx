@@ -325,10 +325,6 @@ export function IntakeFlow(props: {
   const [voiceAutofillBusy, setVoiceAutofillBusy] = useState(false);
   const [ghostFocusedFieldId, setGhostFocusedFieldId] = useState<string | null>(null);
   const [activeSectionId, setActiveSectionId] = useState<IntakeSectionId>('positioning');
-  const [voiceLaneChoice, setVoiceLaneChoice] = useState<PublicConfig['voice']['active_panel']>(
-    props.voiceConfig.active_panel,
-  );
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const prefs: ClientPreferences = useMemo(() => ({ pace, focus }), [pace, focus]);
   const fieldOptions = useMemo(() => {
@@ -397,16 +393,20 @@ export function IntakeFlow(props: {
 
   const clientDisplayName = props.client?.display_name || (props.client?.demo_profile as any)?.name || '';
   const clientGreeting = clientDisplayName ? `Welcome back, ${clientDisplayName}.` : 'Let\u2019s get started.';
-  const availableVoiceLanes = useMemo(
-    () =>
-      props.voiceConfig.elevenlabs_enabled
-        ? ([
-            { id: 'elevenlabs', label: 'Donna via ElevenLabs', meta: 'Direct form control and action feed' },
-            { id: 'gemini_live', label: 'Gemini Native Live API', meta: 'Native audio lane with transcript extraction' },
-          ] as const)
-        : ([{ id: 'gemini_live', label: 'Gemini Native Live API', meta: 'Native audio lane with transcript extraction' }] as const),
-    [props.voiceConfig.elevenlabs_enabled],
-  );
+  const activeVoiceLane: PublicConfig['voice']['active_panel'] =
+    props.voiceConfig.active_panel === 'elevenlabs' && props.voiceConfig.elevenlabs_enabled
+      ? 'elevenlabs'
+      : 'gemini_live';
+  const activeVoiceLaneMeta =
+    activeVoiceLane === 'elevenlabs'
+      ? {
+          label: 'Donna via ElevenLabs Ghost',
+          meta: 'Primary guided intake lane with direct form control and section-aware actions.',
+        }
+      : {
+          label: 'Gemini Audio Intake',
+          meta: 'Fallback native audio lane with transcript extraction and post-session structuring.',
+        };
   const activeSection = INTAKE_SECTIONS.find((section) => section.id === activeSectionId) ?? INTAKE_SECTIONS[0];
 
   const readText = (id: string) => (typeof answers[id] === 'string' ? (answers[id] as string) : '');
@@ -418,18 +418,8 @@ export function IntakeFlow(props: {
   );
   const isFieldAvailable = (id: string) => !isFreeTier || freeTierFieldSet.has(id);
 
-  useEffect(() => {
-    setVoiceLaneChoice(
-      props.voiceConfig.active_panel === 'elevenlabs' && props.voiceConfig.elevenlabs_enabled
-        ? 'elevenlabs'
-        : 'gemini_live',
-    );
-  }, [props.voiceConfig.active_panel, props.voiceConfig.elevenlabs_enabled]);
-
   const scrollToSection = (sectionId: IntakeSectionId) => {
     setActiveSectionId(sectionId);
-    const target = sectionRefs.current[sectionId];
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const markGhostFieldApplied = (fieldId: string) => {
@@ -438,8 +428,12 @@ export function IntakeFlow(props: {
     if (sectionId) {
       scrollToSection(sectionId);
     }
-    const target = typeof document !== 'undefined' ? document.querySelector<HTMLElement>(`[data-intake-field="${fieldId}"]`) : null;
-    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => {
+      const target =
+        typeof document !== 'undefined' ? document.querySelector<HTMLElement>(`[data-intake-field="${fieldId}"]`) : null;
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target?.focus?.();
+    }, 90);
     window.setTimeout(() => {
       setGhostFocusedFieldId((prev) => (prev === fieldId ? null : prev));
     }, 2200);
@@ -577,6 +571,54 @@ export function IntakeFlow(props: {
       `Intent: ${intent}. Pace: ${pace}. Focus: ${focus}.`,
       filledFields.length ? `Captured fields: ${filledFields.join(' | ')}.` : 'Captured fields: none yet.',
     ].join(' ');
+  };
+
+  const sectionCompletion = (sectionId: IntakeSectionId) => {
+    const section = INTAKE_SECTIONS.find((entry) => entry.id === sectionId);
+    if (!section) return { filled: 0, total: 0 };
+    const visibleFieldIds = section.fieldIds.filter((fieldId) => {
+      if (fieldId === 'pace' || fieldId === 'focus') return true;
+      return isFieldAvailable(fieldId);
+    });
+    const filled = visibleFieldIds.filter((fieldId) => {
+      if (fieldId === 'pace' || fieldId === 'focus') return true;
+      return isValueFilled(answers[fieldId]);
+    }).length;
+    return { filled, total: visibleFieldIds.length };
+  };
+
+  const formatGhostValue = (value: IntakeAnswerValue | undefined) => {
+    if (Array.isArray(value)) return value.length ? value.join(', ') : 'empty';
+    if (typeof value === 'boolean') return value ? 'true' : 'false';
+    if (typeof value === 'string') return value.trim() || 'empty';
+    return 'empty';
+  };
+
+  const describeGhostField = (fieldId: string) => {
+    const meta = fieldMeta.get(fieldId);
+    const label = meta?.label || fieldId;
+    const value = fieldId === 'pace' ? pace : fieldId === 'focus' ? focus : answers[fieldId];
+    const choiceOptions = ghostChoiceOptions.get(fieldId) ?? fieldOptions.get(fieldId) ?? [];
+    const fieldType = ghostTextFields.has(fieldId)
+      ? 'text'
+      : ghostMultiFields.has(fieldId)
+        ? 'multi'
+        : ghostBooleanFields.has(fieldId)
+          ? 'boolean'
+          : ghostChoiceOptions.has(fieldId)
+            ? 'choice'
+            : fieldId === 'pace' || fieldId === 'focus'
+              ? 'preference'
+              : 'text';
+    return [
+      `${fieldId}`,
+      `label=${label}`,
+      `type=${fieldType}`,
+      `value=${formatGhostValue(value)}`,
+      choiceOptions.length ? `allowed=${choiceOptions.join(', ')}` : null,
+    ]
+      .filter(Boolean)
+      .join(' | ');
   };
 
   const ghostCallbacks = useMemo(
@@ -722,17 +764,44 @@ export function IntakeFlow(props: {
   );
 
   const ghostSessionContext = useMemo(() => {
-    const allFields = SMART_START_FIELDS.map((field) => `${field.id}: ${field.label}`).slice(0, 16);
+    const visibleFields = activeSection.fieldIds
+      .filter((fieldId) => (fieldId === 'pace' || fieldId === 'focus' ? true : isFieldAvailable(fieldId)))
+      .map(describeGhostField);
+    const sectionMap = INTAKE_SECTIONS.map(
+      (section) => `${section.screenId}=${section.title} (${section.fieldIds.join(', ')})`,
+    ).join(' | ');
+    const filledSnapshot = Object.entries(answers)
+      .filter(([key, value]) => key !== 'voice_extracted_fields' && isValueFilled(value))
+      .map(([key, value]) => `${key}=${formatGhostValue(value)}`)
+      .slice(0, 18)
+      .join(' | ');
 
     return [
-      'Smart Start Intake context is active. Use the current section as the main conversation frame.',
-      summarizeGhostIntakeState(),
-      `Sections: ${INTAKE_SECTIONS.map((section) => `${section.screenId}=${section.title}`).join(' | ')}.`,
-      `All intake fields: ${allFields.join(' | ')}.`,
-      `Choice fields: target_compensation_level=${(ghostChoiceOptions.get('target_compensation_level') ?? []).join(', ')} | benefits_timing=${(ghostChoiceOptions.get('benefits_timing') ?? []).join(', ')} | ai_usage_frequency=${(ghostChoiceOptions.get('ai_usage_frequency') ?? []).join(', ')} | suite_feel=${(ghostChoiceOptions.get('suite_feel') ?? []).join(', ')}.`,
-      `Use intake tools to focus fields, change sections, set values, and summarize state. Ask from the visible section first and never invent values.`,
+      'SMART_START_CONTEXT',
+      `current_section=${activeSection.id} | title=${activeSection.title} | screen=${activeSection.screenId}`,
+      `section_description=${activeSection.description}`,
+      `visible_fields=${visibleFields.join(' || ')}`,
+      `section_map=${sectionMap}`,
+      `intent=${intent} | pace=${pace} | focus=${focus}`,
+      `filled_fields=${filledSnapshot || 'none yet'}`,
+      `section_completion=${sectionCompletion(activeSection.id).filled}/${sectionCompletion(activeSection.id).total}`,
+      'interaction_rule=The form shows one section at a time. Ask from the current visible section first. Use tools to focus fields, set values, and move sections. Never ask the user to map the screen for you. Never invent values.',
+      'END_SMART_START_CONTEXT',
     ].join(' ');
-  }, [activeSection.title, ghostChoiceOptions, summarizeGhostIntakeState]);
+  }, [
+    activeSection.description,
+    activeSection.fieldIds,
+    activeSection.id,
+    activeSection.screenId,
+    activeSection.title,
+    answers,
+    describeGhostField,
+    focus,
+    ghostChoiceOptions,
+    intent,
+    isFieldAvailable,
+    pace,
+  ]);
 
   const handleVoiceSessionComplete = async (payload: { transcript: string; sessionId?: string; completed: boolean }) => {
     setVoiceSessionState(payload.completed ? 'completed' : 'idle');
@@ -838,20 +907,6 @@ export function IntakeFlow(props: {
   };
 
   const submit = async () => submitWithPayload(intent, prefs, answers);
-  const sectionCompletion = (sectionId: IntakeSectionId) => {
-    const section = INTAKE_SECTIONS.find((entry) => entry.id === sectionId);
-    if (!section) return { filled: 0, total: 0 };
-    const visibleFieldIds = section.fieldIds.filter((fieldId) => {
-      if (fieldId === 'pace' || fieldId === 'focus') return true;
-      return isFieldAvailable(fieldId);
-    });
-    const filled = visibleFieldIds.filter((fieldId) => {
-      if (fieldId === 'pace' || fieldId === 'focus') return true;
-      return isValueFilled(answers[fieldId]);
-    }).length;
-    return { filled, total: visibleFieldIds.length };
-  };
-
   const renderVoiceLane = () => {
     if (step !== 'active') {
       return (
@@ -867,7 +922,7 @@ export function IntakeFlow(props: {
       );
     }
 
-    if (voiceLaneChoice === 'elevenlabs' && props.voiceConfig.elevenlabs_enabled) {
+    if (activeVoiceLane === 'elevenlabs' && props.voiceConfig.elevenlabs_enabled) {
       return (
         <ElevenLabsConvaiPanel
           key="elevenlabs"
@@ -970,24 +1025,16 @@ export function IntakeFlow(props: {
               </p>
 
               {props.intakeConfig.voice_agent_enabled !== false ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {availableVoiceLanes.map((lane) => (
-                    <button
-                      key={lane.id}
-                      type="button"
-                      onClick={() => setVoiceLaneChoice(lane.id)}
-                      className={`border px-3 py-2 text-left transition-colors ${
-                        voiceLaneChoice === lane.id
-                          ? 'border-t-2 border-[var(--intake-teal)] bg-[var(--intake-teal-bg)]'
-                          : 'border-[var(--intake-border)] bg-white hover:border-[var(--intake-teal)]'
-                      }`}
-                    >
-                      <div className="font-intake-mono text-[9px] uppercase tracking-[0.12em] text-[var(--intake-muted)]">
-                        {lane.label}
-                      </div>
-                      <div className="mt-1 font-intake-body text-[11px] leading-snug text-[#1B1E1C]">{lane.meta}</div>
-                    </button>
-                  ))}
+                <div className="mt-4 border border-[var(--intake-border)] bg-white px-3 py-3">
+                  <div className="font-intake-mono text-[9px] uppercase tracking-[0.12em] text-[var(--intake-muted)]">
+                    Active voice lane
+                  </div>
+                  <div className="mt-1 font-intake-body text-[13px] leading-snug text-[#1B1E1C]">
+                    {activeVoiceLaneMeta.label}
+                  </div>
+                  <div className="mt-1 font-intake-body text-[11px] leading-relaxed text-[var(--intake-muted)]">
+                    {activeVoiceLaneMeta.meta}
+                  </div>
                 </div>
               ) : null}
 
@@ -1044,11 +1091,10 @@ export function IntakeFlow(props: {
 
           <div className="space-y-4">
             <article
-              ref={(node) => {
-                sectionRefs.current.positioning = node;
-              }}
               className={`border bg-[var(--intake-cream)] p-5 transition-colors ${
-                activeSectionId === 'positioning' ? 'border-[var(--intake-teal)] shadow-[0_0_0_1px_rgba(75,158,141,0.16)]' : 'border-[var(--intake-border)]'
+                activeSectionId === 'positioning'
+                  ? 'border-[var(--intake-teal)] shadow-[0_0_0_1px_rgba(75,158,141,0.16)]'
+                  : 'hidden'
               }`}
             >
               <div className="mb-4">
@@ -1190,11 +1236,10 @@ export function IntakeFlow(props: {
             </article>
 
             <article
-              ref={(node) => {
-                sectionRefs.current.context = node;
-              }}
               className={`border bg-[var(--intake-cream)] p-5 transition-colors ${
-                activeSectionId === 'context' ? 'border-[var(--intake-teal)] shadow-[0_0_0_1px_rgba(75,158,141,0.16)]' : 'border-[var(--intake-border)]'
+                activeSectionId === 'context'
+                  ? 'border-[var(--intake-teal)] shadow-[0_0_0_1px_rgba(75,158,141,0.16)]'
+                  : 'hidden'
               }`}
             >
               <div className="mb-4">
@@ -1253,11 +1298,10 @@ export function IntakeFlow(props: {
             </article>
 
             <article
-              ref={(node) => {
-                sectionRefs.current.evidence = node;
-              }}
               className={`border bg-[var(--intake-cream)] p-5 transition-colors ${
-                activeSectionId === 'evidence' ? 'border-[var(--intake-teal)] shadow-[0_0_0_1px_rgba(75,158,141,0.16)]' : 'border-[var(--intake-border)]'
+                activeSectionId === 'evidence'
+                  ? 'border-[var(--intake-teal)] shadow-[0_0_0_1px_rgba(75,158,141,0.16)]'
+                  : 'hidden'
               }`}
             >
               <div className="mb-4">
@@ -1323,11 +1367,10 @@ export function IntakeFlow(props: {
             </article>
 
             <article
-              ref={(node) => {
-                sectionRefs.current.calibration = node;
-              }}
               className={`border bg-[var(--intake-cream)] p-5 transition-colors ${
-                activeSectionId === 'calibration' ? 'border-[var(--intake-teal)] shadow-[0_0_0_1px_rgba(75,158,141,0.16)]' : 'border-[var(--intake-border)]'
+                activeSectionId === 'calibration'
+                  ? 'border-[var(--intake-teal)] shadow-[0_0_0_1px_rgba(75,158,141,0.16)]'
+                  : 'hidden'
               }`}
             >
               <div className="mb-4">
