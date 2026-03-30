@@ -176,6 +176,7 @@ export function GeminiLivePanel(props: {
   const expectedCloseRef = useRef(false);
   const introTurnPendingRef = useRef(false);
   const reconnectCountRef = useRef(0);
+  const socketReadyRef = useRef(false);
   const cameraReady = state === 'connected' && cameraEnabled;
   const micReady = state === 'connected' && micEnabled;
   const engagementReady = state === 'connected' && (micEnabled || prompt.trim().length > 0);
@@ -345,7 +346,7 @@ export function GeminiLivePanel(props: {
   };
 
   const sendOpeningTurn = useCallback(() => {
-    if (!sessionRef.current) return;
+    if (!sessionRef.current || !socketReadyRef.current) return;
     introTurnPendingRef.current = true;
     promptSentAtRef.current = performance.now();
     try {
@@ -451,6 +452,7 @@ export function GeminiLivePanel(props: {
     stopMic();
     stopCamera();
     sessionContextRef.current = '';
+    socketReadyRef.current = false;
     if (playbackContextRef.current) {
       void playbackContextRef.current.close().catch(() => undefined);
       playbackContextRef.current = null;
@@ -563,6 +565,7 @@ export function GeminiLivePanel(props: {
     setMicSuppressed(false);
     setLatencyMs(null);
     expectedCloseRef.current = false;
+    socketReadyRef.current = false;
     transcriptDeliveredRef.current = false;
     audioChunksRef.current = [];
     firstByteAtRef.current = null;
@@ -591,6 +594,13 @@ export function GeminiLivePanel(props: {
       const session = await ai.live.connect({
         model: token.model,
         callbacks: {
+          onopen: () => {
+            socketReadyRef.current = true;
+            setState('connected');
+            if (compactLayout) {
+              sendOpeningTurn();
+            }
+          },
           onmessage: async (message: any) => {
             if (Array.isArray(message?.toolCall?.functionCalls) && message.toolCall.functionCalls.length) {
               const functionResponses = await Promise.all(
@@ -677,6 +687,7 @@ export function GeminiLivePanel(props: {
             stopMic();
             stopCamera();
             sessionRef.current = null;
+            socketReadyRef.current = false;
             const unexpected = !expectedCloseRef.current && !props.interactionLocked;
             const shouldRecoverOpening = unexpected && compactLayout && !micEnabled && reconnectCountRef.current < 1;
             if (shouldRecoverOpening) {
@@ -699,10 +710,6 @@ export function GeminiLivePanel(props: {
 
       sessionRef.current = session;
       sessionContextRef.current = String(props.sessionContext || '').trim();
-      setState('connected');
-      if (compactLayout) {
-        sendOpeningTurn();
-      }
     } catch (e: any) {
       setState('error');
       setError(e?.message ?? 'Unable to start the live voice session.');
