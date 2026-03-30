@@ -8,6 +8,12 @@ const statusTone: Record<string, string> = {
   blocked: 'text-red-700',
 };
 
+const resumeAssetPriority = (item: CjsAsset) => {
+  if (item.asset_kind === 'uploaded_file') return 2;
+  if (item.asset_kind === 'intake_reference') return 1;
+  return item.storage_provider === 'gcs' ? 2 : 1;
+};
+
 const toBase64 = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -51,9 +57,15 @@ export function CjsExecutionView(props: { doc: CjsExecutionContent; client: Clie
     () =>
       assets
         .filter((item) => item.type === 'resume')
-        .sort((a, b) => String(assetDate(b)).localeCompare(String(assetDate(a)))),
+        .sort((a, b) => {
+          const byPriority = resumeAssetPriority(b) - resumeAssetPriority(a);
+          if (byPriority !== 0) return byPriority;
+          return String(assetDate(b)).localeCompare(String(assetDate(a)));
+        }),
     [assets]
   );
+
+  const hasUploadedResume = resumeAssets.some((item) => item.asset_kind === 'uploaded_file' || item.storage_provider === 'gcs');
 
   const loadAssets = async () => {
     setLoadingAssets(true);
@@ -207,6 +219,11 @@ export function CjsExecutionView(props: { doc: CjsExecutionContent; client: Clie
           <div className="text-[10px] uppercase tracking-[0.24em] text-gray-500 mb-2">
             Resume Versions ({resumeAssets.length})
           </div>
+          {!hasUploadedResume && resumeAssets.length > 0 ? (
+            <div className="mb-3 border border-amber-500/20 bg-amber-50 p-3 text-xs text-amber-900">
+              Smart Start captured a resume reference, but line-level resume review still needs an actual file upload here.
+            </div>
+          ) : null}
           {loadingAssets ? (
             <div className="text-[10px] uppercase tracking-[0.3em] opacity-40 animate-pulse">Loading assets…</div>
           ) : resumeAssets.length === 0 ? (
@@ -221,8 +238,13 @@ export function CjsExecutionView(props: { doc: CjsExecutionContent; client: Clie
                     <div>
                       <div className="text-sm font-medium">{item.label || item.filename || item.id}</div>
                       <div className="text-[10px] uppercase tracking-[0.18em] text-gray-500 mt-1">
-                        {item.target_role || 'No target role'} · {item.storage_provider || 'none'}
+                        {item.asset_kind === 'uploaded_file' ? 'Uploaded file' : item.asset_kind === 'intake_reference' ? 'Intake reference' : 'Resume asset'} · {item.target_role || 'No target role'} · {item.storage_provider || 'none'}
                       </div>
+                      {item.source_url ? (
+                        <a href={item.source_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-[10px] uppercase tracking-[0.18em] text-brand-teal">
+                          Open source link
+                        </a>
+                      ) : null}
                     </div>
                     <div className="text-[10px] uppercase tracking-[0.18em] text-gray-500">
                       {item.updated_at ? new Date(item.updated_at).toLocaleString() : 'pending timestamp'}
@@ -249,6 +271,11 @@ export function CjsExecutionView(props: { doc: CjsExecutionContent; client: Clie
           {review && (
             <div className="space-y-3 text-sm text-gray-700">
               <div className="font-editorial italic text-lg">{review.summary}</div>
+              {review.analysis_scope === 'intake_reference' && Array.isArray(review.limitations) && review.limitations.length > 0 ? (
+                <div className="border border-amber-500/20 bg-amber-50 p-3 text-xs text-amber-900">
+                  {review.limitations.join(' ')}
+                </div>
+              ) : null}
               <div>Role alignment score: {review.role_alignment_score}%</div>
               <div>
                 <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mb-1">Strengths</div>

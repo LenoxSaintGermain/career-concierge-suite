@@ -4856,9 +4856,19 @@ const readClientProfile = async (uid) => {
 
 const listResumeAssets = async (uid) => {
   const snap = await clientAssetsRef(uid).where('type', '==', 'resume').get();
+  const assetPriority = (asset) => {
+    const kind = nonEmpty(asset?.asset_kind);
+    if (kind === 'uploaded_file') return 2;
+    if (kind === 'intake_reference') return 1;
+    return nonEmpty(asset?.storage_provider) === 'gcs' ? 2 : 1;
+  };
   return snap.docs
     .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() ?? {}) }))
-    .sort((a, b) => (toIso(b.updated_at) || '').localeCompare(toIso(a.updated_at) || ''));
+    .sort((a, b) => {
+      const byPriority = assetPriority(b) - assetPriority(a);
+      if (byPriority !== 0) return byPriority;
+      return (toIso(b.updated_at) || '').localeCompare(toIso(a.updated_at) || '');
+    });
 };
 
 const writeArtifactDoc = async (uid, type, title, content) => {
@@ -4954,10 +4964,43 @@ const buildResumeReview = ({ profile, resumeAsset }) => {
   const currentRole = nonEmpty(answers.current_title) || nonEmpty(answers.current_or_target_job_title) || 'current role';
   const constraints = nonEmpty(answers.constraints) || 'time and competing priorities';
   const alignmentScore = currentRole.toLowerCase() === targetRole.toLowerCase() ? 76 : 64;
+  const analysisScope = nonEmpty(resumeAsset?.asset_kind) === 'uploaded_file' ? 'resume_file' : 'intake_reference';
+  const sourceLabel = nonEmpty(resumeAsset?.label) || nonEmpty(resumeAsset?.filename) || 'Resume input';
+
+  if (analysisScope === 'intake_reference') {
+    return {
+      summary: `Initial review is based on intake context plus the linked resume reference "${sourceLabel}". Upload the actual resume file for line-level rewrite guidance.`,
+      role_alignment_score: alignmentScore - 4,
+      analysis_scope: analysisScope,
+      source_label: sourceLabel,
+      limitations: [
+        'This review does not parse the resume body from the linked source.',
+        'Bullet-by-bullet rewrites and keyword density checks require a file upload in ConciergeJobSearch.',
+      ],
+      strengths: [
+        'Target role and transition direction are already captured from intake.',
+        'Resume reference is attached to the client record for downstream review and document sync.',
+        'Role narrative can still be framed at a strategic level before a file upload.',
+      ],
+      gaps: [
+        'No parsed resume body is available yet for line edits or evidence extraction.',
+        'Outcome metrics and bullet structure must be verified after the actual file is uploaded.',
+        `Constraint handling (${constraints}) still needs explicit proof in the final resume version.`,
+      ],
+      rewrite_focus: [
+        'Upload the current resume file in ConciergeJobSearch to unlock line-level review.',
+        `Translate ${currentRole} experience into ${targetRole} strategy language with quantified outcomes.`,
+        'Add one evidence-forward proof block for stakeholder impact and AI leverage.',
+      ],
+    };
+  }
 
   return {
     summary: `Narrative can be tightened to bridge ${currentRole} to ${targetRole} with stronger ROI framing.`,
     role_alignment_score: alignmentScore,
+    analysis_scope: analysisScope,
+    source_label: sourceLabel,
+    limitations: [],
     strengths: [
       'Role scope and ownership are clearly present.',
       'Cross-functional leadership signal is visible.',
@@ -6325,6 +6368,12 @@ app.post('/v1/gws/sync-docs', requireAuth, async (req, res) => {
 app.get('/v1/cjs/assets', requireAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
+    const assetPriority = (asset) => {
+      const kind = nonEmpty(asset?.asset_kind);
+      if (kind === 'uploaded_file') return 2;
+      if (kind === 'intake_reference') return 1;
+      return nonEmpty(asset?.storage_provider) === 'gcs' ? 2 : 1;
+    };
     const snap = await clientAssetsRef(uid).get();
     const items = snap.docs
       .map((docSnap) => {
@@ -6334,6 +6383,7 @@ app.get('/v1/cjs/assets', requireAuth, async (req, res) => {
           type: String(data.type || 'other'),
           label: String(data.label || data.filename || docSnap.id),
           status: String(data.status || 'active'),
+          asset_kind: String(data.asset_kind || (data.source_url ? 'intake_reference' : data.storage_provider === 'gcs' ? 'uploaded_file' : '')),
           filename: nonEmpty(data.filename),
           mime_type: nonEmpty(data.mime_type),
           size_bytes: Number(data.size_bytes || 0),
@@ -6346,7 +6396,11 @@ app.get('/v1/cjs/assets', requireAuth, async (req, res) => {
           updated_at: toIso(data.updated_at),
         };
       })
-      .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+      .sort((a, b) => {
+        const byPriority = assetPriority(b) - assetPriority(a);
+        if (byPriority !== 0) return byPriority;
+        return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
+      });
     return res.json({ items });
   } catch (error) {
     return res.status(500).json({
@@ -6371,11 +6425,27 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
   }
 
   try {
-    const itemId = `resume-${Date.now().toString(36)}`;
     const now = new Date();
+    const assetKind = sourceUrl ? 'intake_reference' : 'uploaded_file';
+    let existingRef = null;
+    let existingData = null;
+
+    if (sourceUrl) {
+      const existingSnap = await clientAssetsRef(uid)
+        .where('type', '==', 'resume')
+        .where('source_url', '==', sourceUrl)
+        .limit(1)
+        .get();
+      if (!existingSnap.empty) {
+        existingRef = existingSnap.docs[0].ref;
+        existingData = existingSnap.docs[0].data() ?? {};
+      }
+    }
+
+    const itemId = existingRef?.id || `resume-${Date.now().toString(36)}`;
     let sizeBytes = 0;
-    let storagePath = '';
-    let storageProvider = 'none';
+    let storagePath = nonEmpty(existingData?.storage_path);
+    let storageProvider = nonEmpty(existingData?.storage_provider) || 'none';
 
     if (sourceUrl) {
       storageProvider = 'external_url';
@@ -6396,11 +6466,12 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
       }
     }
 
-    const ref = clientAssetsRef(uid).doc(itemId);
+    const ref = existingRef || clientAssetsRef(uid).doc(itemId);
     await ref.set({
       type: 'resume',
       label,
       status: 'active',
+      asset_kind: assetKind,
       filename,
       mime_type: mimeType,
       size_bytes: sizeBytes,
@@ -6409,7 +6480,7 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
       storage_provider: storageProvider,
       target_role: targetRole,
       notes,
-      created_at: now,
+      created_at: existingData?.created_at || now,
       updated_at: now,
     });
 
@@ -6422,6 +6493,7 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
         type: data.type,
         label: data.label,
         status: data.status,
+        asset_kind: data.asset_kind || assetKind,
         filename: data.filename,
         mime_type: data.mime_type,
         size_bytes: data.size_bytes,

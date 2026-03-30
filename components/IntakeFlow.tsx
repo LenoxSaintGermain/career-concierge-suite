@@ -31,6 +31,7 @@ import {
 } from '../services/stubGenerator';
 import { generateSuiteArtifacts } from '../services/suiteApi';
 import { extractIntakeFromTranscript, syncClientGoogleDocs } from '../services/voiceApi';
+import { syncIntakeResumeReference } from '../services/cjsApi';
 import { ElevenLabsConvaiPanel } from './ElevenLabsConvaiPanel';
 import { GeminiLivePanel } from './GeminiLivePanel';
 
@@ -921,6 +922,7 @@ export function IntakeFlow(props: {
       }
 
       let brief: any, plan: any, profile: any, aiProfile: any, gaps: any;
+      const resumeSource = typeof nextAnswers.resume_source === 'string' ? nextAnswers.resume_source.trim() : '';
       try {
         const artifacts = await generateSuiteArtifacts({
           intent: nextIntent,
@@ -950,6 +952,23 @@ export function IntakeFlow(props: {
         upsertArtifact(props.uid, 'readiness', 'AI Readiness Assessment', generateReadinessDoc(nextAnswers)),
         upsertArtifact(props.uid, 'cjs_execution', 'ConciergeJobSearch Execution', generateCjsExecutionDoc(nextAnswers, nextIntent)),
       ]);
+
+      if (resumeSource) {
+        try {
+          await syncIntakeResumeReference({
+            resume_source: resumeSource,
+            target_role:
+              typeof nextAnswers.current_or_target_job_title === 'string'
+                ? nextAnswers.current_or_target_job_title
+                : typeof nextAnswers.target === 'string'
+                  ? nextAnswers.target
+                  : '',
+            notes: nextAnswers.bio_alignment_requested ? 'Bio alignment requested during intake.' : '',
+          });
+        } catch (resumeSyncError) {
+          console.warn('post_intake_resume_reference_sync_failed', resumeSyncError);
+        }
+      }
 
       const nextModuleId: SuiteModuleId = nextIntent === 'not_sure' ? 'my_concierge' : 'brief';
       try {
@@ -1431,7 +1450,10 @@ export function IntakeFlow(props: {
               <div className="grid gap-4 lg:grid-cols-2">
                 {isFieldAvailable('resume_source') ? (
                   <FieldShell label="Resume link or reference" fieldId="resume_source" voiceFilled={voiceFieldSet.has('resume_source')} ghostFocused={ghostFocusedFieldId === 'resume_source'}>
-                    <input value={readText('resume_source')} onChange={(e) => setText('resume_source', e.target.value)} placeholder="URL, file name, or notes" className={inputBaseClass} />
+                    <input value={readText('resume_source')} onChange={(e) => setText('resume_source', e.target.value)} placeholder="Resume URL, Drive link, or file reference" className={inputBaseClass} />
+                    <div className="font-intake-body text-[10px] leading-relaxed text-[var(--intake-muted)]">
+                      If you paste a real URL here, the suite now converts it into a resume asset for downstream review. Plain notes still stay as intake context only.
+                    </div>
                   </FieldShell>
                 ) : null}
 

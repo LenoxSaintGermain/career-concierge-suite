@@ -48,6 +48,44 @@ export const uploadResumeAsset = async (payload: {
   return body?.item as CjsAsset;
 };
 
+const looksLikeUrl = (value: string) => /^https?:\/\//i.test(value.trim());
+
+export const syncIntakeResumeReference = async (payload: {
+  resume_source: string;
+  target_role?: string;
+  notes?: string;
+}): Promise<CjsAsset | null> => {
+  const source = payload.resume_source.trim();
+  if (!source || !looksLikeUrl(source)) return null;
+
+  const normalizedUrl: string = (() => {
+    try {
+      return new URL(source).toString();
+    } catch {
+      return source;
+    }
+  })();
+
+  const inferredFilename = (() => {
+    try {
+      const pathname = new URL(normalizedUrl).pathname || '';
+      const tail = pathname.split('/').filter(Boolean).pop() || '';
+      return tail || 'resume-link';
+    } catch {
+      return 'resume-link';
+    }
+  })();
+
+  return uploadResumeAsset({
+    filename: inferredFilename,
+    mime_type: 'text/uri-list',
+    source_url: normalizedUrl,
+    label: 'Intake resume link',
+    target_role: payload.target_role,
+    notes: payload.notes || 'Captured from Smart Start intake.',
+  });
+};
+
 export const generateResumeReview = async (): Promise<{ review: ResumeReviewContent; interaction_id: string | null }> => {
   const origin = resolveApiOrigin();
   const resp = await fetch(`${origin}/v1/cjs/resume/review`, {

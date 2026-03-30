@@ -755,3 +755,11 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Cleaned the client intake rail after another browser pass: removed the visible Ghost tool-action debug overlay from both live lanes and throttled Gemini transcript extraction so `/v1/intake/extract` is no longer spammed while the user is still speaking.
 - Added a first-party post-intake Google Docs sync: after paid intake writes the core artifacts, the signed-in app now calls `/v1/gws/sync-docs`, so clearing a client Drive folder no longer requires a separate Ghost-secret sync step before docs reappear.
 - Hardened GWS sync again after live testing: Drive folder/doc creation no longer aborts when the saved client email cannot accept Google sharing, so operator/demo users with non-Google inboxes still get regenerated docs in Drive.
+- Planned the next voice/context pass: defined which modules should be voice-driven versus voice-assisted, proposed an internal Firestore-backed `agent_context` artifact for live-session preload, and documented the rule that Google Docs remain the client receipt layer rather than the assistant's system of record.
+
+### Delivery: Smart Start Resume Reference Hardening
+
+- Smart Start paid intake now converts a real `resume_source` URL into a CJS resume asset automatically instead of leaving it as intake-only text.
+- Those intake-created resume links are now stored as deduped `intake_reference` assets, so repeat intake runs with the same URL update the existing reference instead of spraying duplicate resume entries.
+- ConciergeJobSearch now prioritizes uploaded resume files over intake references when sorting resume assets and when selecting the primary resume for `resume_review`, which prevents a later intake rerun from silently outranking the real working resume file.
+- `resume_review` now explicitly tells the user when analysis is based only on an intake reference and calls out that line-level rewrite guidance still requires an uploaded file in CJS.

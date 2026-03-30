@@ -498,6 +498,7 @@ export interface CjsAsset {
   type: 'resume' | 'strategy' | 'cover_letter' | 'other';
   label: string;
   status: 'draft' | 'active' | 'archived';
+  asset_kind?: 'uploaded_file' | 'intake_reference';
   filename?: string;
   mime_type?: string;
   size_bytes?: number;
@@ -513,6 +514,9 @@ export interface CjsAsset {
 export interface ResumeReviewContent {
   summary: string;
   role_alignment_score: number;
+  analysis_scope?: 'resume_file' | 'intake_reference';
+  source_label?: string;
+  limitations?: string[];
   strengths: string[];
   gaps: string[];
   rewrite_focus: string[];
