@@ -22,12 +22,22 @@ const deriveNameFromEmail = (email) => {
 
 const looksLikeInternalId = (value) => /^[A-Za-z0-9_-]{20,}$/.test(nonEmpty(value));
 
+const isIgnorableShareError = (error) => {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    message.includes('already') ||
+    message.includes('do not have a google account') ||
+    message.includes('cannot share') ||
+    message.includes('invalid sharing request')
+  );
+};
+
 const safeShareWithUser = async (fileId, email) => {
   if (!email) return;
   try {
     await gws.shareWithUser(fileId, email, 'writer');
   } catch (error) {
-    if (String(error?.message || '').toLowerCase().includes('already')) return;
+    if (isIgnorableShareError(error)) return;
     throw error;
   }
 };

@@ -242,6 +242,7 @@ Ghost/GWS identity policy:
 - client folder names and Google Doc titles should use a human-readable name when available; raw UIDs are backend-only
 - if a legacy client document is sparse, the server now attempts to backfill `email` and `display_name` from Firebase Auth during Ghost briefing and Google Doc sync
 - Google Doc sync now reuses existing same-title docs when registry rows are missing, falls back to reuse-or-create when a registry row points at a deleted/inaccessible Google Doc, and archives same-title duplicates into `_Legacy duplicates` during sync
+- Google Drive share failures caused by non-Google-account client emails are now non-fatal during folder/doc sync; the doc still renders, but sharing may be skipped for that user
 - duplicate client folders are not merged automatically yet; exact-name folder reuse prevents new spray, but older duplicate folders still require manual cleanup or a dedicated migration pass
 
 Current Professional DNA behavior:

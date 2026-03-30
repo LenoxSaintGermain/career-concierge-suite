@@ -73,6 +73,16 @@ const isMissingDriveEntityError = (error) => {
   );
 };
 
+const isIgnorableShareError = (error) => {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    message.includes('already') ||
+    message.includes('do not have a google account') ||
+    message.includes('cannot share') ||
+    message.includes('invalid sharing request')
+  );
+};
+
 /**
  * Sync all artifacts for a client to Google Docs.
  * Non-blocking — errors are recorded in the registry, never thrown.
@@ -193,7 +203,7 @@ const syncSingleArtifact = async (db, uid, artifactType, artifact, clientMeta, f
       try {
         await gws.shareWithUser(documentId, clientMeta.email, 'writer');
       } catch (error) {
-        if (!String(error?.message || '').toLowerCase().includes('already')) {
+        if (!isIgnorableShareError(error)) {
           throw error;
         }
       }
