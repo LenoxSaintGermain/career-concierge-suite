@@ -763,3 +763,4 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - Those intake-created resume links are now stored as deduped `intake_reference` assets, so repeat intake runs with the same URL update the existing reference instead of spraying duplicate resume entries.
 - ConciergeJobSearch now prioritizes uploaded resume files over intake references when sorting resume assets and when selecting the primary resume for `resume_review`, which prevents a later intake rerun from silently outranking the real working resume file.
 - `resume_review` now explicitly tells the user when analysis is based only on an intake reference and calls out that line-level rewrite guidance still requires an uploaded file in CJS.
+- Smart Start now also supports direct PDF/DOCX resume upload in the evidence act, so a fresh user can complete intake with a real working resume without detouring into CJS first.

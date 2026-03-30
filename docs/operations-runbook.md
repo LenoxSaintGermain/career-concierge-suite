@@ -217,6 +217,7 @@ Current public-intake behavior:
 - Gemini Live Smart Start sessions now hit `POST /v1/intake/extract` after session close to map transcript signals into empty intake fields without overwriting user edits
 - paid Smart Start completion now also calls authenticated `POST /v1/gws/sync-docs`, so Drive docs are recreated immediately after artifact generation without requiring the Ghost-secret sync route
 - paid Smart Start completion also converts a real `resume_source` URL into a CJS resume asset, but that asset is now classified as an `intake_reference` rather than a full uploaded resume
+- Smart Start now also offers a direct resume file picker in the evidence act; if the user selects a PDF/DOCX there, the file is uploaded into CJS during paid intake processing
 - repeated intake runs with the same resume URL now update the existing `intake_reference` asset instead of creating duplicate resume entries
 - ConciergeJobSearch sorts uploaded resume files ahead of intake references and `resume_review` follows that same priority order, so file uploads remain the canonical working version for line-level review
 - ElevenLabs Ghost Smart Start sessions can now:

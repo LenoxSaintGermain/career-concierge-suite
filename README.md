@@ -104,6 +104,7 @@ Current pass shipped these backlog-critical features:
 - CJS execution rail API + UI
   - resume upload
   - Smart Start resume-link bridge into CJS assets
+  - direct Smart Start resume file upload into CJS assets
   - deduped intake resume references with uploaded-file priority
   - resume review generation
   - search strategy generation

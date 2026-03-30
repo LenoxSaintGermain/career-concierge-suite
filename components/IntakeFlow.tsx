@@ -31,7 +31,7 @@ import {
 } from '../services/stubGenerator';
 import { generateSuiteArtifacts } from '../services/suiteApi';
 import { extractIntakeFromTranscript, syncClientGoogleDocs } from '../services/voiceApi';
-import { syncIntakeResumeReference } from '../services/cjsApi';
+import { fileToBase64, syncIntakeResumeReference, uploadResumeAsset } from '../services/cjsApi';
 import { ElevenLabsConvaiPanel } from './ElevenLabsConvaiPanel';
 import { GeminiLivePanel } from './GeminiLivePanel';
 
@@ -329,6 +329,7 @@ export function IntakeFlow(props: {
   const [activeSectionId, setActiveSectionId] = useState<IntakeSectionId>('positioning');
   const [driveSyncState, setDriveSyncState] = useState<DriveSyncState>('idle');
   const [driveSyncMessage, setDriveSyncMessage] = useState<string | null>(null);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [pendingCompletion, setPendingCompletion] = useState<{
     nextModuleId: SuiteModuleId;
     payload: { intent: ClientIntent; preferences: ClientPreferences; answers: IntakeAnswers };
@@ -923,6 +924,8 @@ export function IntakeFlow(props: {
 
       let brief: any, plan: any, profile: any, aiProfile: any, gaps: any;
       const resumeSource = typeof nextAnswers.resume_source === 'string' ? nextAnswers.resume_source.trim() : '';
+      const selectedResumeFile = resumeFile;
+      const postArtifactNotes: string[] = [];
       try {
         const artifacts = await generateSuiteArtifacts({
           intent: nextIntent,
@@ -965,37 +968,71 @@ export function IntakeFlow(props: {
                   : '',
             notes: nextAnswers.bio_alignment_requested ? 'Bio alignment requested during intake.' : '',
           });
+          postArtifactNotes.push('Resume link captured as a CJS reference.');
         } catch (resumeSyncError) {
           console.warn('post_intake_resume_reference_sync_failed', resumeSyncError);
+          postArtifactNotes.push('Resume link could not be converted into an asset automatically.');
+        }
+      }
+
+      if (selectedResumeFile) {
+        try {
+          const contentBase64 = await fileToBase64(selectedResumeFile);
+          await uploadResumeAsset({
+            filename: selectedResumeFile.name,
+            mime_type: selectedResumeFile.type || 'application/octet-stream',
+            content_base64: contentBase64,
+            label: selectedResumeFile.name,
+            target_role:
+              typeof nextAnswers.current_or_target_job_title === 'string'
+                ? nextAnswers.current_or_target_job_title
+                : typeof nextAnswers.target === 'string'
+                  ? nextAnswers.target
+                  : '',
+            notes: 'Captured during Smart Start intake.',
+          });
+          postArtifactNotes.push(`Resume file uploaded: ${selectedResumeFile.name}`);
+          setResumeFile(null);
+        } catch (resumeUploadError) {
+          console.warn('post_intake_resume_file_upload_failed', resumeUploadError);
+          postArtifactNotes.push('Resume file upload did not complete; upload it later in ConciergeJobSearch.');
         }
       }
 
       const nextModuleId: SuiteModuleId = nextIntent === 'not_sure' ? 'my_concierge' : 'brief';
       try {
         setDriveSyncState('syncing');
-        setDriveSyncMessage('Publishing Google Docs to the client folder…');
+        setDriveSyncMessage(
+          postArtifactNotes.length > 0
+            ? `${postArtifactNotes.join(' ')} Publishing Google Docs to the client folder…`
+            : 'Publishing Google Docs to the client folder…'
+        );
         const syncResult = await syncClientGoogleDocs();
         const resultStatus = String(syncResult?.status || '').toLowerCase();
         const syncedCount = Number(syncResult?.synced || 0);
         const errorCount = Number(syncResult?.errors || 0);
         if (resultStatus === 'disabled') {
           setDriveSyncState('disabled');
-          setDriveSyncMessage('Suite artifacts are ready. Google Docs sync is disabled for this environment.');
+          setDriveSyncMessage(
+            `${postArtifactNotes.join(' ')}${postArtifactNotes.length > 0 ? ' ' : ''}Suite artifacts are ready. Google Docs sync is disabled for this environment.`
+          );
         } else if (errorCount > 0 && syncedCount === 0) {
           throw new Error('Google Docs sync did not publish any documents.');
         } else {
           setDriveSyncState('synced');
           setDriveSyncMessage(
-            syncedCount > 0
-              ? `${syncedCount} Google Docs published to the client folder.`
-              : 'Google Docs sync completed.'
+            `${postArtifactNotes.join(' ')}${postArtifactNotes.length > 0 ? ' ' : ''}${
+              syncedCount > 0
+                ? `${syncedCount} Google Docs published to the client folder.`
+                : 'Google Docs sync completed.'
+            }`
           );
         }
       } catch (syncError) {
         const message = syncError instanceof Error ? syncError.message : 'Google Docs sync failed after artifact generation.';
         console.warn('post_intake_gws_sync_failed', syncError);
         setDriveSyncState('failed');
-        setDriveSyncMessage(message);
+        setDriveSyncMessage(`${postArtifactNotes.join(' ')}${postArtifactNotes.length > 0 ? ' ' : ''}${message}`);
         setStep('done');
         setPendingCompletion({ nextModuleId, payload: intakePayload });
         return;
@@ -1453,6 +1490,20 @@ export function IntakeFlow(props: {
                     <input value={readText('resume_source')} onChange={(e) => setText('resume_source', e.target.value)} placeholder="Resume URL, Drive link, or file reference" className={inputBaseClass} />
                     <div className="font-intake-body text-[10px] leading-relaxed text-[var(--intake-muted)]">
                       If you paste a real URL here, the suite now converts it into a resume asset for downstream review. Plain notes still stay as intake context only.
+                    </div>
+                  </FieldShell>
+                ) : null}
+
+                {isFieldAvailable('resume_source') ? (
+                  <FieldShell label="Resume file (recommended)" fieldId="resume_source" ghostFocused={ghostFocusedFieldId === 'resume_source'}>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+                      className={`${inputBaseClass} cursor-pointer file:mr-3 file:border-0 file:bg-[var(--intake-teal-bg)] file:px-3 file:py-2 file:font-intake-mono file:text-[10px] file:uppercase file:tracking-[0.12em] file:text-[var(--intake-teal-dim)]`}
+                    />
+                    <div className="font-intake-body text-[10px] leading-relaxed text-[var(--intake-muted)]">
+                      Uploading the actual file here gives ConciergeJobSearch a real working resume for later review. {resumeFile ? `Selected: ${resumeFile.name}` : 'No file selected yet.'}
                     </div>
                   </FieldShell>
                 ) : null}

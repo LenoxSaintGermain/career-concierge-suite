@@ -48,6 +48,19 @@ export const uploadResumeAsset = async (payload: {
   return body?.item as CjsAsset;
 };
 
+export const fileToBase64 = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const match = result.match(/^data:.*;base64,(.+)$/);
+      if (!match) return reject(new Error('Unable to encode file.'));
+      resolve(match[1]);
+    };
+    reader.onerror = () => reject(new Error('Unable to read file.'));
+    reader.readAsDataURL(file);
+  });
+
 const looksLikeUrl = (value: string) => /^https?:\/\//i.test(value.trim());
 
 export const syncIntakeResumeReference = async (payload: {

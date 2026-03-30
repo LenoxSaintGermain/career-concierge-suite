@@ -275,6 +275,7 @@ The Express API under `api/` handles:
 - post-intake Professional DNA dossier enrichment with a dedicated `dna_research_analyst` role
 - CJS execution rail endpoints (resume upload/review/strategy)
   - Smart Start can now convert a real `resume_source` URL into a CJS resume asset automatically after paid intake completion
+  - Smart Start also accepts a direct resume file upload in the evidence act and pushes that file into CJS during paid intake processing
   - intake-created resume links are stored as `intake_reference` assets, deduped by URL, and intentionally treated as lighter evidence than a true uploaded file
   - ConciergeJobSearch now prioritizes uploaded resume files over intake references when listing assets or generating `resume_review`, so repeat intake runs do not silently displace the real working resume
 - interaction ledger + approval endpoints
