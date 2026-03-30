@@ -13,7 +13,7 @@ export function GhostActionFeed({ actions }: { actions: GhostAction[] }) {
 
   return (
     <div className="fixed bottom-4 left-4 z-50 max-w-sm pointer-events-none">
-      <div className="space-y-0.5">
+      <div className="space-y-1 border border-white/10 bg-[#081418]/92 px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-sm">
         {actions.slice(0, 6).map((a, i) => (
           <div
             key={a.id}

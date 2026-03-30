@@ -477,6 +477,13 @@ export function GeminiLivePanel(props: {
 
       sessionRef.current = session;
       setState('connected');
+      if (compactLayout) {
+        try {
+          await startMic();
+        } catch {
+          // Mic start is best-effort in compact intake mode; keep the session alive if permissions are delayed.
+        }
+      }
     } catch (e: any) {
       setState('error');
       setError(e?.message ?? 'Unable to start the live voice session.');
@@ -736,7 +743,7 @@ export function GeminiLivePanel(props: {
               disabled={state !== 'connected' || props.interactionLocked}
               className="px-4 py-2 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.22em] text-[#d0ddde] transition-colors disabled:opacity-45 hover:border-brand-teal"
             >
-              {micEnabled ? 'Pause Mic' : 'Enable Mic'}
+              {micEnabled ? 'Pause Mic' : 'Reconnect Mic'}
             </button>
           </div>
 
@@ -786,15 +793,6 @@ export function GeminiLivePanel(props: {
                   >
                     {sending ? 'Sending…' : 'Send Guided Turn'}
                   </button>
-                </div>
-              ) : null}
-
-              {(error || latencyMs || tokenInfo?.model) ? (
-                <div className="border border-[#274148] bg-[#0d2025] p-4 text-xs leading-relaxed text-[#c8d7d9]">
-                  <div>Model: {tokenInfo?.model ?? 'not connected'}</div>
-                  <div>Voice: {tokenInfo?.voice_name ?? 'n/a'}</div>
-                  <div>Latency: {latencyMs ? `${latencyMs} ms` : 'n/a'}</div>
-                  {error ? <div className="mt-2 text-red-300">{error}</div> : null}
                 </div>
               ) : null}
             </div>

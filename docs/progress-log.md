@@ -20,6 +20,9 @@ Update both files in each delivery pass so roadmap visuals and implementation st
   - duplicate same-title docs are now archived into `_Legacy duplicates` during sync
   - folder/doc naming now refuses UUID-like auth display names during backfill
   - sync now reuses existing matching docs when registry rows are missing instead of creating fresh duplicates
+- Tightened the live-voice rails for demo use:
+  - compact Gemini now opens hot and immediately starts the mic in Smart Start
+  - ElevenLabs transcript/action text now renders on explicit dark cards so the first live turn stays readable
 
 ### Delivery: Voice Lane Admin Sync Hardening
 

@@ -122,8 +122,10 @@ curl -s -X POST "$SIGNAL_ATLAS_URL/v1/ghost/sync-docs" \
 - [ ] Smart Start no longer shows a client-visible lane chooser
 - [ ] Smart Start header remains compact enough that the form starts above the fold on laptop
 - [ ] Gemini compact mode stays embedded in the left rail rather than opening the older cinematic full-panel surface
+- [ ] Gemini compact mode starts microphone capture without a second manual enable step
 - [ ] Gemini transcript autofill writes into empty intake fields while the session is active
 - [ ] Gemini 3.1 lane does not error when the saved config still contains proactive-audio or affective-dialog toggles
+- [ ] ElevenLabs transcript/action text remains readable against the intake canvas during the first live turn
 - [ ] `fetch_artifact` responses cite the live artifact content
 - [ ] `fetch_drive_documents` responses cite the live Drive docs
 - [ ] the guided section nav makes it obvious where the live lane is currently working

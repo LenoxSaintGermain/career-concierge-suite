@@ -191,14 +191,18 @@ function GhostSdkSurface({
 
       {/* Transcript — only when connected and has messages */}
       {status === 'connected' && messages.length > 0 ? (
-        <div className="mt-2 flex flex-col gap-1 max-h-[120px] overflow-y-auto">
+        <div className="mt-3 max-h-[144px] overflow-y-auto border border-white/10 bg-[#0b171a]/90 p-2 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+          <div className="mb-2 font-intake-mono text-[8px] uppercase tracking-[0.14em] text-white/38">
+            Live transcript
+          </div>
+          <div className="flex flex-col gap-1">
           {messages.slice(0, 4).map((entry) => (
             <div
               key={entry.id}
               className={`px-2 py-1 text-xs leading-snug ${
                 entry.role === 'agent'
-                  ? 'bg-white/5 text-white/70'
-                  : 'bg-[var(--intake-teal)]/8 text-[var(--intake-teal-light)]/80'
+                  ? 'bg-white/8 text-white/82'
+                  : 'bg-[var(--intake-teal)]/12 text-[#d8f0eb]'
               }`}
             >
               <span className="font-intake-mono text-[7px] uppercase tracking-[0.12em] text-white/30 mr-1.5">
@@ -207,6 +211,7 @@ function GhostSdkSurface({
               {entry.message}
             </div>
           ))}
+          </div>
         </div>
       ) : null}
 

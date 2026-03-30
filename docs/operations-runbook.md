@@ -202,6 +202,8 @@ Current public-intake behavior:
   - section-aware field highlighting
   - a locked processing state that ends live voice before artifact generation
   - a compact intake header so module shell chrome no longer competes with the live form
+  - compact Gemini mode auto-starts microphone capture once the live session connects, so operators do not have to perform a second mic enable step during demos
+  - ElevenLabs transcript/action text now sits on dedicated dark surfaces instead of floating directly on the page background
 - Smart Start Intake now also reads public-facing Professional DNA config for:
   - optional hero video / fallback image rendering
   - optional journey-guide video provider / ID / URL / title values for the signed-in home briefing overlay

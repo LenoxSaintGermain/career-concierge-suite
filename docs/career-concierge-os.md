@@ -82,7 +82,9 @@ Modules should feel like guided surfaces inside one OS, not isolated product pag
 - the voice rail now sits beside the intake form and follows the single admin-selected public lane instead of exposing a client-side lane switcher
 - the form is organized into explicit sections and now shows one act at a time so the active voice lane can keep the user oriented
 - Gemini Live sessions can extract structured intake signals back into empty form fields, with visible `from voice session` provenance tags
+- the compact Gemini intake rail now auto-starts the microphone when the live session opens so the client is not asked to connect twice
 - the ElevenLabs Ghost lane now uses the React SDK plus a signed-session API route, contextual updates, and intake-safe client tools so Donna can move screens, focus fields, write answers, and summarize the intake state live
+- the live transcript surfaces in both Gemini and ElevenLabs now render inside explicit dark cards so in-session text stays readable against the editorial intake canvas
 - the processing state now explicitly steps the active voice guide out before artifacts are available so the client is not left speaking into a dead transition
 - the intake shell now uses a reduced Smart Start header so the form and live lane stay primary instead of losing height to module chrome
 - the signed-in landing experience now pairs that intake with a lighter editorial `Your Journey Guide` surface that:
