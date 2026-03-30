@@ -37,6 +37,7 @@ import { GeminiLivePanel } from './GeminiLivePanel';
 type Step = 'active' | 'plating' | 'done';
 type VoiceSessionState = 'idle' | 'connecting' | 'connected' | 'completed' | 'error';
 type IntakeSectionId = 'positioning' | 'context' | 'evidence' | 'calibration';
+type DriveSyncState = 'idle' | 'syncing' | 'synced' | 'disabled' | 'failed';
 
 const SUITE_FEEL_OPTIONS = ['STRATEGIC', 'GROUNDED', 'STORY', 'JOB-SEARCH', 'SKILLS', 'LEADERSHIP'];
 const BENEFITS_OPTIONS = [
@@ -325,6 +326,12 @@ export function IntakeFlow(props: {
   const [voiceAutofillBusy, setVoiceAutofillBusy] = useState(false);
   const [ghostFocusedFieldId, setGhostFocusedFieldId] = useState<string | null>(null);
   const [activeSectionId, setActiveSectionId] = useState<IntakeSectionId>('positioning');
+  const [driveSyncState, setDriveSyncState] = useState<DriveSyncState>('idle');
+  const [driveSyncMessage, setDriveSyncMessage] = useState<string | null>(null);
+  const [pendingCompletion, setPendingCompletion] = useState<{
+    nextModuleId: SuiteModuleId;
+    payload: { intent: ClientIntent; preferences: ClientPreferences; answers: IntakeAnswers };
+  } | null>(null);
   const geminiAutofillTimerRef = useRef<number | null>(null);
   const latestGeminiTranscriptRef = useRef('');
   const lastGeminiProcessedTranscriptRef = useRef('');
@@ -885,6 +892,9 @@ export function IntakeFlow(props: {
   ) => {
     setBusy(true);
     setError(null);
+    setDriveSyncState('idle');
+    setDriveSyncMessage(null);
+    setPendingCompletion(null);
     try {
       const nextAnswers = normalizeAnswersForSubmission(nextIntent, rawAnswers);
       const intakePayload = { intent: nextIntent, preferences: nextPreferences, answers: nextAnswers };
@@ -941,14 +951,38 @@ export function IntakeFlow(props: {
         upsertArtifact(props.uid, 'cjs_execution', 'ConciergeJobSearch Execution', generateCjsExecutionDoc(nextAnswers, nextIntent)),
       ]);
 
+      const nextModuleId: SuiteModuleId = nextIntent === 'not_sure' ? 'my_concierge' : 'brief';
       try {
-        await syncClientGoogleDocs();
+        setDriveSyncState('syncing');
+        setDriveSyncMessage('Publishing Google Docs to the client folder…');
+        const syncResult = await syncClientGoogleDocs();
+        const resultStatus = String(syncResult?.status || '').toLowerCase();
+        const syncedCount = Number(syncResult?.synced || 0);
+        const errorCount = Number(syncResult?.errors || 0);
+        if (resultStatus === 'disabled') {
+          setDriveSyncState('disabled');
+          setDriveSyncMessage('Suite artifacts are ready. Google Docs sync is disabled for this environment.');
+        } else if (errorCount > 0 && syncedCount === 0) {
+          throw new Error('Google Docs sync did not publish any documents.');
+        } else {
+          setDriveSyncState('synced');
+          setDriveSyncMessage(
+            syncedCount > 0
+              ? `${syncedCount} Google Docs published to the client folder.`
+              : 'Google Docs sync completed.'
+          );
+        }
       } catch (syncError) {
+        const message = syncError instanceof Error ? syncError.message : 'Google Docs sync failed after artifact generation.';
         console.warn('post_intake_gws_sync_failed', syncError);
+        setDriveSyncState('failed');
+        setDriveSyncMessage(message);
+        setStep('done');
+        setPendingCompletion({ nextModuleId, payload: intakePayload });
+        return;
       }
 
       setStep('done');
-      const nextModuleId: SuiteModuleId = nextIntent === 'not_sure' ? 'my_concierge' : 'brief';
       props.onComplete(nextModuleId, intakePayload);
     } catch (submitError: any) {
       setError(submitError?.message ?? 'Unable to complete intake.');
@@ -959,6 +993,44 @@ export function IntakeFlow(props: {
   };
 
   const submit = async () => submitWithPayload(intent, prefs, answers);
+
+  const retryDriveSync = async () => {
+    if (!pendingCompletion || busy) return;
+    setBusy(true);
+    setDriveSyncState('syncing');
+    setDriveSyncMessage('Retrying Google Docs sync…');
+    try {
+      const syncResult = await syncClientGoogleDocs();
+      const resultStatus = String(syncResult?.status || '').toLowerCase();
+      const syncedCount = Number(syncResult?.synced || 0);
+      if (resultStatus === 'disabled') {
+        setDriveSyncState('disabled');
+        setDriveSyncMessage('Google Docs sync is disabled for this environment.');
+      } else {
+        setDriveSyncState('synced');
+        setDriveSyncMessage(
+          syncedCount > 0 ? `${syncedCount} Google Docs published to the client folder.` : 'Google Docs sync completed.'
+        );
+      }
+      const next = pendingCompletion;
+      setPendingCompletion(null);
+      props.onComplete(next.nextModuleId, next.payload);
+    } catch (syncError) {
+      const message = syncError instanceof Error ? syncError.message : 'Unable to publish Google Docs right now.';
+      console.warn('post_intake_gws_sync_retry_failed', syncError);
+      setDriveSyncState('failed');
+      setDriveSyncMessage(message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const continueWithoutDriveSync = () => {
+    if (!pendingCompletion) return;
+    const next = pendingCompletion;
+    setPendingCompletion(null);
+    props.onComplete(next.nextModuleId, next.payload);
+  };
   const renderVoiceLane = () => {
     if (step !== 'active') {
       return (
@@ -1478,7 +1550,11 @@ export function IntakeFlow(props: {
               Stay here while the Brief, Profile, Plan, and readiness artifacts are assembled. Jumping ahead before this finishes will leave you in an incomplete state.
             </p>
             <div className="mt-6 flex justify-center gap-2">
-              {['INTAKE SIGNALS', 'MARKET DATA', 'RESEARCH PASS'].map((label) => (
+              {[
+                'INTAKE SIGNALS',
+                'MARKET DATA',
+                driveSyncState === 'syncing' ? 'DRIVE DOCS' : 'RESEARCH PASS',
+              ].map((label) => (
                 <div
                   key={label}
                   className="border border-[var(--intake-border)] bg-[var(--intake-cream)] px-3 py-2 font-intake-mono text-[8px] uppercase tracking-[0.14em] text-[var(--intake-muted)] animate-pulse"
@@ -1486,6 +1562,40 @@ export function IntakeFlow(props: {
                   {label}
                 </div>
               ))}
+            </div>
+            {driveSyncMessage ? (
+              <div className="mt-4 border border-[var(--intake-border)] bg-[var(--intake-cream)] px-4 py-3 text-left font-intake-body text-xs leading-relaxed text-[var(--intake-muted)]">
+                {driveSyncMessage}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {step === 'done' && pendingCompletion ? (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[var(--intake-bg)]/95 backdrop-blur-sm">
+          <div className="max-w-lg border border-[var(--intake-border)] bg-[var(--intake-cream)] p-6 text-center shadow-[0_12px_36px_rgba(30,28,24,0.12)]">
+            <div className="font-intake-mono text-[9px] uppercase tracking-[0.18em] text-[var(--intake-amber)]">
+              Suite ready, Drive sync needs attention
+            </div>
+            <div className="mt-3 font-intake-body text-2xl font-medium leading-snug text-[#1B1E1C]">
+              Your suite artifacts are ready in-app.
+            </div>
+            <p className="mt-3 font-intake-body text-sm leading-relaxed text-[var(--intake-muted)]">
+              Google Docs did not publish cleanly on the first pass. You can retry the Drive sync now or continue into the suite and return to Drive later.
+            </p>
+            {driveSyncMessage ? (
+              <div className="mt-4 border border-[#C9853A] bg-[#F4E8DA] px-4 py-3 text-left font-intake-body text-xs leading-relaxed text-[#6E4318]">
+                {driveSyncMessage}
+              </div>
+            ) : null}
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <button type="button" onClick={retryDriveSync} disabled={busy} className={primaryButtonClass}>
+                {busy ? 'Retrying sync…' : 'Retry Drive sync'}
+              </button>
+              <button type="button" onClick={continueWithoutDriveSync} disabled={busy} className={secondaryButtonClass}>
+                Continue anyway
+              </button>
             </div>
           </div>
         </div>

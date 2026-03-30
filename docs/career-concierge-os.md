@@ -91,6 +91,7 @@ Modules should feel like guided surfaces inside one OS, not isolated product pag
 - the processing state now explicitly steps the active voice guide out before artifacts are available so the client is not left speaking into a dead transition
 - after paid intake completes and core artifacts are written, the signed-in app now triggers a first-party Google Docs sync so the client Drive folder is repopulated without relying on the Ghost-secret-only sync endpoint
 - Google Drive folder/doc creation no longer fails when the client email cannot accept Google sharing; those share errors are now treated as non-fatal so docs still render for operator/demo users with non-Google inboxes
+- if post-intake Drive sync still fails, Smart Start now surfaces an explicit recovery state with `Retry Drive sync` and `Continue anyway` instead of silently handing off as if Drive publication succeeded
 - the intake shell now uses a reduced Smart Start header so the form and live lane stay primary instead of losing height to module chrome
 - the signed-in landing experience now pairs that intake with a lighter editorial `Your Journey Guide` surface that:
   - opens as an opt-in four-act concierge briefing instead of a tutorial modal
