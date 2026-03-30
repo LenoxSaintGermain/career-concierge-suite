@@ -171,6 +171,8 @@ export function GeminiLivePanel(props: {
   const transcriptDeliveredRef = useRef(false);
   const actionCounterRef = useRef(0);
   const sessionContextRef = useRef('');
+  const suppressMicInputRef = useRef(false);
+  const suppressMicReleaseTimerRef = useRef<number | null>(null);
   const cameraReady = state === 'connected' && cameraEnabled;
   const micReady = state === 'connected' && micEnabled;
   const engagementReady = state === 'connected' && (micEnabled || prompt.trim().length > 0);
@@ -332,6 +334,28 @@ export function GeminiLivePanel(props: {
     }
   };
 
+  const clearMicSuppressionTimer = () => {
+    if (suppressMicReleaseTimerRef.current) {
+      window.clearTimeout(suppressMicReleaseTimerRef.current);
+      suppressMicReleaseTimerRef.current = null;
+    }
+  };
+
+  const setMicSuppressed = (suppressed: boolean, releaseDelayMs = 0) => {
+    clearMicSuppressionTimer();
+    if (!suppressed) {
+      suppressMicInputRef.current = false;
+      return;
+    }
+    suppressMicInputRef.current = true;
+    if (releaseDelayMs > 0) {
+      suppressMicReleaseTimerRef.current = window.setTimeout(() => {
+        suppressMicInputRef.current = false;
+        suppressMicReleaseTimerRef.current = null;
+      }, releaseDelayMs);
+    }
+  };
+
   const stopCamera = () => {
     clearCameraLoop();
     if (cameraStreamRef.current) {
@@ -387,6 +411,7 @@ export function GeminiLivePanel(props: {
 
   const closeSession = () => {
     notifyTranscriptReady(true);
+    setMicSuppressed(false);
     try {
       sessionRef.current?.close?.();
     } catch {
@@ -472,6 +497,7 @@ export function GeminiLivePanel(props: {
     const mime = audioMimeRef.current.toLowerCase();
 
     try {
+      setMicSuppressed(true);
       if (mime.startsWith('audio/pcm')) {
         const wavBlob = pcmToWavBlob(merged, parsePcmRate(audioMimeRef.current));
         audioUrl = URL.createObjectURL(wavBlob);
@@ -489,9 +515,11 @@ export function GeminiLivePanel(props: {
       activeAudioRef.current = audio;
       await audio.play();
       audio.onended = () => {
+        setMicSuppressed(false);
         if (audioUrl) URL.revokeObjectURL(audioUrl);
       };
     } catch (e: any) {
+      setMicSuppressed(false);
       setError(e?.message ?? 'Unable to play Live audio.');
       if (audioUrl) URL.revokeObjectURL(audioUrl);
     }
@@ -502,6 +530,7 @@ export function GeminiLivePanel(props: {
     setState('connecting');
     setTranscript('');
     setActionLog([]);
+    setMicSuppressed(false);
     setLatencyMs(null);
     transcriptDeliveredRef.current = false;
     audioChunksRef.current = [];
@@ -563,6 +592,7 @@ export function GeminiLivePanel(props: {
             if (outputTranscript) appendTranscriptLine(`Concierge · ${outputTranscript}`);
             for (const part of parts) {
               if (part?.inlineData?.data) {
+                setMicSuppressed(true);
                 const mimeType = String(part?.inlineData?.mimeType || audioMimeRef.current || 'audio/pcm;rate=24000');
                 audioMimeRef.current = mimeType;
                 if (!firstByteAtRef.current && promptSentAtRef.current) {
@@ -586,6 +616,11 @@ export function GeminiLivePanel(props: {
               } else {
                 flushPendingPcm(true);
                 audioChunksRef.current = [];
+                const playbackContext = playbackContextRef.current;
+                const remainingMs = playbackContext
+                  ? Math.max(220, Math.round((playbackCursorRef.current - playbackContext.currentTime) * 1000) + 140)
+                  : 280;
+                setMicSuppressed(true, remainingMs);
               }
             }
           },
@@ -695,7 +730,7 @@ export function GeminiLivePanel(props: {
     gain.gain.value = 0;
 
     processor.onaudioprocess = (event: AudioProcessingEvent) => {
-      if (!sessionRef.current) return;
+      if (!sessionRef.current || suppressMicInputRef.current) return;
       const channel = event.inputBuffer.getChannelData(0);
       if (!channel?.length) return;
       const pcmBytes = float32ToPcm16(channel);
@@ -732,7 +767,7 @@ export function GeminiLivePanel(props: {
     const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     mediaRecorderRef.current = recorder;
     recorder.ondataavailable = (event) => {
-      if (!event.data || event.data.size === 0 || !sessionRef.current) return;
+      if (!event.data || event.data.size === 0 || !sessionRef.current || suppressMicInputRef.current) return;
       void (async () => {
         try {
           const audioMime = event.data.type || recorder.mimeType || mimeType || 'audio/webm';
@@ -828,6 +863,7 @@ export function GeminiLivePanel(props: {
 
   useEffect(() => {
     return () => {
+      clearMicSuppressionTimer();
       closeSession();
       if (activeAudioRef.current) {
         activeAudioRef.current.pause();

@@ -677,6 +677,11 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - The intake concierge step also exposes a live lane switcher so the team can toggle between Gemini and ElevenLabs Ghost without leaving the flow.
 - This makes the public voice entry usable end to end without changing the internal Gemini Live token/session flow.
 
+### Delivery: Gemini Live Turn-Stability Hardening
+
+- Gemini compact Smart Start mode now suppresses live mic relay while Gemini is actively speaking, which prevents the lane from hearing its own output and cutting a response off mid-turn.
+- This hardening stays local to the intake rail and does not change the saved model, voice, or shared intake tool contract.
+
 ### Delivery: Gemini Live Smart Start Tool Parity
 
 - Added a shared Smart Start intake tool contract for Gemini Live so the Google lane now has the same deterministic section-jump, field-focus, value-write, clear, route/preference, and summary actions that ElevenLabs Ghost already had.
