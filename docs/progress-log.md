@@ -6,6 +6,21 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 
 ## 2026-03-29
 
+### Delivery: Smart Start Voice Lane Cleanup + Gemini Live Alignment
+
+- Reduced the Smart Start shell chrome so Intake keeps the form and live lane primary instead of burning vertical space on the module header.
+- Removed remaining client-facing provider/test language from the Smart Start flow:
+  - the intake surface now refers to a neutral live guide instead of exposing Gemini/ElevenLabs jargon in the client copy
+  - processing copy now consistently steps the active voice guide out before artifact generation
+- Aligned Gemini to Google’s current official Live API model:
+  - default model moved from `gemini-2.5-flash-native-audio-preview-12-2025` to `gemini-3.1-flash-live-preview`
+  - token/session config now omits 2.5-only features like proactive audio and affective dialog when the 3.1 model is selected
+  - admin now labels the lane as `Gemini 3.1 Flash Live` and makes the unsupported 3.1 toggles visibly unavailable
+- Hardened Google Workspace document sync further:
+  - duplicate same-title docs are now archived into `_Legacy duplicates` during sync
+  - folder/doc naming now refuses UUID-like auth display names during backfill
+  - sync now reuses existing matching docs when registry rows are missing instead of creating fresh duplicates
+
 ### Delivery: Voice Lane Admin Sync Hardening
 
 - Tightened the admin save path so the Smart Start `Voice model` selector and the `Public intake lane` selector no longer drift apart.

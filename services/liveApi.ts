@@ -2,7 +2,7 @@ import { auth } from './firebase';
 import { GeminiLiveTokenResponse } from '../types';
 import { resolveApiOrigin } from './apiOrigin';
 
-export const createGeminiLiveToken = async (): Promise<GeminiLiveTokenResponse> => {
+export const createGeminiLiveToken = async (context?: string): Promise<GeminiLiveTokenResponse> => {
   const origin = resolveApiOrigin();
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
@@ -16,7 +16,7 @@ export const createGeminiLiveToken = async (): Promise<GeminiLiveTokenResponse> 
         'content-type': 'application/json',
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ context }),
     });
   } catch {
     throw new Error(

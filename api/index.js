@@ -93,6 +93,7 @@ app.get('/v1/public/config', async (_req, res) => {
   const config = await loadAppConfig();
   const activePublicPanel =
     config.voice?.public_panel_provider === 'elevenlabs' && elevenlabsAgentId ? 'elevenlabs' : 'gemini_live';
+  res.set('Cache-Control', 'no-store');
   return res.json({
     config: {
       ui: config.ui,
@@ -135,6 +136,7 @@ app.get('/v1/public/config', async (_req, res) => {
         elevenlabs_enabled: Boolean(elevenlabsAgentId),
         elevenlabs_agent_id: elevenlabsAgentId || '',
         active_panel: activePublicPanel,
+        gemini_live_model: nonEmpty(config.voice?.gemini_live_model) || geminiLiveModelDefault,
       },
     },
   });
@@ -857,7 +859,7 @@ const videoModelDefault = process.env.GEMINI_MODEL_VIDEO || DEFAULT_GEMINI_VIDEO
 const geminiLiveModelDefault =
   process.env.GEMINI_MODEL_LIVE_VOICE ||
   GEMINI_LIVE_MODEL_OPTIONS[0]?.id ||
-  'gemini-2.5-flash-native-audio-preview-12-2025';
+  'gemini-3.1-flash-live-preview';
 const geminiLiveVoiceDefault = process.env.GEMINI_VOICE_NAME || GEMINI_LIVE_VOICE_OPTIONS[7]?.name || 'Aoede';
 const geminiLiveVadSilenceMsDefault = Number(process.env.GEMINI_LIVE_VAD_SILENCE_MS || 380);
 const geminiLiveVadPrefixMsDefault = Number(process.env.GEMINI_LIVE_VAD_PREFIX_MS || 120);
@@ -867,6 +869,60 @@ const ai = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 const liveAi = geminiApiKey
   ? new GoogleGenAI({ apiKey: geminiApiKey, httpOptions: { apiVersion: 'v1alpha' } })
   : null;
+const isGemini31FlashLiveModel = (model) => String(model || '').startsWith('gemini-3.1-flash-live-preview');
+const resolveGeminiThinkingConfig = (runtimeConfig, model) => {
+  if (!runtimeConfig.voice.gemini_thinking_enabled) return undefined;
+  if (!isGemini31FlashLiveModel(model)) {
+    return { thinkingBudget: runtimeConfig.voice.gemini_thinking_budget };
+  }
+  if (runtimeConfig.voice.gemini_thinking_budget >= 768) return { thinkingLevel: 'high' };
+  if (runtimeConfig.voice.gemini_thinking_budget >= 512) return { thinkingLevel: 'medium' };
+  if (runtimeConfig.voice.gemini_thinking_budget >= 192) return { thinkingLevel: 'low' };
+  return { thinkingLevel: 'minimal' };
+};
+const buildGeminiLiveConnectConfig = ({
+  runtimeConfig,
+  model,
+  voiceName,
+  systemInstruction,
+  activityHandling,
+  startSensitivity,
+  endSensitivity,
+}) => {
+  const config = {
+    responseModalities: [Modality.AUDIO],
+    systemInstruction,
+    temperature: runtimeConfig.voice.temperature,
+    inputAudioTranscription: runtimeConfig.voice.gemini_input_audio_transcription_enabled ? {} : undefined,
+    outputAudioTranscription: runtimeConfig.voice.gemini_output_audio_transcription_enabled ? {} : undefined,
+    thinkingConfig: resolveGeminiThinkingConfig(runtimeConfig, model),
+    realtimeInputConfig: {
+      activityHandling,
+      ...(typeof startSensitivity !== 'undefined' && typeof endSensitivity !== 'undefined'
+        ? {
+            automaticActivityDetection: {
+              startOfSpeechSensitivity: startSensitivity,
+              endOfSpeechSensitivity: endSensitivity,
+              prefixPaddingMs: runtimeConfig.voice.live_vad_prefix_padding_ms,
+              silenceDurationMs: runtimeConfig.voice.live_vad_silence_ms,
+            },
+          }
+        : {}),
+    },
+    speechConfig: {
+      voiceConfig: {
+        prebuiltVoiceConfig: {
+          voiceName,
+        },
+      },
+    },
+  };
+  if (!isGemini31FlashLiveModel(model)) {
+    config.enableAffectiveDialog = runtimeConfig.voice.gemini_affective_dialog_enabled || undefined;
+    config.proactiveAudio = runtimeConfig.voice.gemini_proactive_audio_enabled || undefined;
+  }
+  return config;
+};
 
 const nonEmpty = (value) => String(value ?? '').trim();
 const toDisplayName = (user) => {
@@ -1632,7 +1688,7 @@ const buildLiveIntakeArcInstruction = (runtimeConfig) => {
   );
 };
 
-const liveSystemInstruction = (runtimeConfig, clientName = '') =>
+const liveSystemInstruction = (runtimeConfig, clientName = '', liveContext = '') =>
   joinInstructionParts(
     CONCIERGE_ROM_SYSTEM,
     runtimeConfig?.prompts?.rom_appendix,
@@ -1644,6 +1700,13 @@ const liveSystemInstruction = (runtimeConfig, clientName = '') =>
 - Never use the words: calibrated, calibration, assessment, or test.
 - Prefer "understanding your context" and "shaping your suite around you."
 - Keep tone composed, premium, and quietly encouraging.`,
+    liveContext
+      ? `SMART START LIVE CONTEXT:
+- This context comes from the current intake surface and is authoritative for the visible section.
+- Do not ask the user to explain the screen back to you.
+- Stay with the visible section unless the conversation clearly needs a different act.
+${liveContext}`
+      : '',
     buildLiveIntakeArcInstruction(runtimeConfig),
     runtimeConfig?.voice?.narration_style || DEFAULT_APP_CONFIG.voice.narration_style,
     runtimeConfig?.prompts?.live_appendix
@@ -5200,6 +5263,13 @@ const synthesizeWithGeminiLive = async ({ runtimeConfig, text, clientName }) => 
     runtimeConfig.voice.gemini_activity_handling === 'wait'
       ? ActivityHandling.NO_INTERRUPTION
       : ActivityHandling.START_OF_ACTIVITY_INTERRUPTS;
+  const config = buildGeminiLiveConnectConfig({
+    runtimeConfig,
+    model,
+    voiceName,
+    systemInstruction: instruction,
+    activityHandling,
+  });
 
   return await new Promise(async (resolve, reject) => {
     let session = null;
@@ -5224,28 +5294,7 @@ const synthesizeWithGeminiLive = async ({ runtimeConfig, text, clientName }) => 
     try {
       session = await liveAi.live.connect({
         model,
-        config: {
-          responseModalities: [Modality.AUDIO],
-          temperature: runtimeConfig.voice.temperature,
-          inputAudioTranscription: runtimeConfig.voice.gemini_input_audio_transcription_enabled ? {} : undefined,
-          outputAudioTranscription: runtimeConfig.voice.gemini_output_audio_transcription_enabled ? {} : undefined,
-          enableAffectiveDialog: runtimeConfig.voice.gemini_affective_dialog_enabled || undefined,
-          proactiveAudio: runtimeConfig.voice.gemini_proactive_audio_enabled || undefined,
-          thinkingConfig: runtimeConfig.voice.gemini_thinking_enabled
-            ? { thinkingBudget: runtimeConfig.voice.gemini_thinking_budget }
-            : undefined,
-          realtimeInputConfig: {
-            activityHandling,
-          },
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName,
-              },
-            },
-          },
-          systemInstruction: instruction,
-        },
+        config,
         callbacks: {
           onmessage: (message) => {
             const parts = message?.serverContent?.modelTurn?.parts || [];
@@ -5536,7 +5585,7 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
   if (!runtimeConfig.voice.enabled) {
     return res.status(503).json({ error: 'voice_disabled' });
   }
-  if (runtimeConfig.voice.provider !== 'gemini_live') {
+  if (runtimeConfig.voice.provider !== 'gemini_live' && runtimeConfig.voice.public_panel_provider !== 'gemini_live') {
     return res.status(503).json({ error: 'voice_provider_unavailable', detail: 'gemini_live_required' });
   }
   if (!liveAi) {
@@ -5565,6 +5614,16 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 45 * 60 * 1000);
   const newSessionExpireAt = new Date(issuedAt.getTime() + 4 * 60 * 1000);
+  const liveContext = nonEmpty(_req.body?.context);
+  const connectConfig = buildGeminiLiveConnectConfig({
+    runtimeConfig,
+    model,
+    voiceName,
+    systemInstruction: liveSystemInstruction(runtimeConfig, clientName, liveContext),
+    activityHandling,
+    startSensitivity,
+    endSensitivity,
+  });
 
   try {
     const tokenClient = liveAi.authTokens || liveAi.tokens;
@@ -5579,34 +5638,7 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
         newSessionExpireTime: newSessionExpireAt.toISOString(),
         liveConnectConstraints: {
           model,
-          config: {
-            responseModalities: [Modality.AUDIO],
-            systemInstruction: liveSystemInstruction(runtimeConfig, clientName),
-            temperature: runtimeConfig.voice.temperature,
-            inputAudioTranscription: runtimeConfig.voice.gemini_input_audio_transcription_enabled ? {} : undefined,
-            outputAudioTranscription: runtimeConfig.voice.gemini_output_audio_transcription_enabled ? {} : undefined,
-            enableAffectiveDialog: runtimeConfig.voice.gemini_affective_dialog_enabled || undefined,
-            proactiveAudio: runtimeConfig.voice.gemini_proactive_audio_enabled || undefined,
-            thinkingConfig: runtimeConfig.voice.gemini_thinking_enabled
-              ? { thinkingBudget: runtimeConfig.voice.gemini_thinking_budget }
-              : undefined,
-            realtimeInputConfig: {
-              activityHandling,
-              automaticActivityDetection: {
-                startOfSpeechSensitivity: startSensitivity,
-                endOfSpeechSensitivity: endSensitivity,
-                prefixPaddingMs: runtimeConfig.voice.live_vad_prefix_padding_ms,
-                silenceDurationMs: runtimeConfig.voice.live_vad_silence_ms,
-              },
-            },
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName,
-                },
-              },
-            },
-          },
+          config: connectConfig,
         },
       },
     });
@@ -5623,8 +5655,8 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
       activity_handling: runtimeConfig.voice.gemini_activity_handling,
       input_transcription_enabled: runtimeConfig.voice.gemini_input_audio_transcription_enabled,
       output_transcription_enabled: runtimeConfig.voice.gemini_output_audio_transcription_enabled,
-      affective_dialog_enabled: runtimeConfig.voice.gemini_affective_dialog_enabled,
-      proactive_audio_enabled: runtimeConfig.voice.gemini_proactive_audio_enabled,
+      affective_dialog_enabled: isGemini31FlashLiveModel(model) ? false : runtimeConfig.voice.gemini_affective_dialog_enabled,
+      proactive_audio_enabled: isGemini31FlashLiveModel(model) ? false : runtimeConfig.voice.gemini_proactive_audio_enabled,
       issued_at: issuedAt.toISOString(),
       expires_at: expiresAt.toISOString(),
     });

@@ -81,9 +81,10 @@ Modules should feel like guided surfaces inside one OS, not isolated product pag
 
 - the voice rail now sits beside the intake form and follows the single admin-selected public lane instead of exposing a client-side lane switcher
 - the form is organized into explicit sections and now shows one act at a time so the active voice lane can keep the user oriented
-- Gemini fallback sessions can extract structured intake signals back into empty form fields, with visible `from voice session` provenance tags
+- Gemini Live sessions can extract structured intake signals back into empty form fields, with visible `from voice session` provenance tags
 - the ElevenLabs Ghost lane now uses the React SDK plus a signed-session API route, contextual updates, and intake-safe client tools so Donna can move screens, focus fields, write answers, and summarize the intake state live
-- the processing state now explicitly steps Donna out before artifacts are available so the client is not left speaking into a dead transition
+- the processing state now explicitly steps the active voice guide out before artifacts are available so the client is not left speaking into a dead transition
+- the intake shell now uses a reduced Smart Start header so the form and live lane stay primary instead of losing height to module chrome
 - the signed-in landing experience now pairs that intake with a lighter editorial `Your Journey Guide` surface that:
   - opens as an opt-in four-act concierge briefing instead of a tutorial modal
   - personalizes the invite copy, act headlines, and context lines from the client dossier/intake context already on file
@@ -175,7 +176,7 @@ It uses:
 - one active workspace at a time for generation, media, brand, voice, or governance edits
 - a single-column editorial content stack so controls do not compress or overlap on medium-width laptop views
 - a compact command header on smaller viewports so laptop and tablet operators still see active section context before the form fields
-- a lane-readiness voice studio that treats ElevenLabs Ghost as the primary guided intake lane, Gemini audio as the fallback rail, Sesame as explicitly gated off, and Manus as future operator automation
+- a lane-readiness voice studio that treats ElevenLabs Ghost as the primary guided intake lane, Gemini Live as the parallel Google lane, Sesame as explicitly gated off, and Manus as future operator automation
 - Cloud Run API env staging for Manus credentials plus ElevenLabs agent metadata so Admin can report Ghost-lane readiness without drifting back to the old conversational-widget posture
 - the public concierge intake can now mount the configured ElevenLabs Ghost lane from API-served public config, and admin exposes a dedicated public-intake lane selector so operators can flip between Gemini and ElevenLabs Ghost without touching env vars
 - the intake concierge step now follows the saved admin lane cleanly instead of showing a client-visible lane switcher
@@ -314,10 +315,11 @@ The Express API under `api/` handles:
 - ElevenLabs Ghost is now the primary guided intake lane when configured
 - Sesame remains feature-flagged off until a dedicated service exists
 - ElevenLabs Ghost is now a live selectable public-intake lane when the Cloud Run API env exposes an agent ID, an API key, and the saved admin config chooses it
-- Gemini audio intake remains the internal runtime fallback path used by the native live panel and token route
+- Gemini Live now defaults to Google’s current `gemini-3.1-flash-live-preview` model; the older `gemini-2.5-flash-native-audio-preview-12-2025` lane remains available only as a controlled fallback
 - the public-intake lane decision now follows `voice.public_panel_provider` as the canonical saved source instead of letting stale Professional DNA voice settings override the operator choice
 - `POST /v1/voice/elevenlabs/session` now creates signed ElevenLabs sessions for authenticated users so the Ghost lane can run as a real SDK surface instead of a widget-only fallback
 - Manus remains a queued external lane, not an active runtime dependency
+- Google Workspace doc sync now prefers human-readable folder/document names, refuses UUID-like display names during auth backfill, reuses matching docs when registry entries are missing, and archives same-title duplicates into `_Legacy duplicates` during sync instead of spraying new docs into the active folder
 - the Cloud Run API runtime now depends on Firestore data access via `roles/datastore.user` on the service account; without that role, admin config writes and admin telemetry surfaces will fail with `PERMISSION_DENIED`
 - admin media-pipeline status messaging now translates known provider/config mismatches into operator-safe language instead of leaking raw Gemini option errors
 - model routing is now governed by a shared Gemini/Veo catalog rather than ad hoc raw defaults, and Admin exposes quick presets for `Demo Quality`, `Balanced Production`, and `High Throughput`

@@ -122,8 +122,10 @@ const pcmToWavBlob = (pcmBase64: string, sampleRate = 24000) => {
 export function GeminiLivePanel(props: {
   onStateChange?: (state: LiveState) => void;
   onSessionComplete?: (payload: { transcript: string; sessionId?: string; completed: boolean }) => void;
+  onTranscriptUpdate?: (transcript: string) => void;
   transcriptVisible?: boolean;
   layout?: 'cinematic' | 'compact';
+  sessionContext?: string;
   interactionLocked?: boolean;
   lockedMessage?: string;
 }) {
@@ -202,6 +204,10 @@ export function GeminiLivePanel(props: {
   useEffect(() => {
     props.onStateChange?.(state);
   }, [props, state]);
+
+  useEffect(() => {
+    props.onTranscriptUpdate?.(transcript);
+  }, [props, transcript]);
 
   const notifyTranscriptReady = (completed: boolean) => {
     const cleaned = transcriptRef.current.trim();
@@ -396,7 +402,7 @@ export function GeminiLivePanel(props: {
     promptSentAtRef.current = null;
 
     try {
-      const token = await createGeminiLiveToken();
+      const token = await createGeminiLiveToken(props.sessionContext);
       setTokenInfo(token);
       const ai = new GoogleGenAI({
         apiKey: token.token_name,
@@ -473,7 +479,7 @@ export function GeminiLivePanel(props: {
       setState('connected');
     } catch (e: any) {
       setState('error');
-      setError(e?.message ?? 'Unable to start Gemini Live session.');
+      setError(e?.message ?? 'Unable to start the live voice session.');
     }
   };
 
@@ -682,9 +688,9 @@ export function GeminiLivePanel(props: {
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Gemini Audio Intake</div>
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Live Voice Intake</div>
                   <div className="mt-2 text-lg font-editorial italic text-[#e7f1f2]">
-                    Speak naturally. Gemini captures the intake as the fallback voice lane.
+                    Speak naturally. The live guide captures and structures the intake in real time.
                   </div>
             </div>
             <div className="flex items-center gap-2 border border-[#22424a] bg-[#0d2329] px-3 py-2">
@@ -699,7 +705,7 @@ export function GeminiLivePanel(props: {
 
           {props.interactionLocked ? (
             <div className="border border-[#274148] bg-[#0d2025] px-3 py-3 text-xs leading-relaxed text-[#cddadd]">
-              {props.lockedMessage || 'Gemini has stepped out while the suite processes your intake.'}
+              {props.lockedMessage || 'The live guide has stepped out while the suite processes your intake.'}
             </div>
           ) : null}
 
@@ -711,7 +717,7 @@ export function GeminiLivePanel(props: {
                 disabled={state === 'connecting' || props.interactionLocked}
                 className="px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
               >
-                {state === 'connecting' ? 'Opening Session…' : 'Start Gemini'}
+                {state === 'connecting' ? 'Opening Session…' : 'Start Voice Session'}
               </button>
             ) : (
               <button
@@ -735,40 +741,53 @@ export function GeminiLivePanel(props: {
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(220px,0.9fr)]">
-            <div className="border border-[#274148] bg-[#0d2025] p-4">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Conversation transcript</div>
-              <pre className="mt-3 min-h-[160px] max-h-[280px] overflow-y-auto whitespace-pre-wrap border border-[#274148] bg-[#09181c] p-3 text-xs leading-6 text-[#cfe0e1]">
-                {transcript || 'Once the session starts, Gemini transcription appears here.'}
-              </pre>
-            </div>
+            {props.transcriptVisible !== false && state === 'connected' ? (
+              <div className="border border-[#274148] bg-[#0d2025] p-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Conversation transcript</div>
+                <pre className="mt-3 min-h-[140px] max-h-[220px] overflow-y-auto whitespace-pre-wrap border border-[#274148] bg-[#09181c] p-3 text-xs leading-6 text-[#cfe0e1]">
+                  {transcript || 'Once the session starts, transcript updates appear here.'}
+                </pre>
+              </div>
+            ) : (
+              <div className="border border-[#274148] bg-[#0d2025] p-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Session posture</div>
+                <div className="mt-2 text-sm leading-relaxed text-[#d0ddde]">
+                  {state === 'connected'
+                    ? 'The live guide is active. Stay with the visible section while the form updates.'
+                    : 'Open the lane, then answer naturally. The intake will structure the visible Smart Start section as you speak.'}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div className="border border-[#274148] bg-[#0d2025] p-4">
                 <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Session memory</div>
                 <div className="mt-2 text-sm leading-relaxed text-[#d0ddde]">
                   {state === 'connected'
-                    ? 'Gemini is listening and structuring your answers for the suite.'
+                    ? 'The live guide is listening and structuring your answers for the suite.'
                     : 'Open the session, then speak or type a guided turn to shape the intake.'}
                 </div>
               </div>
 
-              <div className="border border-[#274148] bg-[#0d2025] p-4">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Guided prompt</div>
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Ask Gemini to clarify, summarize, or reframe the current intake section..."
-                  className="mt-3 w-full min-h-24 border border-[#385257] bg-[#10272c] p-3 text-sm leading-relaxed text-[#d7e3e4] outline-none focus:border-brand-teal"
-                />
-                <button
-                  type="button"
-                  onClick={sendPrompt}
-                  disabled={state !== 'connected' || sending || !prompt.trim() || props.interactionLocked}
-                  className="mt-3 px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
-                >
-                  {sending ? 'Sending…' : 'Send Guided Turn'}
-                </button>
-              </div>
+              {state === 'connected' ? (
+                <div className="border border-[#274148] bg-[#0d2025] p-4">
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Guided prompt</div>
+                  <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Ask the guide to clarify, summarize, or reframe the current intake section..."
+                    className="mt-3 w-full min-h-24 border border-[#385257] bg-[#10272c] p-3 text-sm leading-relaxed text-[#d7e3e4] outline-none focus:border-brand-teal"
+                  />
+                  <button
+                    type="button"
+                    onClick={sendPrompt}
+                    disabled={state !== 'connected' || sending || !prompt.trim() || props.interactionLocked}
+                    className="mt-3 px-4 py-2 btn-brand text-[10px] uppercase tracking-[0.22em] disabled:opacity-40"
+                  >
+                    {sending ? 'Sending…' : 'Send Guided Turn'}
+                  </button>
+                </div>
+              ) : null}
 
               {(error || latencyMs || tokenInfo?.model) ? (
                 <div className="border border-[#274148] bg-[#0d2025] p-4 text-xs leading-relaxed text-[#c8d7d9]">
@@ -962,7 +981,7 @@ export function GeminiLivePanel(props: {
             </div>
 
             <div className="text-[10px] uppercase tracking-[0.2em] text-[#7f9599]">
-              This is a guided live scene. Speak like you are briefing a trusted operator.
+              This is a guided live scene. Speak like you are briefing a trusted guide.
             </div>
           </div>
 

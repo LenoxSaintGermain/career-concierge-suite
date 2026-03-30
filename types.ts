@@ -894,6 +894,7 @@ export interface PublicConfig {
     elevenlabs_enabled: boolean;
     elevenlabs_agent_id: string;
     active_panel: 'gemini_live' | 'elevenlabs';
+    gemini_live_model: string;
   };
 }
 

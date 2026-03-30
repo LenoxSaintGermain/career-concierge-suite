@@ -75,6 +75,7 @@ type SelectOption = {
 
 const normalizeDnaVoiceModel = (value: AppConfig['professional_dna']['voice_model'] | string | undefined) =>
   value === 'elevenlabs_ghost' || value === 'elevenlabs_conversational' ? 'elevenlabs_ghost' : 'gemini_live';
+const isGemini31LiveModel = (value: string | undefined) => String(value || '').startsWith('gemini-3.1-flash-live-preview');
 
 const cloneConfig = (config: AppConfig): AppConfig => JSON.parse(JSON.stringify(config));
 
@@ -281,7 +282,7 @@ const PROMPT_OVERLAY_FIELDS = [
     key: 'live_appendix',
     eyebrow: 'Live voice and video',
     label: 'Live voice / video overlay',
-    description: 'Applies only to the Gemini fallback audio lane and operator-facing voice behaviors.',
+    description: 'Applies only to the Google Live API lane and operator-facing voice behaviors.',
     minHeight: 'min-h-20',
   },
   {
@@ -611,17 +612,19 @@ function SelectField({
 function ToggleField({
   checked,
   onChange,
+  disabled,
   label,
   hint,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
+  disabled?: boolean;
   label: string;
   hint?: string;
 }) {
   return (
-    <label className="flex items-center gap-2 border border-black/10 bg-[#fcfbf7] px-2.5 py-1.5 text-xs">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <label className={`flex items-center gap-2 border border-black/10 bg-[#fcfbf7] px-2.5 py-1.5 text-xs ${disabled ? 'opacity-55' : ''}`}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
       <span className="text-[#09161a]">{label}</span>
       {hint ? <span className="text-[10px] text-black/45">{hint}</span> : null}
     </label>
@@ -823,6 +826,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   const isReady = useMemo(() => !!config && !loading, [config, loading]);
   const currentFingerprint = useMemo(() => (config ? JSON.stringify(config) : ''), [config]);
   const hasUnsavedChanges = !!config && !!baselineFingerprint && currentFingerprint !== baselineFingerprint;
+  const gemini31Selected = isGemini31LiveModel(config?.voice.gemini_live_model);
 
   const loadOptionalOverviews = async () => {
     const [pipelineResult, orchestrationResult] = await Promise.allSettled([
@@ -1276,7 +1280,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[9px] uppercase tracking-[0.16em] text-white/65">
             <span className="text-brand-teal admin-display text-xs">Operating Surface</span>
             {[
-              { label: 'Gemini', ok: runtime.gemini_configured },
+              { label: 'Gemini Live', ok: runtime.gemini_configured },
               { label: 'Sesame', ok: runtime.sesame_configured },
               { label: 'ElevenLabs Ghost', ok: runtime.elevenlabs_api_configured || runtime.elevenlabs_agent_configured },
               { label: 'Manus', ok: runtime.manus_configured },
@@ -1734,7 +1738,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                         label="Voice model"
                         value={normalizeDnaVoiceModel(config.professional_dna.voice_model)}
                         options={[
-                          { value: 'gemini_live', label: 'Gemini Audio Intake (fallback)' },
+                          { value: 'gemini_live', label: 'Gemini 3.1 Flash Live' },
                           { value: 'elevenlabs_ghost', label: 'ElevenLabs Ghost Agent' },
                         ]}
                         onChange={(v) =>
@@ -2307,7 +2311,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
           </div>
         </Panel>
 
-        <Panel title="Voice lane readiness" eyebrow="Runtime map" meta="Ghost primary + Gemini fallback">
+        <Panel title="Voice lane readiness" eyebrow="Runtime map" meta="Ghost + Google Live API lanes">
           <div className="grid gap-1.5">
             {VOICE_RUNTIME_LANES.map((lane) => {
               const isSelected = lane.id === config.voice.provider;
@@ -2389,7 +2393,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                   ...(overview?.runtime.elevenlabs_agent_configured
                     ? [{ value: 'elevenlabs', label: 'ElevenLabs Ghost' }]
                     : []),
-                  { value: 'gemini_live', label: 'Gemini Audio Intake (fallback)' },
+                  { value: 'gemini_live', label: 'Gemini 3.1 Flash Live' },
                   ...(config.voice.sesame_enabled ? [{ value: 'sesame', label: 'Sesame' }] : []),
                 ]}
                 onChange={(value) =>
@@ -2431,7 +2435,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                   ...(overview?.runtime.elevenlabs_agent_configured
                     ? [{ value: 'elevenlabs', label: 'ElevenLabs Ghost' }]
                     : []),
-                  { value: 'gemini_live', label: 'Gemini Audio Intake (fallback)' },
+                  { value: 'gemini_live', label: 'Gemini 3.1 Flash Live' },
                 ]}
                 onChange={(value) =>
                   setConfig((prev) =>
@@ -2459,7 +2463,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       ? 'Sesame API URL (Cerebrium endpoint)'
                       : config.voice.provider === 'elevenlabs'
                         ? 'ElevenLabs Ghost route notes'
-                      : 'Gemini fallback route notes'
+                      : 'Gemini Live API route notes'
                   }
                   value={config.voice.api_url}
                   onChange={(value) =>
@@ -2470,14 +2474,14 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                       ? 'https://api.cortex.cerebrium.ai/v4/PROJECT/APP/generate_audio'
                       : config.voice.provider === 'elevenlabs'
                         ? 'Ghost session is resolved from ELEVENLABS_AGENT_ID and the ElevenLabs briefing routes.'
-                        : 'Optional operator note. Gemini stays available as the fallback audio intake lane.'
+                        : 'Optional operator note. Gemini uses the live API route configured below.'
                   }
                 />
               </div>
             </div>
           </Panel>
 
-          <Panel title="Voice identity" eyebrow="Gemini fallback" meta={config.voice.gemini_live_model}>
+          <Panel title="Voice identity" eyebrow="Gemini Live API" meta={config.voice.gemini_live_model}>
             <div className="grid gap-2">
               <TextField
                 label="Speaker"
@@ -2488,18 +2492,34 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 placeholder="Maya"
               />
               <SelectField
-                label="Gemini fallback model"
+                label="Gemini Live model"
                 value={config.voice.gemini_live_model}
                 options={GEMINI_LIVE_MODEL_OPTIONS.map((option) => ({
                   value: option.id,
                   label: option.label,
                 }))}
                 onChange={(value) =>
-                  setConfig((prev) => (prev ? { ...prev, voice: { ...prev.voice, gemini_live_model: value } } : prev))
+                  setConfig((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          voice: {
+                            ...prev.voice,
+                            gemini_live_model: value,
+                            gemini_affective_dialog_enabled: isGemini31LiveModel(value)
+                              ? false
+                              : prev.voice.gemini_affective_dialog_enabled,
+                            gemini_proactive_audio_enabled: isGemini31LiveModel(value)
+                              ? false
+                              : prev.voice.gemini_proactive_audio_enabled,
+                          },
+                        }
+                      : prev
+                  )
                 }
               />
               <SelectField
-                label="Gemini fallback voice name"
+                label="Gemini voice name"
                 value={config.voice.gemini_voice_name}
                 options={GEMINI_VOICE_NAMES}
                 onChange={(value) =>
@@ -2515,6 +2535,11 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 </div>
                 <div className="mt-1">Tone: {selectedVoiceMeta?.tone ?? 'Custom'}</div>
               </div>
+              {gemini31Selected ? (
+                <div className="border border-black/10 bg-[#f6f3ec] px-3 py-2 text-xs leading-relaxed text-black/65">
+                  Gemini 3.1 Flash Live Preview is the current official Google Live model. Its current migration rules disable proactive audio and affective dialog on this lane.
+                </div>
+              ) : null}
               <TextField
                 label="Max audio length (ms)"
                 type="number"
@@ -2580,6 +2605,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                 />
                 <ToggleField
                   checked={config.voice.gemini_affective_dialog_enabled}
+                  disabled={gemini31Selected}
                   onChange={(checked) =>
                     setConfig((prev) =>
                       prev
@@ -2591,10 +2617,11 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                     )
                   }
                   label="Affective dialog"
-                  hint="Optional native-audio emotional response tuning. Leave off for maximum predictability."
+                  hint={gemini31Selected ? 'Unavailable on Gemini 3.1 Flash Live.' : 'Optional emotional response tuning. Leave off for maximum predictability.'}
                 />
                 <ToggleField
                   checked={config.voice.gemini_proactive_audio_enabled}
+                  disabled={gemini31Selected}
                   onChange={(checked) =>
                     setConfig((prev) =>
                       prev
@@ -2606,7 +2633,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
                     )
                   }
                   label="Proactive audio"
-                  hint="Lets Gemini hold silence until it decides a response is warranted."
+                  hint={gemini31Selected ? 'Unavailable on Gemini 3.1 Flash Live.' : 'Lets Gemini hold silence until it decides a response is warranted.'}
                 />
                 <ToggleField
                   checked={config.voice.gemini_thinking_enabled}

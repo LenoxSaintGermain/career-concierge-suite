@@ -182,7 +182,7 @@ Optional external-lane envs in the API deploy file:
 - `MANUS_API_URL`
 
 These now support a live public-intake ElevenLabs Ghost lane plus Manus readiness visibility.
-Gemini Live remains the native first-party runtime. ElevenLabs Ghost now runs as an SDK-backed signed-session lane for intake and demo use.
+Gemini Live remains the Google first-party runtime. ElevenLabs Ghost now runs as an SDK-backed signed-session lane for intake and demo use.
 
 Current public-intake behavior:
 
@@ -192,7 +192,7 @@ Current public-intake behavior:
 - the intake concierge step follows that selector and mounts the chosen lane directly inside the Smart Start workspace
 - the intake concierge step no longer exposes a client-visible lane switcher; the live lane is now fully controlled from Admin
 - admin `Voice model` and `Public intake lane` controls now save in lockstep so the public lane does not drift from the saved Professional DNA voice choice
-- Gemini audio intake remains the internal native-audio session path used by the existing live panel and token route
+- Gemini Live now defaults to `gemini-3.1-flash-live-preview`, the current official Google Live model; `gemini-2.5-flash-native-audio-preview-12-2025` remains available only as a controlled fallback option
 - `POST /v1/voice/elevenlabs/session` now provides signed ElevenLabs session URLs for authenticated users when `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` are present
 - the ElevenLabs intake lane now runs on the ElevenLabs React SDK with contextual updates, action feed telemetry, and intake-safe client tools for screen movement and field entry
 - the Smart Start workspace is now a single guided intake surface with:
@@ -201,6 +201,7 @@ Current public-intake behavior:
   - one visible section at a time
   - section-aware field highlighting
   - a locked processing state that ends live voice before artifact generation
+  - a compact intake header so module shell chrome no longer competes with the live form
 - Smart Start Intake now also reads public-facing Professional DNA config for:
   - optional hero video / fallback image rendering
   - optional journey-guide video provider / ID / URL / title values for the signed-in home briefing overlay
@@ -233,6 +234,8 @@ Ghost/GWS identity policy:
   - generic fallback like `Client`
 - client folder names and Google Doc titles should use a human-readable name when available; raw UIDs are backend-only
 - if a legacy client document is sparse, the server now attempts to backfill `email` and `display_name` from Firebase Auth during Ghost briefing and Google Doc sync
+- Google Doc sync now reuses existing same-title docs when registry rows are missing and archives same-title duplicates into `_Legacy duplicates` during sync
+- duplicate client folders are not merged automatically yet; exact-name folder reuse prevents new spray, but older duplicate folders still require manual cleanup or a dedicated migration pass
 
 Current Professional DNA behavior:
 

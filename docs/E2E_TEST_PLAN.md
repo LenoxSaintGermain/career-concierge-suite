@@ -96,7 +96,8 @@ curl -s -X POST "$SIGNAL_ATLAS_URL/v1/ghost/sync-docs" \
 
 ### Manual Browser Validation Still Required
 
-- [ ] Admin `Voice model`, `Provider`, and `Public intake lane` stay in sync between ElevenLabs Ghost and Gemini audio fallback
+- [ ] Admin `Voice model`, `Provider`, and `Public intake lane` stay in sync between ElevenLabs Ghost and Gemini Live
+- [ ] Admin shows `Gemini 3.1 Flash Live` / `gemini-3.1-flash-live-preview` as the current Google Live option
 - [ ] ElevenLabs signed session route succeeds for the signed-in user
 - [ ] SDK panel loads for the signed-in user
 - [ ] Dynamic user context is passed into the Ghost session
@@ -118,6 +119,11 @@ curl -s -X POST "$SIGNAL_ATLAS_URL/v1/ghost/sync-docs" \
 - [ ] `set_intake_intent` changes the route without drifting the rest of the form
 - [ ] `set_support_preference` changes pace/focus preferences
 - [ ] `summarize_intake_state` reflects the current intake form accurately
+- [ ] Smart Start no longer shows a client-visible lane chooser
+- [ ] Smart Start header remains compact enough that the form starts above the fold on laptop
+- [ ] Gemini compact mode stays embedded in the left rail rather than opening the older cinematic full-panel surface
+- [ ] Gemini transcript autofill writes into empty intake fields while the session is active
+- [ ] Gemini 3.1 lane does not error when the saved config still contains proactive-audio or affective-dialog toggles
 - [ ] `fetch_artifact` responses cite the live artifact content
 - [ ] `fetch_drive_documents` responses cite the live Drive docs
 - [ ] the guided section nav makes it obvious where the live lane is currently working

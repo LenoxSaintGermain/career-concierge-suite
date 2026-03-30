@@ -20,6 +20,8 @@ const deriveNameFromEmail = (email) => {
   return cleaned ? titleCase(cleaned) : '';
 };
 
+const looksLikeInternalId = (value) => /^[A-Za-z0-9_-]{20,}$/.test(nonEmpty(value));
+
 const safeShareWithUser = async (fileId, email) => {
   if (!email) return;
   try {
@@ -61,7 +63,9 @@ export const resolveClientIdentity = async (db, uid) => {
     const patch = {};
     if (needsEmail && nonEmpty(authUser.email)) patch.email = nonEmpty(authUser.email);
     if (needsDisplayName) {
-      const derivedDisplayName = nonEmpty(authUser.displayName) || deriveNameFromEmail(authUser.email);
+      const rawDisplayName = nonEmpty(authUser.displayName);
+      const derivedDisplayName =
+        rawDisplayName && !looksLikeInternalId(rawDisplayName) ? rawDisplayName : deriveNameFromEmail(authUser.email);
       if (derivedDisplayName) patch.display_name = derivedDisplayName;
     }
     if (Object.keys(patch).length) {
@@ -113,6 +117,17 @@ export const ensureClientFolder = async (db, uid) => {
   }
 
   const parentId = CLIENTS_FOLDER_ID() || ROOT_FOLDER_ID();
+  if (parentId) {
+    const siblings = await gws.listFolderContents(parentId);
+    const existingFolder = siblings.find(
+      (item) => item.mimeType === 'application/vnd.google-apps.folder' && item.name === folderName,
+    );
+    if (existingFolder?.id) {
+      await safeShareWithUser(existingFolder.id, email);
+      await clientRef.set({ drive_folder_id: existingFolder.id }, { merge: true });
+      return existingFolder.id;
+    }
+  }
   const folder = await gws.createFolder(folderName, parentId);
 
   // Share the folder with the client if we have their email
@@ -132,5 +147,5 @@ export const ensureClientFolder = async (db, uid) => {
  */
 export const getDocTitle = (artifactType, clientName) => {
   const base = ARTIFACT_DOC_TITLES[artifactType] || artifactType;
-  return clientName ? `${base} — ${clientName}` : base;
+  return base;
 };

@@ -2,9 +2,14 @@ export const DEMO_PERSONA_SHARED_PASSWORD = 'CareerDemo!2026';
 
 export const GEMINI_LIVE_MODEL_OPTIONS = [
   {
+    id: 'gemini-3.1-flash-live-preview',
+    label: 'Gemini 3.1 Flash Live Preview',
+    note: 'Current official Google Live API model for real-time voice-first dialogue.',
+  },
+  {
     id: 'gemini-2.5-flash-native-audio-preview-12-2025',
-    label: 'Gemini 2.5 Flash Native Audio',
-    note: 'First-party Gemini audio model used as the fallback intake lane.',
+    label: 'Gemini 2.5 Flash Live Preview',
+    note: 'Legacy fallback live model kept for controlled migration and regression checks.',
   },
 ];
 
@@ -50,9 +55,9 @@ export const VOICE_RUNTIME_LANES = [
   },
   {
     id: 'gemini_live',
-    label: 'Gemini Audio Intake',
-    state: 'fallback',
-    summary: 'Fallback first-party audio lane for transcript extraction and resilience when Ghost is unavailable.',
+    label: 'Gemini 3.1 Flash Live',
+    state: 'ready',
+    summary: 'Google Live API lane with transcript extraction, guided prompting, and Smart Start autofill.',
   },
   {
     id: 'sesame',

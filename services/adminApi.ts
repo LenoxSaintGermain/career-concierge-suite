@@ -503,7 +503,7 @@ const normalizeAdminConfig = (input: any): AppConfig => {
 
 export const fetchPublicConfig = async (): Promise<PublicConfig> => {
   const origin = resolveApiOrigin();
-  const resp = await fetch(`${origin}/v1/public/config`);
+  const resp = await fetch(`${origin}/v1/public/config`, { cache: 'no-store' });
   if (!resp.ok) {
     const txt = await resp.text().catch(() => '');
     throw new Error(`Public config error (${resp.status}): ${txt || resp.statusText}`);
@@ -544,6 +544,7 @@ export const fetchPublicConfig = async (): Promise<PublicConfig> => {
       elevenlabs_enabled: Boolean(source?.voice?.elevenlabs_enabled ?? false),
       elevenlabs_agent_id: String(source?.voice?.elevenlabs_agent_id ?? ''),
       active_panel: source?.voice?.active_panel === 'elevenlabs' ? 'elevenlabs' : 'gemini_live',
+      gemini_live_model: String(source?.voice?.gemini_live_model ?? ''),
     },
   };
 };

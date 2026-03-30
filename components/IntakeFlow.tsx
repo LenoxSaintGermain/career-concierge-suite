@@ -92,7 +92,7 @@ const INTAKE_SECTIONS: Array<{
     id: 'context',
     kicker: 'Act II',
     title: 'Current context',
-    description: 'Ground the operating environment so Donna and the suite stop guessing about your real constraints and market habitat.',
+    description: 'Ground the operating environment so the guide and the suite stop guessing about your real constraints and market habitat.',
     screenId: 'screen_2',
     fieldIds: ['current_title', 'industry', 'ai_usage_frequency', 'enterprise_context', 'job_description'],
   },
@@ -325,6 +325,9 @@ export function IntakeFlow(props: {
   const [voiceAutofillBusy, setVoiceAutofillBusy] = useState(false);
   const [ghostFocusedFieldId, setGhostFocusedFieldId] = useState<string | null>(null);
   const [activeSectionId, setActiveSectionId] = useState<IntakeSectionId>('positioning');
+  const geminiAutofillTimerRef = useRef<number | null>(null);
+  const latestGeminiTranscriptRef = useRef('');
+  const lastGeminiProcessedTranscriptRef = useRef('');
 
   const prefs: ClientPreferences = useMemo(() => ({ pace, focus }), [pace, focus]);
   const fieldOptions = useMemo(() => {
@@ -400,12 +403,12 @@ export function IntakeFlow(props: {
   const activeVoiceLaneMeta =
     activeVoiceLane === 'elevenlabs'
       ? {
-          label: 'Donna via ElevenLabs Ghost',
-          meta: 'Primary guided intake lane with direct form control and section-aware actions.',
+          label: 'Concierge live guide',
+          meta: 'Guided voice lane with direct form control and section-aware actions.',
         }
       : {
-          label: 'Gemini Audio Intake',
-          meta: 'Fallback native audio lane with transcript extraction and post-session structuring.',
+          label: 'Concierge live guide',
+          meta: 'Live audio lane with transcript extraction and live intake structuring.',
         };
   const activeSection = INTAKE_SECTIONS.find((section) => section.id === activeSectionId) ?? INTAKE_SECTIONS[0];
 
@@ -803,7 +806,43 @@ export function IntakeFlow(props: {
     pace,
   ]);
 
+  useEffect(
+    () => () => {
+      if (geminiAutofillTimerRef.current) {
+        window.clearTimeout(geminiAutofillTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const scheduleGeminiTranscriptAutofill = (transcript: string) => {
+    if (!props.intakeConfig.voice_to_form_autofill || step !== 'active') return;
+    const cleaned = transcript.trim();
+    if (!cleaned || cleaned.length < 24) return;
+    latestGeminiTranscriptRef.current = cleaned;
+    if (geminiAutofillTimerRef.current) {
+      window.clearTimeout(geminiAutofillTimerRef.current);
+    }
+    geminiAutofillTimerRef.current = window.setTimeout(async () => {
+      const nextTranscript = latestGeminiTranscriptRef.current.trim();
+      if (!nextTranscript || nextTranscript === lastGeminiProcessedTranscriptRef.current) return;
+      setVoiceAutofillBusy(true);
+      try {
+        const extraction = await extractIntakeFromTranscript(nextTranscript, answers);
+        mergeVoiceExtractedFields(extraction.extracted as IntakeAnswers, readText('voice_session_id'), false);
+        lastGeminiProcessedTranscriptRef.current = nextTranscript;
+      } catch {
+        // Gemini live autofill should stay non-blocking while the session is running.
+      } finally {
+        setVoiceAutofillBusy(false);
+      }
+    }, 900);
+  };
+
   const handleVoiceSessionComplete = async (payload: { transcript: string; sessionId?: string; completed: boolean }) => {
+    if (geminiAutofillTimerRef.current) {
+      window.clearTimeout(geminiAutofillTimerRef.current);
+    }
     setVoiceSessionState(payload.completed ? 'completed' : 'idle');
     setVoiceError(null);
     if (!props.intakeConfig.voice_to_form_autofill) {
@@ -819,6 +858,7 @@ export function IntakeFlow(props: {
     try {
       const extraction = await extractIntakeFromTranscript(payload.transcript, answers);
       mergeVoiceExtractedFields(extraction.extracted as IntakeAnswers, payload.sessionId, payload.completed);
+      lastGeminiProcessedTranscriptRef.current = payload.transcript.trim();
     } catch (extractionError: any) {
       setVoiceError(extractionError?.message ?? 'Unable to structure the voice session into intake fields.');
     } finally {
@@ -911,7 +951,7 @@ export function IntakeFlow(props: {
     if (step !== 'active') {
       return (
         <div className="border border-[#163840] bg-[#07161a] p-4 text-[#dce7e8] shadow-[0_14px_40px_rgba(1,12,18,0.24)]">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Donna stepping out</div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Voice guide stepping out</div>
           <div className="mt-3 text-lg font-editorial italic text-[#e7f1f2]">
             Your intake is now processing.
           </div>
@@ -931,7 +971,7 @@ export function IntakeFlow(props: {
           sessionContext={ghostSessionContext}
           ghostCallbacks={ghostCallbacks}
           interactionLocked={busy || step === 'plating'}
-          lockedMessage="Donna has stepped out while your intake is being processed."
+          lockedMessage="The voice guide has stepped out while your intake is being processed."
           onStateChange={(state) =>
             setVoiceSessionState(
               state === 'connected'
@@ -951,9 +991,11 @@ export function IntakeFlow(props: {
       <GeminiLivePanel
         key="gemini"
         layout="compact"
+        sessionContext={ghostSessionContext}
         transcriptVisible={props.intakeConfig.voice_transcription_visible !== false}
         interactionLocked={busy || step === 'plating'}
-        lockedMessage="Gemini has stepped out while your intake is being processed."
+        lockedMessage="The voice guide has stepped out while your intake is being processed."
+        onTranscriptUpdate={scheduleGeminiTranscriptAutofill}
         onSessionComplete={handleVoiceSessionComplete}
         onStateChange={setVoiceSessionState}
       />
@@ -968,7 +1010,7 @@ export function IntakeFlow(props: {
             Finalize intake
           </div>
           <div className="mt-2 font-intake-body text-2xl font-medium leading-tight text-[#1B1E1C]">
-            Once this runs, Donna steps out and the suite starts building.
+            Once this runs, the voice guide steps out and the suite starts building.
           </div>
           <p className="mt-3 font-intake-body text-sm leading-relaxed text-[var(--intake-muted)]">
             This transition is intentional. Stay in this module until the Brief or MyConcierge handoff is ready.
@@ -1011,55 +1053,45 @@ export function IntakeFlow(props: {
   return (
     <div className="relative flex min-h-[calc(100dvh-48px)] flex-col bg-[var(--intake-bg)]" style={intakeTheme}>
       <div className="grid flex-1 gap-4 px-4 py-4 xl:grid-cols-[minmax(340px,0.92fr)_minmax(0,1.08fr)]">
-        <aside className="xl:sticky xl:top-4 xl:self-start">
+        <aside className="order-2 xl:order-1 xl:sticky xl:top-4 xl:self-start">
           <div className="space-y-4">
-            <div className="border border-[var(--intake-border)] bg-[var(--intake-cream)] p-5">
+            <div className="border border-[var(--intake-border)] bg-[var(--intake-cream)] p-4">
               <div className="font-intake-mono text-[9px] uppercase tracking-[0.22em] text-[var(--intake-teal-dim)]">
                 Smart Start Intake
               </div>
-              <div className="mt-2 font-intake-body text-[2rem] font-medium leading-[1.02] text-[#1B1E1C]">
+              <div className="mt-2 font-intake-body text-[1.7rem] font-medium leading-[1.04] text-[#1B1E1C]">
                 {clientGreeting}
               </div>
-              <p className="mt-3 font-intake-body text-sm leading-relaxed text-[var(--intake-muted)]">
-                Donna and the form now work in one place. Watch the highlighted section and current field while you answer.
+              <p className="mt-2 font-intake-body text-[13px] leading-relaxed text-[var(--intake-muted)]">
+                The lane and the form now move together. Stay with the highlighted act while the intake captures your answers.
               </p>
 
               {props.intakeConfig.voice_agent_enabled !== false ? (
-                <div className="mt-4 border border-[var(--intake-border)] bg-white px-3 py-3">
-                  <div className="font-intake-mono text-[9px] uppercase tracking-[0.12em] text-[var(--intake-muted)]">
-                    Active voice lane
-                  </div>
-                  <div className="mt-1 font-intake-body text-[13px] leading-snug text-[#1B1E1C]">
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--intake-border)] pt-3">
+                  <span className="font-intake-mono text-[9px] uppercase tracking-[0.14em] text-[var(--intake-teal-dim)]">
                     {activeVoiceLaneMeta.label}
-                  </div>
-                  <div className="mt-1 font-intake-body text-[11px] leading-relaxed text-[var(--intake-muted)]">
-                    {activeVoiceLaneMeta.meta}
-                  </div>
+                  </span>
+                  <span className="font-intake-mono text-[9px] uppercase tracking-[0.14em] text-[var(--intake-muted)]">
+                    {activeSection.title}
+                  </span>
+                  {voiceAutofillBusy ? (
+                    <span className="font-intake-mono text-[9px] uppercase tracking-[0.14em] text-[var(--intake-teal)] animate-pulse">
+                      Structuring transcript...
+                    </span>
+                  ) : voiceFieldSet.size > 0 ? (
+                    <span className="font-intake-mono text-[9px] uppercase tracking-[0.14em] text-[var(--intake-teal)]">
+                      {voiceFieldSet.size} fields captured
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
-
-              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[var(--intake-border)] pt-4">
-                <span className="font-intake-mono text-[9px] uppercase tracking-[0.14em] text-[var(--intake-teal-dim)]">
-                  Current section
-                </span>
-                <span className="font-intake-body text-sm text-[#1B1E1C]">{activeSection.title}</span>
-                {voiceAutofillBusy ? (
-                  <span className="font-intake-mono text-[9px] uppercase tracking-[0.14em] text-[var(--intake-teal)] animate-pulse">
-                    Structuring transcript...
-                  </span>
-                ) : voiceFieldSet.size > 0 ? (
-                  <span className="font-intake-mono text-[9px] uppercase tracking-[0.14em] text-[var(--intake-teal)]">
-                    {voiceFieldSet.size} fields captured
-                  </span>
-                ) : null}
-              </div>
             </div>
 
             {props.intakeConfig.voice_agent_enabled !== false ? renderVoiceLane() : null}
           </div>
         </aside>
 
-        <section className="min-w-0 space-y-4">
+        <section className="order-1 min-w-0 space-y-4 xl:order-2">
           <div className="border border-[var(--intake-border)] bg-[var(--intake-cream)] p-4">
             <div className="flex flex-wrap gap-2">
               {INTAKE_SECTIONS.map((section) => {
@@ -1105,7 +1137,7 @@ export function IntakeFlow(props: {
                 </p>
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
-                <FieldShell label="What are you aiming at?" helper="Donna should anchor here first when the route feels unclear.">
+                <FieldShell label="What are you aiming at?" helper="The guide should anchor here first when the route feels unclear.">
                   <div className="flex flex-col gap-1.5">
                     {CLIENT_INTENTS.map((option) => {
                       const active = option === intent;
@@ -1246,7 +1278,7 @@ export function IntakeFlow(props: {
                 <div className="font-intake-mono text-[9px] uppercase tracking-[0.18em] text-[var(--intake-teal-dim)]">Act II</div>
                 <div className="mt-2 font-intake-body text-2xl font-medium leading-tight text-[#1B1E1C]">Current context</div>
                 <p className="mt-2 max-w-2xl font-intake-body text-sm leading-relaxed text-[var(--intake-muted)]">
-                  Give Donna and the suite the environment, tooling posture, and role context they need to stop making generic assumptions.
+                  Give the guide and the suite the environment, tooling posture, and role context they need to stop making generic assumptions.
                 </p>
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
@@ -1427,7 +1459,7 @@ export function IntakeFlow(props: {
               Preparing your suite
             </div>
             <div className="mt-4 font-intake-body text-2xl font-medium leading-snug text-[#1B1E1C]">
-              Donna has handed your intake to the suite.
+              Your intake has been handed to the suite.
             </div>
             <p className="mt-4 font-intake-body text-sm leading-relaxed text-[var(--intake-muted)]">
               Stay here while the Brief, Profile, Plan, and readiness artifacts are assembled. Jumping ahead before this finishes will leave you in an incomplete state.

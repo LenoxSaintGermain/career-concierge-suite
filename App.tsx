@@ -720,7 +720,7 @@ const App: React.FC = () => {
         },
         {
           headline: 'Act III is where signal becomes momentum.',
-          body: `Once the suite understands what matters, it starts routing the next actions, operator help, and execution surfaces that move the ask forward.`,
+          body: `Once the suite understands what matters, it starts routing the next actions, concierge guidance, and execution surfaces that move the ask forward.`,
         },
         {
           headline: 'The middle of the suite is built for controlled movement.',
@@ -1329,7 +1329,9 @@ const App: React.FC = () => {
             style={{ backgroundColor: brand.colors.surface_background }}
           >
             <header
-              className="shrink-0 overflow-hidden border-b border-black/10 px-4 py-2.5 transition-all duration-500 sm:px-5 sm:py-3 md:px-6"
+              className={`shrink-0 overflow-hidden border-b border-black/10 transition-all duration-500 ${
+                openModule.id === 'intake' ? 'px-4 py-2 sm:px-5 sm:py-2.5 md:px-6' : 'px-4 py-2.5 sm:px-5 sm:py-3 md:px-6'
+              }`}
               style={{
                 background:
                   brand.hierarchy.overlay_style === 'cinematic'
@@ -1339,11 +1341,15 @@ const App: React.FC = () => {
               }}
             >
               <div
-                className="mb-3 flex flex-wrap items-start justify-between gap-3 border-b pb-3"
+                className={`flex flex-wrap items-start justify-between gap-3 border-b ${
+                  openModule.id === 'intake' ? 'mb-1.5 pb-1.5' : 'mb-3 pb-3'
+                }`}
                 style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}
               >
                 <div
-                  className="min-w-0 border px-3 py-2 text-[10px] uppercase tracking-[0.18em]"
+                  className={`min-w-0 border text-[10px] uppercase tracking-[0.18em] ${
+                    openModule.id === 'intake' ? 'px-2.5 py-1.5' : 'px-3 py-2'
+                  }`}
                   style={{
                     borderColor: hexToRgba(brand.colors.overlay_text, 0.12),
                     backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
@@ -1353,15 +1359,21 @@ const App: React.FC = () => {
                   <span className="whitespace-nowrap">
                     {openModule.index} / {String(visibleModules.length).padStart(2, '0')}
                   </span>
-                  <span className="mx-2 opacity-40">·</span>
-                  <span className="inline-block max-w-[16rem] truncate align-bottom sm:max-w-[28rem]">
-                    {displayedOpenModule?.detail_title || openModule.title}
-                  </span>
+                  {openModule.id !== 'intake' ? (
+                    <>
+                      <span className="mx-2 opacity-40">·</span>
+                      <span className="inline-block max-w-[16rem] truncate align-bottom sm:max-w-[28rem]">
+                        {displayedOpenModule?.detail_title || openModule.title}
+                      </span>
+                    </>
+                  ) : null}
                 </div>
 
                 <button
                   onClick={handleCloseModal}
-                  className="px-4 py-3 text-[10px] uppercase tracking-[0.24em] transition-colors"
+                  className={`text-[10px] uppercase tracking-[0.24em] transition-colors ${
+                    openModule.id === 'intake' ? 'px-3 py-2' : 'px-4 py-3'
+                  }`}
                   style={{
                     border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
                     backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
@@ -1372,9 +1384,19 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-3 border-b pb-2.5 sm:pb-3 xl:flex-row xl:items-start xl:justify-between" style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}>
+              <div
+                className={`flex flex-col border-b xl:flex-row xl:items-start xl:justify-between ${
+                  openModule.id === 'intake' ? 'gap-2 pb-2' : 'gap-3 pb-2.5 sm:pb-3'
+                }`}
+                style={{ borderColor: hexToRgba(brand.colors.overlay_text, 0.12) }}
+              >
                 <div className="space-y-2">
-                  <div className="hidden flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em] sm:flex" style={{ color: hexToRgba(brand.colors.overlay_text, 0.48) }}>
+                  <div
+                    className={`hidden flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.24em] sm:flex ${
+                      openModule.id === 'intake' ? 'hidden' : ''
+                    }`}
+                    style={{ color: hexToRgba(brand.colors.overlay_text, 0.48) }}
+                  >
                     <span>
                       {openModule.index} / {String(visibleModules.length).padStart(2, '0')}
                     </span>
@@ -1382,37 +1404,44 @@ const App: React.FC = () => {
                     <span>{openModule.kind}</span>
                     <span>{isLocked(openModule) ? 'Locked' : 'Unlocked'}</span>
                   </div>
-                  <div className={`uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent }}>
-                    {displayedOpenModule?.eyebrow}
-                  </div>
-                  <h2 className={`font-editorial leading-none ${headerScaleClass[brand.hierarchy.header_scale]}`}>
+                  {openModule.id !== 'intake' ? (
+                    <div className={`uppercase ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent }}>
+                      {displayedOpenModule?.eyebrow}
+                    </div>
+                  ) : null}
+                  <h2
+                    className={`font-editorial ${openModule.id === 'intake' ? 'text-[1.65rem] leading-[1] md:text-[2rem]' : `leading-none ${headerScaleClass[brand.hierarchy.header_scale]}`}`}
+                  >
                     {displayedOpenModule?.detail_title || openModule.title}
                   </h2>
                   <p
-                    className="max-w-3xl text-sm leading-6 md:max-w-4xl"
+                    className={`text-sm md:max-w-4xl ${openModule.id === 'intake' ? 'max-w-xl leading-5' : 'max-w-3xl leading-6'}`}
                     style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}
                   >
                     {displayedOpenModule?.description || openModule.subtitle}
                   </p>
                 </div>
 
-                <div
-                  className="hidden px-3 py-2 text-right xl:block"
-                  style={{
-                    border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
-                    backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
-                  }}
-                >
-                  <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
-                    {brand.copy.modal_account_label}
+                {openModule.id !== 'intake' ? (
+                  <div
+                    className="hidden px-3 py-2 text-right xl:block"
+                    style={{
+                      border: `1px solid ${hexToRgba(brand.colors.overlay_text, 0.12)}`,
+                      backgroundColor: hexToRgba(brand.colors.overlay_text, 0.04),
+                    }}
+                  >
+                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.4) }}>
+                      {brand.copy.modal_account_label}
+                    </div>
+                    <div className="mt-2 text-xs" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
+                      {accountLabel}
+                    </div>
                   </div>
-                  <div className="mt-2 text-xs" style={{ color: hexToRgba(brand.colors.overlay_text, 0.72) }}>
-                    {accountLabel}
-                  </div>
-                </div>
+                ) : null}
               </div>
 
-              <div className="mt-2 flex flex-wrap gap-2">
+              {openModule.id !== 'intake' ? (
+                <div className="mt-2 flex flex-wrap gap-2">
                 <AmbientGuide
                   label="Current framing"
                   message={displayedOpenModule?.detail_quote || displayedOpenModule?.description || openModule.subtitle}
@@ -1477,7 +1506,14 @@ const App: React.FC = () => {
                     {isAdminUser ? 'Operator-aware view' : 'Client-safe view'}
                   </span>
                 </AmbientGuide>
-              </div>
+                </div>
+              ) : (
+                <div className="mt-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: hexToRgba(brand.colors.overlay_text, 0.56) }}>
+                  <span>{openModule.kind}</span>
+                  <span className="opacity-35">·</span>
+                  <span>{isAdminUser ? 'Operator session' : 'Client session'}</span>
+                </div>
+              )}
             </header>
 
             <div ref={modalScrollRef} className="px-4 py-4 sm:px-4 sm:py-4 md:min-h-0 md:flex-1 md:overflow-y-auto md:px-6 md:py-6">
