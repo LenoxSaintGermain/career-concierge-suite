@@ -33,7 +33,7 @@ import {
   GEMINI_LIVE_MODEL_OPTIONS,
   GEMINI_LIVE_VOICE_OPTIONS,
 } from './config/voiceRuntime.js';
-import { LIVE_INTAKE_FUNCTION_DECLARATIONS, LIVE_INTAKE_TOOL_CONFIG } from '../config/liveIntakeTools.js';
+import { LIVE_INTAKE_FUNCTION_DECLARATIONS, LIVE_INTAKE_TOOL_CONFIG } from './config/liveIntakeTools.js';
 import {
   DEFAULT_GEMINI_BINGE_MODEL,
   DEFAULT_GEMINI_IMAGE_MODEL,
