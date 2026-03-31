@@ -121,6 +121,7 @@ curl -s -X POST "$SIGNAL_ATLAS_URL/v1/ghost/sync-docs" \
 - [ ] `summarize_intake_state` reflects the current intake form accurately
 - [ ] Smart Start accepts a resume URL and preserves it as an `intake_reference` asset without creating duplicates on rerun
 - [ ] Smart Start accepts a direct PDF/DOCX resume file and publishes it into CJS as an uploaded resume asset
+- [ ] Uploaded resume file shows `parsed` status in CJS and reports extracted text length
 - [ ] Smart Start no longer shows a client-visible lane chooser
 - [ ] Smart Start header remains compact enough that the form starts above the fold on laptop
 - [ ] Gemini compact mode stays embedded in the left rail rather than opening the older cinematic full-panel surface
@@ -141,6 +142,7 @@ curl -s -X POST "$SIGNAL_ATLAS_URL/v1/ghost/sync-docs" \
 - [ ] field focus visibly pulls the user to the correct section instead of leaving the form visually ambiguous
 - [ ] submitting intake cleanly locks the live lane and holds the user in processing until artifacts are ready
 - [ ] paid intake publishes in-app artifacts, then recreates Google Docs, then leaves CJS with the uploaded resume file still prioritized above any intake reference
+- [ ] `resume_review` cites the uploaded resume file path/digest instead of falling back to reference-only mode when a parsed file exists
 
 ### Demo Focus
 

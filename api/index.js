@@ -3,6 +3,8 @@ import cors from 'cors';
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { readFile } from 'node:fs/promises';
+import pdfParse from '@cedrugs/pdf-parse';
+import mammoth from 'mammoth';
 import { ActivityHandling, EndSensitivity, GoogleGenAI, Modality, StartSensitivity } from '@google/genai';
 import {
   CONCIERGE_ROM_SYSTEM,
@@ -48,7 +50,7 @@ import { listFolderContents } from './gws/gwsClient.js';
 
 const app = express();
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(cors({ origin: true }));
 
 // Firebase Admin uses Application Default Credentials in Cloud Run.
@@ -4417,6 +4419,81 @@ const parseDataUrl = (input) => {
   return m ? m[1] : raw;
 };
 
+const normalizeResumeText = (value) =>
+  String(value ?? '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\u0000/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, 40000);
+
+const detectResumeSections = (text) => {
+  const source = String(text || '').toLowerCase();
+  return [
+    ['summary', /(summary|profile|professional summary)/],
+    ['experience', /(experience|employment|work history)/],
+    ['skills', /(skills|core competencies|technical skills)/],
+    ['education', /(education|certification|certifications)/],
+  ]
+    .filter(([, pattern]) => pattern.test(source))
+    .map(([label]) => label);
+};
+
+const countQuantifiedSignals = (text) => {
+  const matches = String(text || '').match(/\b(?:\$?\d[\d,]*(?:\.\d+)?%?|\d+\+)\b/g);
+  return Array.isArray(matches) ? matches.length : 0;
+};
+
+const extractResumeTextFromBuffer = async ({ buffer, mimeType, filename }) => {
+  const safeMime = nonEmpty(mimeType).toLowerCase();
+  const safeName = nonEmpty(filename).toLowerCase();
+  try {
+    if (safeMime === 'application/pdf' || safeName.endsWith('.pdf')) {
+      const parsed = await pdfParse(buffer);
+      const text = normalizeResumeText(parsed?.text);
+      return { extraction_status: text ? 'parsed' : 'failed', text, parser: 'pdf-parse' };
+    }
+    if (
+      safeMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      safeName.endsWith('.docx')
+    ) {
+      const parsed = await mammoth.extractRawText({ buffer });
+      const text = normalizeResumeText(parsed?.value);
+      return { extraction_status: text ? 'parsed' : 'failed', text, parser: 'mammoth' };
+    }
+    if (safeMime === 'text/plain' || safeName.endsWith('.txt')) {
+      const text = normalizeResumeText(buffer.toString('utf8'));
+      return { extraction_status: text ? 'parsed' : 'failed', text, parser: 'utf8' };
+    }
+    return { extraction_status: 'unsupported', text: '', parser: '' };
+  } catch (error) {
+    console.warn('resume_text_extraction_failed', sanitizeError(error, 'resume_text_extraction_failed'));
+    return { extraction_status: 'failed', text: '', parser: '' };
+  }
+};
+
+const buildResumeAgentContext = ({ asset, text, extractionStatus, parser }) => {
+  const normalizedText = normalizeResumeText(text);
+  return {
+    source_asset_id: nonEmpty(asset?.id),
+    source_label: nonEmpty(asset?.label) || nonEmpty(asset?.filename) || 'Resume',
+    source_kind: nonEmpty(asset?.asset_kind) || 'uploaded_file',
+    filename: nonEmpty(asset?.filename),
+    source_url: nonEmpty(asset?.source_url),
+    extraction_status: extractionStatus || 'not_applicable',
+    parser: parser || '',
+    extracted_at: new Date().toISOString(),
+    text: normalizedText,
+    text_preview: normalizedText.slice(0, 800),
+    text_char_count: normalizedText.length,
+    line_count: normalizedText ? normalizedText.split('\n').filter(Boolean).length : 0,
+    quantified_signal_count: countQuantifiedSignals(normalizedText),
+    sections: detectResumeSections(normalizedText),
+  };
+};
+
 const persistMediaAssetRecord = async ({ uid, jobId, asset, generatedAt }) => {
   const persisted = {
     kind: asset.kind,
@@ -4963,7 +5040,32 @@ const buildResumeReview = ({ profile, resumeAsset }) => {
   const targetRole = nonEmpty(resumeAsset?.target_role) || nonEmpty(answers.target) || nonEmpty(answers.current_or_target_job_title) || 'target role';
   const currentRole = nonEmpty(answers.current_title) || nonEmpty(answers.current_or_target_job_title) || 'current role';
   const constraints = nonEmpty(answers.constraints) || 'time and competing priorities';
-  const alignmentScore = currentRole.toLowerCase() === targetRole.toLowerCase() ? 76 : 64;
+  const resumeContext = profile?.agent_context?.resume || {};
+  const parsedResumeText =
+    nonEmpty(resumeContext?.source_asset_id) === nonEmpty(resumeAsset?.id) ? nonEmpty(resumeContext?.text) : '';
+  const quantSignals = Number(resumeContext?.quantified_signal_count || 0);
+  const sectionSignals = Array.isArray(resumeContext?.sections) ? resumeContext.sections : [];
+  const targetTokens = targetRole
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .filter((token) => token.length > 3);
+  const matchedTargetTokens = targetTokens.filter((token) => parsedResumeText.toLowerCase().includes(token)).length;
+  const extractedAlignmentScore = Math.max(
+    52,
+    Math.min(
+      91,
+      58 +
+        matchedTargetTokens * 6 +
+        Math.min(quantSignals, 6) * 2 +
+        (sectionSignals.includes('experience') ? 6 : 0) +
+        (sectionSignals.includes('skills') ? 4 : 0)
+    )
+  );
+  const alignmentScore = parsedResumeText
+    ? extractedAlignmentScore
+    : currentRole.toLowerCase() === targetRole.toLowerCase()
+      ? 76
+      : 64;
   const analysisScope = nonEmpty(resumeAsset?.asset_kind) === 'uploaded_file' ? 'resume_file' : 'intake_reference';
   const sourceLabel = nonEmpty(resumeAsset?.label) || nonEmpty(resumeAsset?.filename) || 'Resume input';
 
@@ -4991,6 +5093,37 @@ const buildResumeReview = ({ profile, resumeAsset }) => {
         'Upload the current resume file in ConciergeJobSearch to unlock line-level review.',
         `Translate ${currentRole} experience into ${targetRole} strategy language with quantified outcomes.`,
         'Add one evidence-forward proof block for stakeholder impact and AI leverage.',
+      ],
+    };
+  }
+
+  if (parsedResumeText) {
+    const strengths = [];
+    const gaps = [];
+    if (quantSignals >= 3) strengths.push(`The uploaded resume already contains ${quantSignals} quantified proof points that can anchor ROI framing.`);
+    else gaps.push('The uploaded resume still needs more quantified outcomes and KPI evidence.');
+    if (sectionSignals.includes('experience')) strengths.push('Experience structure is present and readable for downstream rewrite work.');
+    else gaps.push('Experience headings are weak or missing, which hurts quick executive scanning.');
+    if (sectionSignals.includes('skills')) strengths.push('Skills signal is explicitly present, which helps role matching and recruiter skim speed.');
+    else gaps.push('Skills signal should be made explicit for faster role-fit scanning.');
+    if (matchedTargetTokens >= Math.max(1, Math.min(targetTokens.length, 2))) {
+      strengths.push(`Target-role language for ${targetRole} is already visible in the uploaded file.`);
+    } else {
+      gaps.push(`Target-role language for ${targetRole} is still too implicit in the uploaded file.`);
+    }
+
+    return {
+      summary: `Parsed resume review for "${sourceLabel}" shows ${quantSignals} quantified signals and ${matchedTargetTokens} target-role keyword matches for ${targetRole}.`,
+      role_alignment_score: alignmentScore,
+      analysis_scope: analysisScope,
+      source_label: sourceLabel,
+      limitations: [],
+      strengths: strengths.length > 0 ? strengths : ['Readable resume structure is available for line-level optimization.'],
+      gaps: gaps.length > 0 ? gaps : ['Add one stronger proof block tied to measurable business impact.'],
+      rewrite_focus: [
+        `Tighten the top third so ${targetRole} appears explicitly in the positioning language.`,
+        quantSignals >= 3 ? 'Concentrate quantified wins in the first half of the resume for faster recruiter pickup.' : 'Add measurable business outcomes to the first three bullet clusters.',
+        `Translate ${currentRole} execution detail into role-level strategic impact with stakeholder outcomes.`,
       ],
     };
   }
@@ -6387,6 +6520,8 @@ app.get('/v1/cjs/assets', requireAuth, async (req, res) => {
           filename: nonEmpty(data.filename),
           mime_type: nonEmpty(data.mime_type),
           size_bytes: Number(data.size_bytes || 0),
+          extraction_status: nonEmpty(data.extraction_status) || 'not_applicable',
+          text_char_count: Number(data.text_char_count || 0),
           source_url: nonEmpty(data.source_url),
           storage_path: nonEmpty(data.storage_path),
           storage_provider: nonEmpty(data.storage_provider) || 'none',
@@ -6446,6 +6581,9 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
     let sizeBytes = 0;
     let storagePath = nonEmpty(existingData?.storage_path);
     let storageProvider = nonEmpty(existingData?.storage_provider) || 'none';
+    let extractionStatus = assetKind === 'intake_reference' ? 'not_applicable' : 'unsupported';
+    let extractedText = '';
+    let extractionParser = '';
 
     if (sourceUrl) {
       storageProvider = 'external_url';
@@ -6464,6 +6602,10 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
         });
         storageProvider = 'gcs';
       }
+      const extraction = await extractResumeTextFromBuffer({ buffer, mimeType, filename });
+      extractionStatus = extraction.extraction_status;
+      extractedText = extraction.text;
+      extractionParser = extraction.parser;
     }
 
     const ref = existingRef || clientAssetsRef(uid).doc(itemId);
@@ -6475,6 +6617,8 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
       filename,
       mime_type: mimeType,
       size_bytes: sizeBytes,
+      extraction_status: extractionStatus,
+      text_char_count: extractedText.length,
       source_url: sourceUrl,
       storage_path: storagePath,
       storage_provider: storageProvider,
@@ -6483,6 +6627,29 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
       created_at: existingData?.created_at || now,
       updated_at: now,
     });
+
+    if (assetKind === 'uploaded_file') {
+      await clientRef(uid).set(
+        {
+          agent_context: {
+            resume: buildResumeAgentContext({
+              asset: {
+                id: ref.id,
+                label,
+                filename,
+                source_url: sourceUrl,
+                asset_kind: assetKind,
+              },
+              text: extractedText,
+              extractionStatus,
+              parser: extractionParser,
+            }),
+          },
+          updated_at: now,
+        },
+        { merge: true }
+      );
+    }
 
     const saved = await ref.get();
     const data = saved.data() ?? {};
@@ -6497,6 +6664,8 @@ app.post('/v1/cjs/resume/upload', requireAuth, async (req, res) => {
         filename: data.filename,
         mime_type: data.mime_type,
         size_bytes: data.size_bytes,
+        extraction_status: data.extraction_status || extractionStatus,
+        text_char_count: Number(data.text_char_count || 0),
         source_url: data.source_url || '',
         storage_path: data.storage_path || '',
         storage_provider: data.storage_provider || 'none',

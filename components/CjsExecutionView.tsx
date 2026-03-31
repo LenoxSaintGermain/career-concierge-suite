@@ -240,6 +240,17 @@ export function CjsExecutionView(props: { doc: CjsExecutionContent; client: Clie
                       <div className="text-[10px] uppercase tracking-[0.18em] text-gray-500 mt-1">
                         {item.asset_kind === 'uploaded_file' ? 'Uploaded file' : item.asset_kind === 'intake_reference' ? 'Intake reference' : 'Resume asset'} · {item.target_role || 'No target role'} · {item.storage_provider || 'none'}
                       </div>
+                      <div className="mt-1 text-[10px] text-gray-500">
+                        {item.asset_kind === 'uploaded_file'
+                          ? item.extraction_status === 'parsed'
+                            ? `Parsed for review · ${item.text_char_count || 0} chars`
+                            : item.extraction_status === 'failed'
+                              ? 'File upload succeeded, but parsing failed'
+                              : item.extraction_status === 'unsupported'
+                                ? 'File saved, but parsing is not supported for this format'
+                                : 'File saved'
+                          : 'Reference captured from Smart Start'}
+                      </div>
                       {item.source_url ? (
                         <a href={item.source_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-[10px] uppercase tracking-[0.18em] text-brand-teal">
                           Open source link

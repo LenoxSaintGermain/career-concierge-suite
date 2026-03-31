@@ -764,3 +764,10 @@ Update both files in each delivery pass so roadmap visuals and implementation st
 - ConciergeJobSearch now prioritizes uploaded resume files over intake references when sorting resume assets and when selecting the primary resume for `resume_review`, which prevents a later intake rerun from silently outranking the real working resume file.
 - `resume_review` now explicitly tells the user when analysis is based only on an intake reference and calls out that line-level rewrite guidance still requires an uploaded file in CJS.
 - Smart Start now also supports direct PDF/DOCX resume upload in the evidence act, so a fresh user can complete intake with a real working resume without detouring into CJS first.
+
+### Delivery: Parsed Resume Digest
+
+- Uploaded PDF/DOCX resumes now generate a canonical parsed resume digest on the client record, including extracted text, section detection, quantified-signal counts, and source-asset linkage.
+- `resume_review` now prefers that parsed digest whenever it matches the active uploaded file, so review quality is no longer limited to intake context plus asset metadata.
+- The upload route now records parse status and extracted text length on the resume asset itself, which makes the CJS asset list honest about whether a file is actually machine-readable yet.
+- The API JSON limit was raised to `10mb` so Smart Start direct resume upload does not fail prematurely on normal resume files after base64 expansion.

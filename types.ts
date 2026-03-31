@@ -502,6 +502,8 @@ export interface CjsAsset {
   filename?: string;
   mime_type?: string;
   size_bytes?: number;
+  extraction_status?: 'parsed' | 'unsupported' | 'failed' | 'not_applicable';
+  text_char_count?: number;
   source_url?: string;
   storage_path?: string;
   storage_provider?: 'gcs' | 'external_url' | 'none';

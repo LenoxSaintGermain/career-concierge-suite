@@ -220,6 +220,8 @@ Current public-intake behavior:
 - Smart Start now also offers a direct resume file picker in the evidence act; if the user selects a PDF/DOCX there, the file is uploaded into CJS during paid intake processing
 - repeated intake runs with the same resume URL now update the existing `intake_reference` asset instead of creating duplicate resume entries
 - ConciergeJobSearch sorts uploaded resume files ahead of intake references and `resume_review` follows that same priority order, so file uploads remain the canonical working version for line-level review
+- uploaded PDF/DOCX resume files now also generate a parsed resume digest on the client record, which the API uses as the canonical machine-readable basis for `resume_review`
+- the API JSON limit is now `10mb`, which keeps direct Smart Start resume upload compatible with the existing `6mb` binary-upload ceiling after base64 expansion
 - ElevenLabs Ghost Smart Start sessions can now:
   - jump between Smart Start screens
   - focus specific fields

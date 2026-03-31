@@ -278,6 +278,7 @@ The Express API under `api/` handles:
   - Smart Start also accepts a direct resume file upload in the evidence act and pushes that file into CJS during paid intake processing
   - intake-created resume links are stored as `intake_reference` assets, deduped by URL, and intentionally treated as lighter evidence than a true uploaded file
   - ConciergeJobSearch now prioritizes uploaded resume files over intake references when listing assets or generating `resume_review`, so repeat intake runs do not silently displace the real working resume
+  - uploaded PDF/DOCX resumes now generate a canonical parsed resume digest on the client record, and `resume_review` uses that parsed digest whenever it matches the active uploaded file
 - interaction ledger + approval endpoints
 - agent registry endpoint
 - admin system overview endpoint for runtime + policy visibility
