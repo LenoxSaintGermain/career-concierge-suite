@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "api:dev": "cd api && npm start",
+    "dev:local": "sh -c '(cd api && npm start) & API_PID=$!; trap \"kill $API_PID\" EXIT INT TERM; vite'",
     "build": "vite build",
     "preview": "vite preview",
     "orbital": "bash ./orbital",

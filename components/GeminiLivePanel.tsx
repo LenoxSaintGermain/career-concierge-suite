@@ -1,12 +1,31 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { createGeminiLiveToken } from '../services/liveApi';
-import { GeminiLiveTokenResponse } from '../types';
+import { fetchClientWiki } from '../services/wikiService';
+import { fetchClientMemory } from '../services/memoryService';
+import { ClientMemory, GeminiLiveTokenResponse } from '../types';
 import type { GhostAction, GhostCallbacks } from '../hooks/useGhostVoice';
+
+function buildMemoryContext(memory: ClientMemory, wikiLen: number): string {
+  const BUDGET = 8000;
+  const budget = BUDGET - wikiLen;
+  if (budget < 200) return '';
+  const lines: string[] = [];
+  if (memory.arc_summary) lines.push(`Arc: ${memory.arc_summary}`);
+  const high = memory.entries.filter((e) => e.weight === 'high');
+  const med = memory.entries.filter((e) => e.weight === 'medium');
+  for (const entry of [...high, ...med]) {
+    const line = `[${entry.kind}] ${entry.body}`;
+    if (lines.join('\n').length + line.length >= budget) break;
+    lines.push(line);
+  }
+  return lines.join('\n');
+}
 
 type LiveState = 'idle' | 'connecting' | 'connected' | 'error';
 const PCM_SMOOTHING_BUFFER_MS = 70;
 const PCM_PLAYBACK_LOOKAHEAD_SEC = 0.07;
+const GEMINI_CAPTURE_WORKLET_PATH = '/audio-processors/capture.worklet.js';
 const CONNECTING_SCENES = [
   'Loading concierge identity',
   'Aligning ROM tone and pacing',
@@ -127,9 +146,14 @@ export function GeminiLivePanel(props: {
   transcriptVisible?: boolean;
   layout?: 'cinematic' | 'compact';
   sessionContext?: string;
+  surfaceHint?: 'intake' | 'shell';
   interactionLocked?: boolean;
   lockedMessage?: string;
   ghostCallbacks?: GhostCallbacks;
+  autoStart?: boolean;
+  launchId?: number;
+  initialMicStream?: MediaStream | null;
+  onInitialMicStreamConsumed?: () => void;
 }) {
   const [state, setState] = useState<LiveState>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -153,11 +177,13 @@ export function GeminiLivePanel(props: {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const audioWorkletRef = useRef<AudioWorkletNode | null>(null);
   const audioProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const audioGainRef = useRef<GainNode | null>(null);
   const playbackContextRef = useRef<AudioContext | null>(null);
   const playbackCursorRef = useRef<number>(0);
   const playbackSampleRateRef = useRef<number>(24000);
+  const playbackSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const pendingPcmChunksRef = useRef<Uint8Array[]>([]);
   const pendingPcmBytesRef = useRef<number>(0);
   const cameraLoopRef = useRef<number | null>(null);
@@ -166,6 +192,7 @@ export function GeminiLivePanel(props: {
   const firstByteAtRef = useRef<number | null>(null);
   const promptSentAtRef = useRef<number | null>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeAudioUrlRef = useRef<string | null>(null);
   const transcriptRef = useRef('');
   const transcriptDeliveredRef = useRef(false);
   const actionCounterRef = useRef(0);
@@ -178,6 +205,8 @@ export function GeminiLivePanel(props: {
   const socketReadyRef = useRef(false);
   const openingTurnSentRef = useRef(false);
   const setupCompleteRef = useRef(false);
+  const initialMicStreamRef = useRef<MediaStream | null>(null);
+  const lastAutoStartRef = useRef<number | null>(null);
   const cameraReady = state === 'connected' && cameraEnabled;
   const micReady = state === 'connected' && micEnabled;
   const engagementReady = state === 'connected' && (micEnabled || prompt.trim().length > 0);
@@ -313,6 +342,12 @@ export function GeminiLivePanel(props: {
           ? 'Session interrupted'
           : 'Immersive studio on standby';
 
+  // Reset expectedCloseRef on mount so React 18 StrictMode's cleanup-then-remount
+  // cycle can't leave a stale true that makes a real unexpected close appear expected.
+  useEffect(() => {
+    expectedCloseRef.current = false;
+  }, []);
+
   useEffect(() => {
     props.onStateChange?.(state);
   }, [props, state]);
@@ -387,6 +422,47 @@ export function GeminiLivePanel(props: {
     }
   };
 
+  const stopActivePlayback = (clearBufferedAudio = true) => {
+    if (activeAudioRef.current) {
+      try {
+        activeAudioRef.current.pause();
+        activeAudioRef.current.removeAttribute('src');
+        activeAudioRef.current.load();
+      } catch {
+        // noop
+      }
+      activeAudioRef.current = null;
+    }
+    if (activeAudioUrlRef.current) {
+      URL.revokeObjectURL(activeAudioUrlRef.current);
+      activeAudioUrlRef.current = null;
+    }
+    playbackSourcesRef.current.forEach((source) => {
+      try {
+        source.stop();
+      } catch {
+        // Source may already have ended.
+      }
+      try {
+        source.disconnect();
+      } catch {
+        // noop
+      }
+    });
+    playbackSourcesRef.current.clear();
+    pendingPcmChunksRef.current = [];
+    pendingPcmBytesRef.current = 0;
+    if (clearBufferedAudio) {
+      audioChunksRef.current = [];
+    }
+    if (playbackContextRef.current) {
+      playbackCursorRef.current = playbackContextRef.current.currentTime;
+    } else {
+      playbackCursorRef.current = 0;
+    }
+    setMicSuppressed(false);
+  };
+
   const stopCamera = () => {
     clearCameraLoop();
     if (cameraStreamRef.current) {
@@ -404,6 +480,16 @@ export function GeminiLivePanel(props: {
       // noop
     }
     mediaRecorderRef.current = null;
+    try {
+      audioWorkletRef.current?.port.close();
+    } catch {
+      // noop
+    }
+    try {
+      audioWorkletRef.current?.disconnect();
+    } catch {
+      // noop
+    }
     try {
       audioProcessorRef.current?.disconnect();
     } catch {
@@ -424,6 +510,7 @@ export function GeminiLivePanel(props: {
     }
     audioContextRef.current = null;
     audioSourceRef.current = null;
+    audioWorkletRef.current = null;
     audioProcessorRef.current = null;
     audioGainRef.current = null;
     if (micStreamRef.current) {
@@ -442,7 +529,7 @@ export function GeminiLivePanel(props: {
 
   const closeSession = () => {
     notifyTranscriptReady(true);
-    setMicSuppressed(false);
+    stopActivePlayback(true);
     expectedCloseRef.current = true;
     try {
       sessionRef.current?.close?.();
@@ -460,6 +547,7 @@ export function GeminiLivePanel(props: {
       void playbackContextRef.current.close().catch(() => undefined);
       playbackContextRef.current = null;
     }
+    playbackSourcesRef.current.clear();
     playbackCursorRef.current = 0;
     playbackSampleRateRef.current = 24000;
     pendingPcmChunksRef.current = [];
@@ -506,9 +594,13 @@ export function GeminiLivePanel(props: {
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.connect(context.destination);
+    source.onended = () => {
+      playbackSourcesRef.current.delete(source);
+    };
 
     const now = context.currentTime;
     const startAt = Math.max(playbackCursorRef.current, now + PCM_PLAYBACK_LOOKAHEAD_SEC);
+    playbackSourcesRef.current.add(source);
     source.start(startAt);
     playbackCursorRef.current = startAt + buffer.duration;
   };
@@ -545,17 +637,31 @@ export function GeminiLivePanel(props: {
         activeAudioRef.current.pause();
         activeAudioRef.current = null;
       }
+      if (activeAudioUrlRef.current) {
+        URL.revokeObjectURL(activeAudioUrlRef.current);
+        activeAudioUrlRef.current = null;
+      }
 
       const audio = new Audio(audioUrl);
       activeAudioRef.current = audio;
-      await audio.play();
+      activeAudioUrlRef.current = audioUrl;
       audio.onended = () => {
+        if (activeAudioRef.current === audio) {
+          activeAudioRef.current = null;
+        }
         setMicSuppressed(false);
-        if (audioUrl) URL.revokeObjectURL(audioUrl);
+        if (activeAudioUrlRef.current === audioUrl) {
+          URL.revokeObjectURL(audioUrl);
+          activeAudioUrlRef.current = null;
+        }
       };
+      await audio.play();
     } catch (e: any) {
       setMicSuppressed(false);
       setError(e?.message ?? 'Unable to play Live audio.');
+      if (activeAudioUrlRef.current === audioUrl) {
+        activeAudioUrlRef.current = null;
+      }
       if (audioUrl) URL.revokeObjectURL(audioUrl);
     }
   };
@@ -577,7 +683,17 @@ export function GeminiLivePanel(props: {
     promptSentAtRef.current = null;
 
     try {
-      const token = await createGeminiLiveToken(props.sessionContext);
+      const [wiki, memory] = await Promise.all([
+        fetchClientWiki().catch(() => null),
+        fetchClientMemory().catch(() => null),
+      ]);
+      const wikiText = wiki
+        ? wiki.sections.map((s) => `### ${s.heading}\n${s.body}`).join('\n\n')
+        : undefined;
+      const memoryText = memory ? buildMemoryContext(memory, wikiText?.length ?? 0) : undefined;
+      const contextWithSurface =
+        props.surfaceHint === 'shell' ? 'shell' : props.sessionContext;
+      const token = await createGeminiLiveToken(contextWithSurface, wikiText, memoryText);
       setTokenInfo(token);
       const ai = new GoogleGenAI({
         apiKey: token.token_name,
@@ -617,6 +733,7 @@ export function GeminiLivePanel(props: {
             // --- GoAway: server is about to disconnect ---
             if (message?.goAway) {
               console.warn('[GeminiLive] goAway received — timeLeft:', message.goAway.timeLeft);
+              setError('Gemini is rotating this Live session. If the voice lane closes, use Start Voice Session to reconnect.');
               return;
             }
             // --- Guard: ignore content before setup is done ---
@@ -655,6 +772,12 @@ export function GeminiLivePanel(props: {
               }
             }
             const parts = message?.serverContent?.modelTurn?.parts || [];
+            if (message?.serverContent?.interrupted) {
+              console.info('[GeminiLive] serverContent.interrupted received — stopping active playback');
+              stopActivePlayback(true);
+              introTurnPendingRef.current = false;
+              return;
+            }
             const inputTranscript = String(message?.serverContent?.inputTranscription?.text || '').trim();
             const outputTranscript = String(message?.serverContent?.outputTranscription?.text || '').trim();
             if (inputTranscript) appendTranscriptLine(`You · ${inputTranscript}`);
@@ -681,6 +804,7 @@ export function GeminiLivePanel(props: {
             }
             if (message?.serverContent?.turnComplete) {
               const shouldStartMicAfterIntro = compactLayout && introTurnPendingRef.current && !micEnabled;
+              const initialMicStream = initialMicStreamRef.current;
               introTurnPendingRef.current = false;
               if (!audioMimeRef.current.toLowerCase().startsWith('audio/pcm')) {
                 await playTurnAudio();
@@ -696,8 +820,12 @@ export function GeminiLivePanel(props: {
               if (shouldStartMicAfterIntro) {
                 window.setTimeout(() => {
                   if (!sessionRef.current || micEnabled) return;
-                  void startMic()
+                  void startMic(initialMicStream ?? undefined)
                     .then(() => {
+                      if (initialMicStream) {
+                        initialMicStreamRef.current = null;
+                        props.onInitialMicStreamConsumed?.();
+                      }
                       reconnectCountRef.current = 0;
                     })
                     .catch(() => undefined);
@@ -814,7 +942,59 @@ export function GeminiLivePanel(props: {
     }
   };
 
-  const startPcmMicStream = async (stream: MediaStream) => {
+  const startAudioWorkletMicStream = async (stream: MediaStream) => {
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) throw new Error('AudioContext unavailable on this browser');
+
+    const context = new AudioContextCtor({ sampleRate: 16000 });
+
+    try {
+      await context.audioWorklet.addModule(GEMINI_CAPTURE_WORKLET_PATH);
+      const source = context.createMediaStreamSource(stream);
+      const workletNode = new AudioWorkletNode(context, 'audio-capture-processor');
+      const gain = context.createGain();
+      gain.gain.value = 0;
+
+      workletNode.port.onmessage = (event: MessageEvent<{ type?: string; data?: Float32Array }>) => {
+        if (!sessionRef.current || !setupCompleteRef.current || suppressMicInputRef.current) return;
+        if (event.data?.type !== 'audio' || !event.data.data?.length) return;
+        const pcmBytes = float32ToPcm16(event.data.data);
+        if (!pcmBytes.byteLength) return;
+        try {
+          sessionRef.current.sendRealtimeInput({
+            audio: {
+              mimeType: 'audio/pcm;rate=16000',
+              data: bytesToBase64(pcmBytes),
+            },
+          });
+        } catch {
+          // Socket might be closing; suppress noisy runtime errors.
+        }
+      };
+
+      source.connect(workletNode);
+      workletNode.connect(gain);
+      gain.connect(context.destination);
+
+      if (context.state === 'suspended') {
+        await context.resume();
+      }
+
+      audioContextRef.current = context;
+      audioSourceRef.current = source;
+      audioWorkletRef.current = workletNode;
+      audioGainRef.current = gain;
+    } catch (error) {
+      try {
+        await context.close();
+      } catch {
+        // noop
+      }
+      throw error;
+    }
+  };
+
+  const startLegacyPcmMicStream = async (stream: MediaStream) => {
     const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextCtor) throw new Error('AudioContext unavailable on this browser');
     const context = new AudioContextCtor({ sampleRate: 16000 });
@@ -880,24 +1060,46 @@ export function GeminiLivePanel(props: {
     recorder.start(250);
   };
 
-  const startMic = async () => {
+  const startMic = async (providedStream?: MediaStream) => {
     if (!sessionRef.current) {
       setError('Connect Live session before starting microphone stream.');
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = providedStream ?? await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       micStreamRef.current = stream;
       try {
-        await startPcmMicStream(stream);
-      } catch {
-        await startMediaRecorderFallback(stream);
+        await startAudioWorkletMicStream(stream);
+      } catch (workletError) {
+        console.warn('[GeminiLive] AudioWorklet mic path unavailable, falling back to legacy PCM stream.', workletError);
+        try {
+          await startLegacyPcmMicStream(stream);
+        } catch (pcmError) {
+          console.warn('[GeminiLive] Legacy PCM mic path unavailable, falling back to MediaRecorder.', pcmError);
+          await startMediaRecorderFallback(stream);
+        }
       }
       setMicEnabled(true);
     } catch (e: any) {
       setError(e?.message ?? 'Unable to start microphone stream.');
     }
   };
+
+  useEffect(() => {
+    if (props.initialMicStream) {
+      initialMicStreamRef.current = props.initialMicStream;
+    }
+  }, [props.initialMicStream]);
+
+  useEffect(() => {
+    if (!props.autoStart || !props.launchId) return;
+    if (lastAutoStartRef.current === props.launchId) return;
+    if (state === 'connecting' || state === 'connected') return;
+    lastAutoStartRef.current = props.launchId;
+    void startSession();
+    // startSession is intentionally omitted so launchId remains the single trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.autoStart, props.launchId, state]);
 
   const scrollToStoryScene = (sceneId: StorySceneId) => {
     const rail = storyRailRef.current;
@@ -965,33 +1167,37 @@ export function GeminiLivePanel(props: {
 
   if (compactLayout) {
     return (
-      <section className="border border-[#163840] bg-[#07161a] p-4 text-[#dce7e8] shadow-[0_14px_40px_rgba(1,12,18,0.24)]">
+      <section className="border border-[#4A4338]/70 bg-[#101719] p-4 text-[#EFE8DC] shadow-[0_18px_46px_rgba(1,8,12,0.28)]">
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-brand-teal">Live Voice Intake</div>
-                  <div className="mt-2 text-lg font-editorial italic text-[#e7f1f2]">
-                    Speak naturally. The live guide captures and structures the intake in real time.
-                  </div>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-[#C4A86F]">Donna Live</div>
+              <div className="mt-2 text-lg font-editorial italic text-[#F4EFE6]">
+                Speak naturally. Donna keeps the OS context open while you talk.
+              </div>
             </div>
-            <div className="flex items-center gap-2 border border-[#22424a] bg-[#0d2329] px-3 py-2">
+            <div className="flex items-center gap-2 border border-[#5E5548]/70 bg-[#1A2223] px-3 py-2">
               <div
                 className={`h-2 w-2 rounded-full ${
-                  state === 'connected' ? 'bg-brand-teal animate-pulse' : state === 'error' ? 'bg-red-500' : 'bg-white/30'
+                  state === 'connected' ? 'bg-[#C4A86F] animate-pulse' : state === 'error' ? 'bg-red-500' : 'bg-white/30'
                 }`}
               />
-              <div className="text-[10px] uppercase tracking-[0.18em] text-[#b5c5c8]">{statusLabel}</div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-[#D8D0C3]">{statusLabel}</div>
             </div>
           </div>
 
           {props.interactionLocked ? (
-            <div className="border border-[#274148] bg-[#0d2025] px-3 py-3 text-xs leading-relaxed text-[#cddadd]">
+            <div className="border border-[#5E5548]/60 bg-[#1A2223] px-3 py-3 text-xs leading-relaxed text-[#D8D0C3]">
               {props.lockedMessage || 'The live guide has stepped out while the suite processes your intake.'}
             </div>
           ) : null}
 
           <div className="flex flex-wrap gap-2">
-            {state !== 'connected' ? (
+            {props.autoStart && state !== 'connected' ? (
+              <div className="border border-[#395359] bg-[#11272c] px-4 py-2 text-[10px] uppercase tracking-[0.22em] text-[#d0ddde]">
+                {state === 'error' ? 'Voice line needs attention' : 'Opening voice line…'}
+              </div>
+            ) : state !== 'connected' ? (
               <button
                 type="button"
                 onClick={startSession}
@@ -1005,7 +1211,7 @@ export function GeminiLivePanel(props: {
                 type="button"
                 onClick={closeSession}
                 disabled={props.interactionLocked}
-                className="px-4 py-2 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.22em] text-[#d0ddde] transition-colors hover:border-brand-teal"
+                className="border border-[#5E5548] bg-[#1A2223] px-4 py-2 text-[10px] uppercase tracking-[0.22em] text-[#EFE8DC] transition-colors hover:border-[#C4A86F]"
               >
                 End Session
               </button>
@@ -1015,24 +1221,24 @@ export function GeminiLivePanel(props: {
               type="button"
               onClick={micEnabled ? stopMic : startMic}
               disabled={state !== 'connected' || props.interactionLocked}
-              className="px-4 py-2 border border-[#395359] bg-[#11272c] text-[10px] uppercase tracking-[0.22em] text-[#d0ddde] transition-colors disabled:opacity-45 hover:border-brand-teal"
+              className="border border-[#5E5548] bg-[#1A2223] px-4 py-2 text-[10px] uppercase tracking-[0.22em] text-[#EFE8DC] transition-colors disabled:opacity-45 hover:border-[#C4A86F]"
             >
-              {micEnabled ? 'Pause Mic' : 'Reconnect Mic'}
+              {micEnabled ? 'Pause Mic' : props.initialMicStream ? 'Mic Permission Ready' : 'Reconnect Mic'}
             </button>
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(220px,0.9fr)]">
             {props.transcriptVisible !== false && state === 'connected' ? (
-              <div className="border border-[#274148] bg-[#0d2025] p-4">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Conversation transcript</div>
-                <pre className="mt-3 min-h-[140px] max-h-[220px] overflow-y-auto whitespace-pre-wrap border border-[#274148] bg-[#09181c] p-3 text-xs leading-6 text-[#cfe0e1]">
+              <div className="border border-[#4A4338]/70 bg-[#171F20] p-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#A89D8D]">Conversation transcript</div>
+                <pre className="mt-3 min-h-[140px] max-h-[220px] overflow-y-auto whitespace-pre-wrap border border-[#4A4338]/70 bg-[#0B1113] p-3 text-xs leading-6 text-[#EFE8DC]">
                   {transcript || 'Once the session starts, transcript updates appear here.'}
                 </pre>
               </div>
             ) : (
-              <div className="border border-[#274148] bg-[#0d2025] p-4">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Session posture</div>
-                <div className="mt-2 text-sm leading-relaxed text-[#d0ddde]">
+              <div className="border border-[#4A4338]/70 bg-[#171F20] p-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#A89D8D]">Session posture</div>
+                <div className="mt-2 text-sm leading-relaxed text-[#D8D0C3]">
                   {state === 'connected'
                     ? 'The live guide is active. Stay with the visible section while the form updates.'
                     : 'Open the lane, then answer naturally. The intake will structure the visible Smart Start section as you speak.'}
@@ -1041,9 +1247,9 @@ export function GeminiLivePanel(props: {
             )}
 
             <div className="space-y-3">
-              <div className="border border-[#274148] bg-[#0d2025] p-4">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Session memory</div>
-                <div className="mt-2 text-sm leading-relaxed text-[#d0ddde]">
+              <div className="border border-[#4A4338]/70 bg-[#171F20] p-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#A89D8D]">Session memory</div>
+                <div className="mt-2 text-sm leading-relaxed text-[#D8D0C3]">
                   {state === 'connected'
                     ? 'The live guide is listening and structuring your answers for the suite.'
                     : 'Open the session, then speak or type a guided turn to shape the intake.'}
@@ -1051,13 +1257,13 @@ export function GeminiLivePanel(props: {
               </div>
 
               {state === 'connected' ? (
-                <div className="border border-[#274148] bg-[#0d2025] p-4">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-[#8ea3a7]">Guided prompt</div>
+                <div className="border border-[#4A4338]/70 bg-[#171F20] p-4">
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-[#A89D8D]">Guided prompt</div>
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Ask the guide to clarify, summarize, or reframe the current intake section..."
-                    className="mt-3 w-full min-h-24 border border-[#385257] bg-[#10272c] p-3 text-sm leading-relaxed text-[#d7e3e4] outline-none focus:border-brand-teal"
+                    className="mt-3 min-h-24 w-full border border-[#5E5548] bg-[#0F1516] p-3 text-sm leading-relaxed text-[#EFE8DC] outline-none placeholder:text-[#A89D8D]/60 focus:border-[#C4A86F]"
                   />
                   <button
                     type="button"

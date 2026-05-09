@@ -1193,6 +1193,63 @@ export interface IntakeTranscriptExtractionResponse {
   fallback?: boolean;
 }
 
+export interface ClientWikiSection {
+  key: string;
+  heading: string;
+  body: string;
+  source_refs: string[];
+  compiled_at: string;
+}
+
+export interface ClientWiki {
+  uid: string;
+  compiled_at: string;
+  source_hash: string;
+  sections: ClientWikiSection[];
+  first_name: string;
+  target_role: string;
+  focus_label: string;
+  intake_complete: boolean;
+  artifact_types_present: string[];
+}
+
+export interface MessageRecord {
+  id: string;
+  role: 'donna' | 'user';
+  body: string;
+  timestamp: number;
+  kind?: 'text' | 'chip_action' | 'a2ui_trigger';
+}
+
+export interface SessionSummary {
+  session_id: string;
+  commitments: string[];
+  concerns: string[];
+  decisions: string[];
+  preferences: string[];
+  milestones: string[];
+  tone_note: string;
+  extracted_at: string;
+}
+
+export interface ClientMemoryEntry {
+  id: string;
+  kind: 'commitment' | 'concern' | 'milestone' | 'preference' | 'context';
+  body: string;
+  session_id: string;
+  created_at: string;
+  weight: 'high' | 'medium' | 'low';
+}
+
+export interface ClientMemory {
+  uid: string;
+  compiled_at: string;
+  arc_summary: string;
+  entries: ClientMemoryEntry[];
+  last_session_at: string;
+  session_count: number;
+}
+
 export interface ArtifactDoc<T = unknown> {
   id: string; // Firestore document id
   type: ArtifactType;
@@ -1202,3 +1259,135 @@ export interface ArtifactDoc<T = unknown> {
   updated_at: any; // Firestore Timestamp
   content: T;
 }
+
+// ─── A2UI Canvas Layer ────────────────────────────────────────────────────────
+// The "Agent is the App" rendering contract.
+// Donna/Gemini drives the canvas by referencing these types — never raw HTML.
+// See docs/a2ui-protocol.md for full architectural reference.
+
+/**
+ * The complete set of canvas states. Only one is active at a time.
+ * DonnaChatLane.tsx owns this state. Donna's tool calls drive transitions.
+ */
+export type CanvasState =
+  | 'landing'               // Mount state — Journey A chips OR Journey B wiki cards
+  | 'donna_reads_you'       // Pre-sale sizzle: calibration question + inline input
+  | 'gap_reveal'            // Pre-sale sizzle: NOW vs TARGET gap card + price teaser
+  | 'package_selection'     // Three offering cards with earned pricing (price last)
+  | 'intake_inline'         // Smart Start intake sections rendered within canvas
+  | 'dna_processing'        // Processing signifier — "Mapping Professional DNA"
+  | 'dna_reveal'            // Brief excerpt card + optional inline account creation
+  | 'plan_active'           // Plan artifact card
+  | 'concierge_sync';       // Voice panel mounted inline
+
+/**
+ * The closed component catalog. Donna may only reference these IDs.
+ * Any component not in this union is invalid — the validate-retry loop rejects it.
+ */
+export type A2UIComponentType =
+  | 'DonnaReadsYouCard'     // maps to: donna_reads_you
+  | 'GapRevealCard'         // maps to: gap_reveal
+  | 'PackageSelectCards'    // maps to: package_selection
+  | 'InlineIntakeSection'   // maps to: intake_inline
+  | 'DNAProcessingCard'     // maps to: dna_processing
+  | 'DNARevealCard'         // maps to: dna_reveal
+  | 'WikiCard'              // maps to: landing (Journey B)
+  | 'ArtifactExcerptCard'   // maps to: dna_reveal | plan_active
+  | 'InlineAuthCard'        // maps to: pre_purchase_account_creation
+  | 'VoicePanel';           // maps to: concierge_sync
+
+/** The envelope Donna emits to drive a canvas transition */
+export interface A2UIPayload {
+  component: A2UIComponentType;
+  canvas_state: CanvasState;
+  transition?: 'materialize' | 'dissolve_replace' | 'append';
+  delay_ms?: number;        // stagger offset — default 0
+  data: A2UIComponentData;
+}
+
+/** Union of all per-component data shapes */
+export type A2UIComponentData =
+  | DonnaReadsYouData
+  | GapRevealData
+  | PackageSelectData
+  | WikiCardData
+  | ArtifactExcerptData
+  | DNARevealData
+  | Record<string, never>; // for stateless components (DNAProcessingCard, VoicePanel)
+
+// ─── Per-component data interfaces ───────────────────────────────────────────
+
+export interface DonnaReadsYouData {
+  question: string;                    // Donna's calibration question
+  subtext?: string;                    // Supporting line below question
+  input_placeholder?: string;          // Default: "Type your answer..."
+}
+
+export interface GapRevealData {
+  now_items: string[];                 // Left column — user's current state (3 items max)
+  target_items: string[];              // Right column — where this gets them (3–4 items)
+  donna_frame: string;                 // Donna's closing line ("The gap has a number...")
+  price_teaser: string;               // Ghost label e.g. "ONE SESSION FROM $2.4K · FULL SUITE FROM $6K"
+  proceed_label?: string;             // Default: "SHOW ME HOW →"
+  defer_label?: string;               // Default: "NOT YET"
+}
+
+export interface PackageCardData {
+  id: 'smart_start' | 'premier' | 'cjs';
+  eyebrow: string;
+  title: string;
+  body: string;
+  cta_label: string;
+  price_label: string;               // e.g. "ONE SESSION · $2.4K" — renders ghost/last
+  is_recommended?: boolean;
+}
+
+export interface PackageSelectData {
+  cards: PackageCardData[];           // Always 3, always in order: smart_start, premier, cjs
+  ask_donna_label?: string;           // Default: "Not sure which fits? Ask me."
+}
+
+export interface WikiCardData {
+  section_key: string;               // matches ClientWikiSection.key
+  heading: string;
+  body_items: string[];              // rendered as bullet list
+  edited_label?: string;            // e.g. "EDITED 2H AGO"
+  update_cta?: string;              // Default: "DONNA, UPDATE THIS →"
+}
+
+export interface ArtifactExcerptData {
+  artifact_type: ArtifactType;
+  excerpt_heading: string;           // e.g. "Here's where you stand."
+  excerpt_items: string[];           // 2–3 key items from the artifact
+  full_view_module_id: SuiteModuleId; // passed to openModuleById — the ONLY sanctioned use
+  donna_intro?: string;              // Donna's spoken intro line
+}
+
+export interface DNARevealData {
+  positioning_statement: string;
+  strengths: string[];               // 2–3 items
+  target_role: string;
+  show_account_creation: boolean;   // true if user === null
+}
+
+// ─── Validation helpers (runtime use in DonnaChatLane.tsx) ───────────────────
+
+export const VALID_CANVAS_STATES: ReadonlySet<CanvasState> = new Set([
+  'landing', 'donna_reads_you', 'gap_reveal', 'package_selection',
+  'intake_inline', 'dna_processing', 'dna_reveal', 'plan_active', 'concierge_sync',
+]);
+
+export const VALID_A2UI_COMPONENTS: ReadonlySet<A2UIComponentType> = new Set([
+  'DonnaReadsYouCard', 'GapRevealCard', 'PackageSelectCards', 'InlineIntakeSection',
+  'DNAProcessingCard', 'DNARevealCard', 'WikiCard', 'ArtifactExcerptCard',
+  'InlineAuthCard', 'VoicePanel',
+]);
+
+/**
+ * Transitions that are architecturally invalid regardless of agent instruction.
+ * The canvas state machine must check this before executing any transition.
+ */
+export const BLOCKED_TRANSITIONS: Partial<Record<CanvasState, CanvasState[]>> = {
+  landing: ['dna_processing', 'dna_reveal', 'plan_active', 'concierge_sync'],
+  donna_reads_you: ['package_selection'], // must pass through gap_reveal
+};

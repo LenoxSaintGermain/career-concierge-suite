@@ -26,18 +26,105 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;500;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+    <!-- Cormorant Garamond replaces Playfair Display + EB Garamond for the Donna surface.
+         Inter + IBM Plex Mono remain. See docs/DESIGN.md for font role assignments. -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,300;1,400;1,500&family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        --brand-teal: #8dd9bf;
-        --brand-teal-dark: #5faf95;
-        --brand-teal-soft: rgba(141, 217, 191, 0.14);
-        --brand-ink: #28211e;
-        --brand-page: #f4f1eb;
-        --brand-surface: #fbf8f2;
-        --brand-grid: #d8d0c3;
-        --brand-overlay: #28211e;
+        /* ─── DONNA DARK SURFACE ─────────────────────────────────── */
+
+        /* Canvas & Surface Ladder
+           Use surface-2 for elevated/featured cards.
+           Card backgrounds using backdrop-filter must be ≥ 0.96 opacity. */
+        --donna-canvas:     #07161A;
+        --donna-surface-1:  #0A1E24;
+        --donna-surface-2:  #0D2329;
+        --donna-surface-3:  #112B32;
+        --donna-surface-4:  #163238;
+
+        /* Hairlines — use ladder instead of a single value */
+        --donna-hairline:         #1A3640;
+        --donna-hairline-mid:     #22424A;
+        --donna-hairline-strong:  #2D5360;
+
+        /* Accent — exactly 3 uses per viewport:
+           1) 2px left border on A2UICards
+           2) Active state indicator dot
+           3) Accent eyebrow text on active canvas state */
+        --donna-accent:       #8DD9BF;
+        --donna-accent-dark:  #5FAF95;
+        --donna-accent-soft:  rgba(141, 217, 191, 0.14);
+        /* Ambient field — DO NOT increase beyond 0.03 */
+        --donna-accent-pulse: rgba(45, 197, 194, 0.03);
+
+        /* Text */
+        --donna-text-primary:     rgba(220, 231, 232, 0.92);
+        --donna-text-secondary:   rgba(142, 163, 167, 0.72);
+        --donna-text-ghost:       rgba(142, 163, 167, 0.32);
+        --donna-text-placeholder: rgba(142, 163, 167, 0.28);
+
+        /* ─── LIGHT MODE (LoginView / Module Grid) ───────────────── */
+        --brand-page:     #f4f1eb;
+        --brand-surface:  #fbf8f2;
+        --brand-grid:     #d8d0c3;
+        --brand-ink:      #28211e;
+        --brand-ink-muted: #6b6358;
+        --brand-ink-ghost: #a09890;
+        --brand-overlay:  #28211e;
         --brand-overlay-text: #f7f1e8;
+        /* Teal accent values are shared across light and dark */
+        --brand-teal:      #8DD9BF;
+        --brand-teal-dark: #5FAF95;
+        --brand-teal-soft: rgba(141, 217, 191, 0.14);
+
+        /* ─── TYPOGRAPHY FAMILIES ────────────────────────────────── */
+        --font-editorial: 'Cormorant Garamond', Georgia, serif;
+        --font-body:      'Inter', system-ui, -apple-system, sans-serif;
+        --font-mono:      'IBM Plex Mono', 'SF Mono', ui-monospace, monospace;
+
+        /* ─── TYPE SCALE — DONNA SURFACE ────────────────────────── */
+        /* Donna voice (Cormorant italic) */
+        --text-donna-size-primary:   28px;
+        --text-donna-size-secondary: 22px;
+        --text-donna-lh:             1.35;
+        --text-donna-ls:             -0.3px;
+        /* Card content */
+        --text-card-headline-size:   20px;
+        --text-card-headline-lh:     1.3;
+        --text-card-body-size:       15px;
+        --text-card-body-lh:         1.6;
+        --text-card-body-ls:         -0.1px;
+        --text-card-body-sm-size:    13px;
+        /* Data / eyebrow / mono labels */
+        --text-eyebrow-size:         9px;
+        --text-eyebrow-mid-size:     10px;
+        --text-eyebrow-ls:           0.22em;
+        --text-eyebrow-mid-ls:       0.24em;
+        /* Price labels — always use font-feature-settings: "tnum" */
+        --text-price-size:           9px;
+        --text-price-ls:             0.22em;
+
+        /* ─── SPACING ────────────────────────────────────────────── */
+        --space-card-inner: 20px;
+        --space-card-gap:   16px;
+        --space-eyebrow-gap: 8px;
+
+        /* ─── MOTION ─────────────────────────────────────────────── */
+        --ease-exit:       cubic-bezier(0.22, 1, 0.36, 1);
+        --ease-standard:   cubic-bezier(0.65, 0, 0.35, 1);
+        --ease-spring:     cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /* Canvas dissolve — always 300ms */
+        --dur-dissolve:    300ms;
+        /* Message / chip / card entrance stagger */
+        --dur-stagger-chip:    80ms;
+        --dur-stagger-message: 120ms;
+        --dur-stagger-card:    80ms;
+        /* Legacy duration names — kept for existing component compatibility */
+        --dur-xs:    120ms;
+        --dur-sm:    180ms;
+        --dur-md:    260ms;
+        --dur-lg:    420ms;
+        --dur-cinematic: 1100ms;
       }
       body {
         font-family: 'Inter', sans-serif;
@@ -46,24 +133,33 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
+      /* Editorial serif — Cormorant Garamond (replaces Playfair Display + EB Garamond)
+         Always italic on the dark surface. Use roman on light surfaces only. */
       .font-editorial {
-        font-family: 'Playfair Display', serif;
+        font-family: var(--font-editorial);
+        font-style: italic;
+      }
+      .font-editorial-roman {
+        font-family: var(--font-editorial);
+        font-style: normal;
       }
       .font-body {
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-body);
+        font-feature-settings: "cv05", "cv11", "dlig";
       }
+      /* font-data: monospaced labels, eyebrows, CTAs, price lines */
       .font-data {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-family: var(--font-mono);
       }
-      .font-intake-display {
-        font-family: 'Playfair Display', Georgia, serif;
+      /* Tnum variant — use on any element rendering a number or price */
+      .font-data-tnum {
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum";
       }
-      .font-intake-body {
-        font-family: 'EB Garamond', Georgia, serif;
-      }
-      .font-intake-mono {
-        font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      }
+      /* Legacy aliases — kept for backward compatibility during migration */
+      .font-intake-display { font-family: var(--font-editorial); font-style: italic; }
+      .font-intake-body    { font-family: var(--font-editorial); font-style: italic; }
+      .font-intake-mono    { font-family: var(--font-mono); }
       /* Hide scrollbar for clean UI */
       .no-scrollbar::-webkit-scrollbar {
         display: none;
@@ -146,6 +242,20 @@
         transition-delay: 0.4s; /* Wait for grid to lock in */
       }
       
+      /* Donna Ambient Keyframes */
+      @keyframes donnaBreathe {
+        0%, 100% { opacity: 0.6; transform: scale(1); }
+        50%       { opacity: 1;   transform: scale(1.06); }
+      }
+      @keyframes donnaListen {
+        0%, 100% { opacity: 0.8; transform: scale(1); }
+        50%       { opacity: 1;   transform: scale(1.12); }
+      }
+      @keyframes donnaThink {
+        0%, 100% { opacity: 0.4; }
+        50%       { opacity: 1; }
+      }
+
       /* Animation Keyframes */
       @keyframes fadeUp {
         from { opacity: 0; transform: translateY(12px); }

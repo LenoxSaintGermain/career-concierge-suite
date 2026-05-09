@@ -145,13 +145,9 @@ export function MyConciergeView(props: {
         <p className="text-sm text-gray-600 leading-relaxed mt-4 max-w-xl">
           Complete Smart Start Intake first so this guidance can ground itself in your Professional DNA and generated suite.
         </p>
-        <button
-          type="button"
-          onClick={() => props.onOpenModule('intake')}
-          className="mt-6 px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em]"
-        >
-          Start Intake
-        </button>
+        <div className="mt-6 text-[10px] uppercase tracking-[0.24em] text-black/45">
+          Return to Donna to start Smart Start.
+        </div>
       </div>
     );
   }

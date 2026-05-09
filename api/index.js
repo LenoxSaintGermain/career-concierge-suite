@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import admin from 'firebase-admin';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { readFile } from 'node:fs/promises';
 import pdfParse from '@cedrugs/pdf-parse';
 import mammoth from 'mammoth';
@@ -53,9 +53,17 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(cors({ origin: true }));
 
-// Firebase Admin uses Application Default Credentials in Cloud Run.
+const firebaseProjectId =
+  process.env.FIREBASE_PROJECT_ID ||
+  process.env.GOOGLE_CLOUD_PROJECT ||
+  process.env.GCLOUD_PROJECT ||
+  'ssai-f6191';
+
+// Firebase Admin uses Application Default Credentials in Cloud Run, but the
+// project id must stay pinned to Career Concierge locally so frontend auth
+// tokens and backend verification do not drift with an unrelated gcloud config.
 if (!admin.apps.length) {
-  admin.initializeApp();
+  admin.initializeApp({ projectId: firebaseProjectId });
 }
 const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'career-concierge';
 const db = getFirestore(admin.app(), firestoreDatabaseId);
@@ -63,7 +71,7 @@ const storageBucketName =
   process.env.CCS_STORAGE_BUCKET ||
   process.env.STORAGE_BUCKET ||
   process.env.FIREBASE_STORAGE_BUCKET ||
-  (process.env.GOOGLE_CLOUD_PROJECT ? `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com` : '');
+  (firebaseProjectId ? `${firebaseProjectId}.appspot.com` : '');
 const normalizeDnaVoiceModel = (value) =>
   value === 'elevenlabs_ghost' || value === 'elevenlabs_conversational' ? 'elevenlabs_ghost' : 'gemini_live';
 const resolveCanonicalDnaVoiceModel = (value, publicPanelProvider) =>
@@ -5798,11 +5806,20 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
   const expiresAt = new Date(issuedAt.getTime() + 45 * 60 * 1000);
   const newSessionExpireAt = new Date(issuedAt.getTime() + 4 * 60 * 1000);
   const liveContext = nonEmpty(_req.body?.context);
+  const wikiContext = nonEmpty(_req.body?.wiki_context);
+  const memoryContext = nonEmpty(_req.body?.memory_context);
+  const baseInstruction = liveSystemInstruction(runtimeConfig, clientName, liveContext);
+  let systemInstruction = wikiContext
+    ? `## Client Knowledge\n${wikiContext}\n\n---\n\n${baseInstruction}`
+    : baseInstruction;
+  if (memoryContext) {
+    systemInstruction = `${systemInstruction}\n\n## Conversation Memory\n${memoryContext}`;
+  }
   const connectConfig = buildGeminiLiveConnectConfig({
     runtimeConfig,
     model,
     voiceName,
-    systemInstruction: liveSystemInstruction(runtimeConfig, clientName, liveContext),
+    systemInstruction,
     activityHandling,
     startSensitivity,
     endSensitivity,
@@ -6087,6 +6104,7 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       console.error('document_publisher_error', docPubError);
       documentPublisher = { status: 'error', detail: sanitizeError(docPubError, 'document_publisher_failed') };
     }
+    compileClientWiki(uid, db).catch((err) => console.warn('[wiki] compile failed:', err));
     return res.json({
       meta,
       artifacts: finalArtifacts,
@@ -6194,6 +6212,7 @@ app.post('/v1/suite/generate', requireAuth, async (req, res) => {
       console.error('document_publisher_error', docPubError);
       documentPublisher = { status: 'error', detail: sanitizeError(docPubError, 'document_publisher_failed') };
     }
+    compileClientWiki(uid, db).catch((err) => console.warn('[wiki] compile failed:', err));
     return res.json({
       meta,
       artifacts: finalArtifacts,
@@ -6496,7 +6515,380 @@ app.post('/v1/gws/sync-docs', requireAuth, async (req, res) => {
   }
 });
 
-// ── End Ghost Voice Agent ───────────────────────────────────────────────────
+// ── Per-User Wiki Substrate ─────────────────────────────────────────────────
+
+async function compileClientWiki(uid, db) {
+  const clientRef = db.collection('clients').doc(uid);
+  const clientSnap = await clientRef.get();
+  // For fresh users with no client doc yet, return a minimal empty wiki rather than throwing.
+  // The doc will be created when they complete intake.
+  if (!clientSnap.exists) {
+    const emptyWiki = {
+      uid,
+      compiled_at: new Date().toISOString(),
+      source_hash: String(Date.now()),
+      sections: [],
+      first_name: 'Client',
+      target_role: '',
+      focus_label: 'career growth',
+      intake_complete: false,
+      artifact_types_present: [],
+    };
+    return emptyWiki;
+  }
+  const client = clientSnap.data();
+  const intake = client.intake?.answers ?? {};
+
+  const sections = [];
+
+  // Positioning
+  const positioningLines = [
+    intake.intent_type ? `Intent: ${intake.intent_type}` : null,
+    intake.current_or_target_job_title ? `Target Role: ${intake.current_or_target_job_title}` : null,
+    intake.current_title ? `Current Title: ${intake.current_title}` : null,
+    intake.target_sector ? `Target Sector: ${intake.target_sector}` : null,
+    intake.comp_level ? `Compensation Level: ${intake.comp_level}` : null,
+    intake.timeline_urgency ? `Timeline: ${intake.timeline_urgency}` : null,
+  ].filter(Boolean);
+  if (positioningLines.length) {
+    sections.push({
+      key: 'positioning',
+      heading: 'Career Positioning',
+      body: positioningLines.join('\n'),
+      source_refs: ['intake'],
+      compiled_at: new Date().toISOString(),
+    });
+  }
+
+  // Goals
+  const outcomeGoals = Array.isArray(intake.outcome_goals) ? intake.outcome_goals : [];
+  const goalsLines = [
+    outcomeGoals.length ? `Goals:\n${outcomeGoals.map(g => `- ${g}`).join('\n')}` : null,
+    intake.direction_aim ? `Direction: ${intake.direction_aim}` : null,
+    intake.constraints ? `Constraints: ${intake.constraints}` : null,
+    intake.pressure_breaks ? `Pressure breaks: ${intake.pressure_breaks}` : null,
+  ].filter(Boolean);
+  if (goalsLines.length) {
+    sections.push({
+      key: 'goals',
+      heading: 'Goals and Constraints',
+      body: goalsLines.join('\n\n'),
+      source_refs: ['intake'],
+      compiled_at: new Date().toISOString(),
+    });
+  }
+
+  // Evidence
+  const quantifiedOutcomes = Array.isArray(intake.quantified_outcomes) ? intake.quantified_outcomes : [];
+  const proofArtifacts = Array.isArray(intake.proof_artifacts) ? intake.proof_artifacts : [];
+  const evidenceLines = [
+    intake.resume_url ? `Resume: ${intake.resume_url}` : null,
+    quantifiedOutcomes.length ? `Quantified outcomes:\n${quantifiedOutcomes.map(o => `- ${o}`).join('\n')}` : null,
+    proofArtifacts.length ? `Proof artifacts:\n${proofArtifacts.map(p => `- ${p}`).join('\n')}` : null,
+  ].filter(Boolean);
+  if (evidenceLines.length) {
+    sections.push({
+      key: 'evidence',
+      heading: 'Proof and Evidence',
+      body: evidenceLines.join('\n\n'),
+      source_refs: ['intake'],
+      compiled_at: new Date().toISOString(),
+    });
+  }
+
+  // Artifacts
+  const artifactsSnap = await db.collection('clients').doc(uid).collection('artifacts').get();
+  const artifactSummaries = [];
+  artifactsSnap.forEach(doc => {
+    const a = doc.data();
+    if (a && a.type) artifactSummaries.push(`${a.type}: v${a.version || 1} (${a.title || a.type})`);
+  });
+  if (artifactSummaries.length) {
+    sections.push({
+      key: 'artifacts',
+      heading: 'Suite Artifacts',
+      body: artifactSummaries.join('\n'),
+      source_refs: ['artifacts'],
+      compiled_at: new Date().toISOString(),
+    });
+  }
+
+  // Recent interactions
+  const interactionsSnap = await db.collection('clients').doc(uid).collection('interactions')
+    .orderBy('created_at', 'desc').limit(5).get().catch(() => null);
+  if (interactionsSnap && !interactionsSnap.empty) {
+    const interactionLines = [];
+    interactionsSnap.forEach(doc => {
+      const i = doc.data();
+      if (i && i.summary) interactionLines.push(`- ${i.type || 'interaction'}: ${i.summary}`);
+    });
+    if (interactionLines.length) {
+      sections.push({
+        key: 'interactions',
+        heading: 'Recent Interactions',
+        body: interactionLines.join('\n'),
+        source_refs: ['interactions'],
+        compiled_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  const displayName = client.display_name || client.demo_profile?.name || client.email || '';
+  const firstName = displayName.split(/\s+/)[0] || 'Client';
+  const targetRole = intake.current_or_target_job_title || intake.target_title || '';
+  const focusLabel = client.preferences?.focus || 'career growth';
+
+  const wiki = {
+    uid,
+    compiled_at: new Date().toISOString(),
+    source_hash: String(Date.now()),
+    sections,
+    first_name: firstName,
+    target_role: targetRole,
+    focus_label: focusLabel,
+    intake_complete: Boolean(client.intake?.completed_at),
+    artifact_types_present: artifactSummaries.map(s => s.split(':')[0].trim()),
+  };
+
+  await clientRef.update({ wiki });
+  return wiki;
+}
+
+app.post('/v1/wiki/compile', requireAuth, async (req, res) => {
+  try {
+    const wiki = await compileClientWiki(req.user.uid, db);
+    return res.json({ ok: true, wiki });
+  } catch (e) {
+    console.error('wiki_compile_error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/v1/wiki/context', requireAuth, async (req, res) => {
+  try {
+    const clientRef = db.collection('clients').doc(req.user.uid);
+    const snap = await clientRef.get();
+    if (!snap.exists) return res.status(404).json({ error: 'client_not_found' });
+    const client = snap.data();
+    let wiki = client.wiki;
+    if (!wiki) {
+      wiki = await compileClientWiki(req.user.uid, db);
+    }
+    return res.json(wiki);
+  } catch (e) {
+    console.error('wiki_context_error', e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Conversation Memory ──────────────────────────────────────────────────────
+
+async function extractSessionSummary(uid, sessionId, db) {
+  const sessionRef = db.collection('clients').doc(uid).collection('conversations').doc(sessionId);
+  const snap = await sessionRef.get();
+  if (!snap.exists) return null;
+  const session = snap.data();
+  const messages = session.messages || [];
+  if (messages.length < 2) return null;
+
+  const transcript = messages
+    .map(m => `${m.role === 'donna' ? 'DONNA' : 'USER'}: ${m.body}`)
+    .join('\n');
+
+  if (!ai) return null;
+
+  const runtimeConfig = await loadAppConfig();
+  const model = nonEmpty(runtimeConfig?.generation?.suite_model) || utilityTextModel;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: `Extract structured memory from this career concierge conversation.\n\nTRANSCRIPT:\n${transcript}`,
+      config: {
+        responseMimeType: 'application/json',
+        systemInstruction: `You extract structured memory entries from a career coaching conversation.
+Return a JSON object with these arrays (each item is a plain prose string, max 120 chars):
+- commitments: things the user said they will do
+- concerns: worries, anxieties, or blockers the user expressed
+- decisions: choices made during the conversation
+- preferences: communication or working style signals
+- milestones: meaningful moments (first session, completed module, etc.)
+- tone_note: one sentence describing the user's emotional state/energy
+
+Rules:
+- Only extract what was explicitly stated. Never infer or fabricate.
+- If a category has nothing, return an empty array.
+- tone_note is always exactly one sentence.`,
+        temperature: 0.1,
+      },
+    });
+
+    const parsed = safeParseJson(response.text?.trim());
+    if (!parsed) return null;
+
+    const summary = { session_id: sessionId, ...parsed, extracted_at: new Date().toISOString() };
+    await sessionRef.update({ summary });
+    return summary;
+  } catch (err) {
+    console.warn('[memory] extractSessionSummary failed:', err.message);
+    return null;
+  }
+}
+
+async function compileClientMemory(uid, db) {
+  const clientRef = db.collection('clients').doc(uid);
+  let conversationsSnap;
+  try {
+    conversationsSnap = await db.collection('clients').doc(uid)
+      .collection('conversations')
+      .where('ended_at', '!=', null)
+      .orderBy('ended_at', 'desc')
+      .limit(20)
+      .get();
+  } catch {
+    // Fallback if index not ready: fetch without filter
+    conversationsSnap = await db.collection('clients').doc(uid)
+      .collection('conversations')
+      .orderBy('started_at', 'desc')
+      .limit(20)
+      .get();
+  }
+
+  const entries = [];
+  let lastSessionAt = null;
+  let sessionCount = 0;
+
+  conversationsSnap.forEach(doc => {
+    const session = doc.data();
+    if (!session.summary) return;
+    sessionCount++;
+    if (!lastSessionAt) lastSessionAt = session.ended_at?.toDate?.()?.toISOString();
+
+    const kindMap = {
+      commitments: 'commitment',
+      concerns: 'concern',
+      decisions: 'context',
+      preferences: 'preference',
+      milestones: 'milestone',
+    };
+    Object.entries(kindMap).forEach(([field, kind]) => {
+      (session.summary[field] || []).forEach(body => {
+        entries.push({
+          id: `${doc.id}-${kind}-${entries.length}`,
+          kind,
+          body,
+          session_id: doc.id,
+          created_at: session.ended_at?.toDate?.()?.toISOString() || new Date().toISOString(),
+          weight: kind === 'commitment' || kind === 'concern' ? 'high' : 'medium',
+        });
+      });
+    });
+  });
+
+  let arc_summary = '';
+  if (entries.length >= 3 && ai) {
+    const entryText = entries.map(e => `[${e.kind}] ${e.body}`).join('\n');
+    const runtimeConfig = await loadAppConfig();
+    const model = nonEmpty(runtimeConfig?.generation?.suite_model) || utilityTextModel;
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: `Write a 2-sentence career arc summary from these memory entries:\n${entryText}`,
+        config: {
+          systemInstruction: 'Write exactly 2 sentences. Present tense. No adjectives. Just the facts of where they are and what they are working on.',
+          temperature: 0.2,
+        },
+      });
+      arc_summary = response.text?.trim() || '';
+    } catch { /* non-blocking */ }
+  }
+
+  const memory = {
+    uid,
+    compiled_at: new Date().toISOString(),
+    arc_summary,
+    entries,
+    last_session_at: lastSessionAt || new Date().toISOString(),
+    session_count: sessionCount,
+  };
+
+  await clientRef.update({ memory });
+  return memory;
+}
+
+// Write a single message to a session transcript
+app.post('/v1/memory/session/:sessionId/message', requireAuth, async (req, res) => {
+  const { sessionId } = req.params;
+  const message = req.body;
+  if (!message?.id || !message?.role || !message?.body) {
+    return res.status(400).json({ error: 'invalid_message' });
+  }
+  try {
+    const sessionRef = db.collection('clients').doc(req.user.uid)
+      .collection('conversations').doc(sessionId);
+    const existingSnap = await sessionRef.get();
+    if (!existingSnap.exists) {
+      await sessionRef.set({
+        session_id: sessionId,
+        surface: message.surface || 'shell',
+        started_at: new Date(),
+        ended_at: null,
+        messages: [],
+        summary: null,
+      });
+    }
+    await sessionRef.update({
+      messages: FieldValue.arrayUnion({
+        ...message,
+        timestamp: message.timestamp || Date.now(),
+      }),
+    });
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// End a session — triggers async summary extraction + memory recompile
+app.post('/v1/memory/session/:sessionId/end', requireAuth, async (req, res) => {
+  const { sessionId } = req.params;
+  try {
+    const sessionRef = db.collection('clients').doc(req.user.uid)
+      .collection('conversations').doc(sessionId);
+    const snap = await sessionRef.get();
+    if (snap.exists) {
+      await sessionRef.update({ ended_at: new Date() });
+      extractSessionSummary(req.user.uid, sessionId, db)
+        .then(() => compileClientMemory(req.user.uid, db))
+        .catch(err => console.warn('[memory] post-session pipeline failed:', err));
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/v1/memory/compile', requireAuth, async (req, res) => {
+  try {
+    const memory = await compileClientMemory(req.user.uid, db);
+    return res.json({ ok: true, memory });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/v1/memory/context', requireAuth, async (req, res) => {
+  try {
+    const snap = await db.collection('clients').doc(req.user.uid).get();
+    if (!snap.exists) return res.json(null);
+    const memory = snap.data().memory || null;
+    return res.json(memory);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── End Conversation Memory ──────────────────────────────────────────────────
 
 app.get('/v1/cjs/assets', requireAuth, async (req, res) => {
   try {

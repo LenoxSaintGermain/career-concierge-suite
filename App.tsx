@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { User } from 'firebase/auth';
 import { SUITE_MODULES } from './suite/modules';
-import { BrandConfig, ClientDoc, PublicConfig, SuiteModule, SuiteModuleId } from './types';
+import { BrandConfig, ClientDoc, ClientWiki, PublicConfig, SuiteModule, SuiteModuleId } from './types';
 import { loginWithCustomSessionToken, subscribeToAuth, logout } from './services/authService';
 import { getOrCreateClient, markIntroSeen } from './services/clientService';
 import { getArtifact } from './services/artifactService';
-import { LoginView } from './components/LoginView';
 import { IntakeFlow } from './components/IntakeFlow';
 import { BriefView } from './components/BriefView';
 import { PlanView } from './components/PlanView';
@@ -27,10 +26,13 @@ import { EventsNetworkingView } from './components/EventsNetworkingView';
 import { TelescopeView } from './components/TelescopeView';
 import { SkillSyncTeamView } from './components/SkillSyncTeamView';
 import { AmbientGuide } from './components/AmbientGuide';
+import { DonnaShell } from './components/DonnaShell';
 import { canAccessAdminConfig, fetchPublicConfig } from './services/adminApi';
 import { cloneBrandConfig, getBrandModuleCopy, hexToRgba } from './config/brandSystem.js';
+import { fetchClientWiki } from './services/wikiService';
+import { fetchClientMemory } from './services/memoryService';
 
-type IntroPhase = 'prologue' | 'complete';
+type FirstMomentState = 'prologue' | 'concierge_brief' | 'grid';
 
 const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   ui: {
@@ -61,6 +63,7 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
     elevenlabs_enabled: false,
     elevenlabs_agent_id: '',
     active_panel: 'gemini_live',
+    gemini_live_model: '',
   },
 };
 
@@ -221,7 +224,9 @@ const App: React.FC = () => {
 
   const [clientLoaded, setClientLoaded] = useState(false);
   const [client, setClient] = useState<ClientDoc | null>(null);
-  const [introPhase, setIntroPhase] = useState<IntroPhase>('complete');
+  const [wiki, setWiki] = useState<ClientWiki | null>(null);
+  const [memory, setMemory] = useState<import('./types').ClientMemory | null>(null);
+  const [firstMoment, setFirstMoment] = useState<FirstMomentState>('grid');
 
   const [openModuleId, setOpenModuleId] = useState<SuiteModuleId | null>(null);
   const [hoveredModuleId, setHoveredModuleId] = useState<SuiteModuleId | null>(null);
@@ -357,7 +362,8 @@ const App: React.FC = () => {
       if (!user) {
         setClientLoaded(false);
         setClient(null);
-        setIntroPhase('complete');
+        setWiki(null);
+        setFirstMoment('grid');
         setIsAdminUser(false);
         return;
       }
@@ -367,7 +373,13 @@ const App: React.FC = () => {
       });
       setClient(client);
       setClientLoaded(true);
-      if (!client.intro_seen_at) setIntroPhase('prologue');
+      fetchClientWiki()
+        .then((nextWiki) => setWiki(nextWiki))
+        .catch(() => {});
+      fetchClientMemory()
+        .then((nextMemory) => setMemory(nextMemory))
+        .catch(() => {});
+      if (!client.intro_seen_at) setFirstMoment('prologue');
       const adminAccess = await canAccessAdminConfig();
       setIsAdminUser(adminAccess);
     };
@@ -408,7 +420,8 @@ const App: React.FC = () => {
   const shellHeaderDimmed = openModuleId !== null || shellScrollDepth > 56;
 
   const isLocked = (m: SuiteModule) => {
-    if (m.id === 'intake' || m.id === 'roadmap') return false;
+    if (m.id === 'intake') return true;
+    if (m.id === 'roadmap') return false;
     if (isFreeTier && m.id === 'readiness') return !intakeComplete;
     return !intakeComplete;
   };
@@ -473,7 +486,7 @@ const App: React.FC = () => {
     run();
   }, [user, openModuleId]);
 
-  const handleIntroSkip = async () => {
+  const handleIntroComplete = async () => {
     if (user) {
       try {
         await markIntroSeen(user.uid);
@@ -481,7 +494,7 @@ const App: React.FC = () => {
         // Non-blocking; intro is UX sugar.
       }
     }
-    setIntroPhase('complete');
+    setFirstMoment('grid');
   };
 
   const handleModuleClick = (e: React.MouseEvent, module: SuiteModule) => {
@@ -538,18 +551,8 @@ const App: React.FC = () => {
     );
   }
 
-  if (!user) {
-    return (
-      <LoginView
-        onAuthed={() => { /* auth state will update via listener */ }}
-        bootstrapError={launchBootstrapError}
-      />
-    );
-  }
-
   // Prologue overlay (plays once per user; stored in Firestore).
-  const showPrologue = publicConfig.ui.show_prologue && introPhase === 'prologue' && clientLoaded;
-
+  const showPrologue = publicConfig.ui.show_prologue && firstMoment === 'prologue' && clientLoaded;
   // Relationship highlighting
   const hovered = hoveredModuleId ? visibleModules.find((m) => m.id === hoveredModuleId) ?? null : null;
   const journeyFirstName = getClientFirstName(client, user);
@@ -557,7 +560,7 @@ const App: React.FC = () => {
   const journeyFocusLabel = getClientFocusLabel(client);
   const journeyGuestLabel = journeyFirstName === 'you' ? 'you' : journeyFirstName;
   const journeyTargetPhrase = journeyTargetRole === 'your next move' ? 'your next move' : journeyTargetRole;
-  const journeySeed = Math.abs(toSeed(`${client?.uid || user.uid}|${journeyTargetPhrase}|${journeyFocusLabel}`));
+  const journeySeed = Math.abs(toSeed(`${client?.uid || user?.uid || 'guest'}|${journeyTargetPhrase}|${journeyFocusLabel}`));
   const journeyVoiceIndex = (journeySeed + journeyGuideVisits) % 3;
   const journeyOverlayTitle = [
     'Read the suite as a living brief, not a menu.',
@@ -768,11 +771,35 @@ const App: React.FC = () => {
     act.moduleIds.forEach((id) => journeyModuleToAct.set(id, act.id));
   });
 
-  return (
-    <div
-      className="min-h-screen overflow-hidden"
-      style={{ backgroundColor: brand.colors.page_background, color: brand.colors.ink }}
-    >
+  const renderSuiteContent = () => {
+    if (!user) {
+      return (
+        <div
+          className="min-h-screen overflow-hidden"
+          style={{ backgroundColor: brand.colors.page_background, color: brand.colors.ink }}
+        >
+          <div className="flex min-h-screen items-center justify-center px-6 py-16">
+            <div className="max-w-2xl border border-black/10 bg-[#FBF8F2] px-10 py-10 text-center shadow-[0_24px_48px_-36px_rgba(0,0,0,0.22)]">
+              <div className="text-[10px] uppercase tracking-[0.28em]" style={{ color: brand.colors.accent_dark }}>
+                Career Concierge OS
+              </div>
+              <h2 className="mt-3 text-4xl font-editorial italic leading-tight">
+                The suite is here when Donna decides you need it.
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-black/60">
+                The visible operating system stays available, but the primary experience now begins in the guided concierge line.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className="min-h-screen overflow-hidden"
+        style={{ backgroundColor: brand.colors.page_background, color: brand.colors.ink }}
+      >
       {showPrologue && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-6"
@@ -797,7 +824,7 @@ const App: React.FC = () => {
 
           <div className="fixed bottom-8 right-8">
             <button
-              onClick={handleIntroSkip}
+              onClick={handleIntroComplete}
               className="text-[10px] uppercase tracking-widest transition-colors flex items-center gap-2 group"
               style={{ color: hexToRgba(brand.colors.overlay_text, 0.38) }}
             >
@@ -882,71 +909,14 @@ const App: React.FC = () => {
             </>
           )}
           <div className="mb-8">
-            {brand.toggles.show_suite_kicker && (
-              <div className={`uppercase opacity-80 ${subheaderScaleClass[brand.hierarchy.subheader_scale]}`} style={{ color: brand.colors.accent_dark }}>
-                {brand.copy.home_kicker}
-              </div>
-            )}
-            <div className={`font-editorial italic mt-2 ${headerScaleClass[brand.hierarchy.header_scale]}`}>{brand.copy.home_title}</div>
-            <p className={`text-black/55 mt-4 max-w-2xl ${bodyDensityClass[brand.hierarchy.body_density]}`}>{brand.copy.home_description}</p>
-            {brand.toggles.show_home_callout && (
-              <div
-                className="mt-5 inline-flex items-center gap-4 border px-4 py-2 text-[10px] uppercase tracking-[0.2em]"
-                style={{ borderColor: brand.colors.grid_line, backgroundColor: hexToRgba(brand.colors.accent, 0.12) }}
-              >
-                <span style={{ color: brand.colors.accent_dark }}>{brand.copy.home_callout_label}</span>
-                <span className="text-black/45">{brand.copy.home_callout_value}</span>
-              </div>
-            )}
             {isFreeTier && (
               <div
-                className="mt-4 px-4 py-3 text-xs text-black/70 max-w-2xl border"
+                className="mb-4 px-4 py-3 text-xs text-black/70 max-w-2xl border"
                 style={{ borderColor: hexToRgba(brand.colors.accent_dark, 0.28), backgroundColor: hexToRgba(brand.colors.accent, 0.12) }}
               >
                 {brand.copy.free_tier_notice}
               </div>
             )}
-
-            <div className="mt-5">
-              <AmbientGuide
-                label="Journey guide"
-                message={journeyGuideHintMessage}
-                align="right"
-                delayMs={520}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (journeyGuideOpen) {
-                      closeJourneyGuide();
-                      return;
-                    }
-                    openJourneyGuide();
-                  }}
-                  className="w-full border px-4 py-3 text-left transition-colors hover:bg-[#fbf8f0] sm:px-5"
-                  style={{
-                    borderColor: hexToRgba(brand.colors.ink, 0.1),
-                    backgroundColor: '#f7f3ea',
-                  }}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: brand.colors.accent_dark }}>
-                        • Your Journey Guide
-                      </div>
-                      <div className="mt-1 max-w-[560px] font-editorial text-[20px] leading-tight text-[#171412] md:text-[22px]">
-                        {journeyInvite}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-black/36">
-                      <span>{journeyActs.length} Acts</span>
-                      <span>{visibleModules.length} Modules</span>
-                      <span>{journeyGuideOpen ? 'Close ×' : 'Reveal →'}</span>
-                    </div>
-                  </div>
-                </button>
-              </AmbientGuide>
-            </div>
 
             {journeyGuideOpen && (
               <section
@@ -1208,6 +1178,15 @@ const App: React.FC = () => {
             )}
           </div>
 
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-[10px] uppercase tracking-[0.28em] opacity-40" style={{ color: brand.colors.ink }}>
+              Your Suite Modules
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.2em] opacity-25" style={{ color: brand.colors.ink }}>
+              {visibleModules.length} modules
+            </div>
+          </div>
+
           <div
             className="grid grid-cols-1 gap-px border sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             style={{
@@ -1298,7 +1277,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {journeyGuideDismissed && !journeyGuideOpen && !openModuleId && (
+      {user && journeyGuideDismissed && !journeyGuideOpen && !openModuleId && (
         <div className="fixed bottom-5 right-5 z-20">
           <AmbientGuide label="Journey guide" message={journeyGuideHintMessage} align="right" delayMs={520}>
             <button
@@ -1316,7 +1295,7 @@ const App: React.FC = () => {
       )}
 
       {/* Module Modal */}
-      {openModule && (
+      {user && openModule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
           <div
             className="absolute inset-0 backdrop-blur-md"
@@ -1562,7 +1541,12 @@ const App: React.FC = () => {
                   onOpenModule={openModuleById}
                 />
               ) : openModule.id === 'my_concierge' ? (
-                <MyConciergeView client={client} onOpenModule={openModuleById} />
+                <MyConciergeView
+                  client={client}
+                  onOpenModule={(id) => {
+                    if (id !== 'intake') openModuleById(id);
+                  }}
+                />
               ) : openModule.id === 'events' ? (
                 <EventsNetworkingView client={client} onOpenModule={openModuleById} />
               ) : openModule.id === 'telescope' ? (
@@ -1582,12 +1566,9 @@ const App: React.FC = () => {
                         Intake produces your Brief, Plan, and supporting documents. It only takes a few minutes.
                       </p>
                       <div className="mt-6">
-                        <button
-                          onClick={() => openModuleById('intake')}
-                          className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
-                        >
-                          Start Intake
-                        </button>
+                          <div className="text-[10px] uppercase tracking-[0.24em] text-black/45">
+                            Return to Donna to start Smart Start.
+                          </div>
                       </div>
                     </div>
                   )}
@@ -1652,12 +1633,9 @@ const App: React.FC = () => {
                           Run Intake again to regenerate your suite outputs.
                         </p>
                         <div className="mt-6">
-                          <button
-                            onClick={() => openModuleById('intake')}
-                            className="px-5 py-3 btn-brand text-xs uppercase tracking-[0.25em] transition-colors"
-                          >
-                            Regenerate via Intake
-                          </button>
+                          <div className="text-[10px] uppercase tracking-[0.24em] text-black/45">
+                            Return to Donna to regenerate through Smart Start.
+                          </div>
                         </div>
                       </div>
                   )}
@@ -1668,8 +1646,27 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <AdminConsole open={adminOpen} onClose={() => setAdminOpen(false)} onSaved={refreshPublicConfig} />
-    </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <DonnaShell
+        user={user}
+        client={client}
+        wiki={wiki}
+        memory={memory}
+        clientLoaded={clientLoaded}
+        publicConfig={publicConfig}
+        brand={brand}
+        isAdminUser={isAdminUser}
+        onOpenModule={openModuleById}
+        onOpenAdmin={() => setAdminOpen(true)}
+        suiteContent={renderSuiteContent()}
+      />
+      <AdminConsole open={adminOpen} onClose={() => setAdminOpen(false)} onSaved={refreshPublicConfig} isAdminUser={isAdminUser} />
+    </>
   );
 };
 

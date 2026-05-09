@@ -8,7 +8,7 @@ SERVICE_NAME="${SERVICE_NAME:-career-concierge-suite}"
 TEMP_ENV_FILE=".env.production.local"
 ALLOW_UNAUTHENTICATED="${ALLOW_UNAUTHENTICATED:-true}"
 
-export CLOUDSDK_PYTHON="${CLOUDSDK_PYTHON:-/usr/bin/python3}"
+export CLOUDSDK_PYTHON="${CLOUDSDK_PYTHON:-$(command -v python3)}"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"

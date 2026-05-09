@@ -6,6 +6,8 @@ import {
   AdminOrchestrationOverview,
   AdminSystemOverview,
   AppConfig,
+  ClientMemory,
+  ClientWiki,
   CuratedMediaItem,
   MediaAudience,
   MediaJourneySurface,
@@ -40,11 +42,16 @@ import {
   VOICE_RUNTIME_LANES,
 } from '../config/voiceRuntime.js';
 import { BrandStudioSection } from './admin/BrandStudioSection';
+import { WikiAdminPanel } from './WikiAdminPanel';
+import { MemoryAdminPanel } from './MemoryAdminPanel';
+import { compileClientWiki, fetchClientWiki } from '../services/wikiService';
+import { fetchClientMemory } from '../services/memoryService';
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  isAdminUser?: boolean;
 };
 
 type VoicePreset = {
@@ -804,7 +811,7 @@ function OrderedListField({
   );
 }
 
-export function AdminConsole({ open, onClose, onSaved }: Props) {
+export function AdminConsole({ open, onClose, onSaved, isAdminUser }: Props) {
   const prefersReducedMotion = useReducedMotion();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -818,6 +825,9 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   const [bookingBusyKey, setBookingBusyKey] = useState<string | null>(null);
   const [orchestrationOverview, setOrchestrationOverview] = useState<AdminOrchestrationOverview | null>(null);
   const [orchestrationError, setOrchestrationError] = useState<string | null>(null);
+  const [wiki, setWiki] = useState<ClientWiki | null>(null);
+  const [wikiRecompiling, setWikiRecompiling] = useState(false);
+  const [memory, setMemory] = useState<ClientMemory | null>(null);
   const [showAdvancedVoice, setShowAdvancedVoice] = useState(false);
   const [activeSection, setActiveSection] = useState<AdminSectionId>('summary');
   const [expandedMediaId, setExpandedMediaId] = useState<string | null>(null);
@@ -852,6 +862,7 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
   };
 
   const load = async () => {
+    if (!isAdminUser) return;
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -859,12 +870,16 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     setOrchestrationError(null);
     setShowAdvancedVoice(false);
     try {
-      const [cfg, nextOverview] = await Promise.all([
+      const [cfg, nextOverview, nextWiki, nextMemory] = await Promise.all([
         fetchAdminConfig(),
         fetchAdminSystemOverview(),
+        fetchClientWiki().catch(() => null),
+        fetchClientMemory().catch(() => null),
       ]);
       setConfig(cfg);
       setOverview(nextOverview);
+      setWiki(nextWiki);
+      setMemory(nextMemory);
       setBaselineFingerprint(JSON.stringify(cfg));
       setExpandedMediaId(cfg.media.curated_library[0]?.id ?? null);
       await loadOptionalOverviews();
@@ -1169,6 +1184,21 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
     }
   };
 
+  const recompileWiki = async () => {
+    setWikiRecompiling(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextWiki = await compileClientWiki();
+      setWiki(nextWiki);
+      setSuccess('Compiled knowledge refreshed.');
+    } catch (e: any) {
+      setError(e?.message ?? 'Unable to recompile client knowledge.');
+    } finally {
+      setWikiRecompiling(false);
+    }
+  };
+
   const runtime = overview?.runtime ?? {
     project_id: 'unknown',
     region: 'unknown',
@@ -1431,6 +1461,29 @@ export function AdminConsole({ open, onClose, onSaved }: Props) {
             </div>
           </Panel>
         </div>
+
+        <Panel
+          title="Compiled client knowledge"
+          eyebrow="Wiki"
+          meta={wiki?.compiled_at ? `compiled ${new Date(wiki.compiled_at).toLocaleDateString()}` : 'not yet compiled'}
+        >
+          <WikiAdminPanel
+            wiki={wiki}
+            onRecompile={recompileWiki}
+            recompiling={wikiRecompiling}
+          />
+        </Panel>
+
+        <Panel
+          title="Conversation memory"
+          eyebrow="Memory"
+          meta={memory ? `${memory.session_count} sessions · ${memory.entries.length} entries` : 'no sessions yet'}
+        >
+          <MemoryAdminPanel
+            memory={memory}
+            onRecompiled={setMemory}
+          />
+        </Panel>
       </SectionShell>
     );
   };

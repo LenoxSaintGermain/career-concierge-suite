@@ -7,7 +7,7 @@ ENV_FILE="${3:-config/${PROJECT_ID}.api.env}"
 SERVICE_NAME="${SERVICE_NAME:-career-concierge-api}"
 ALLOW_UNAUTHENTICATED="${ALLOW_UNAUTHENTICATED:-true}"
 
-export CLOUDSDK_PYTHON="${CLOUDSDK_PYTHON:-/usr/bin/python3}"
+export CLOUDSDK_PYTHON="${CLOUDSDK_PYTHON:-$(command -v python3)}"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"

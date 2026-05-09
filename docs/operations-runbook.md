@@ -24,6 +24,22 @@ Operational implication:
 - you only need to set `VITE_CONCIERGE_API_URL` when intentionally pointing the UI at a non-sibling API
 - `.env.production` should normally leave `VITE_CONCIERGE_API_URL` unset so repo-based Cloud Run builds do not pin alternate environments to the canonical `ssai-f6191` API host
 
+## Local Auth Alignment
+
+The local UI and API should authenticate against the same Firebase project:
+
+- the frontend defaults to `ssai-f6191` when `VITE_FIREBASE_*` vars are missing
+- the local API now also pins Firebase Admin verification to `ssai-f6191` unless `FIREBASE_PROJECT_ID` is set explicitly
+- this prevents `401 invalid_token` failures on authenticated routes like `/v1/live/token` when your machine's active `gcloud` project is something else
+- use `npm run dev:local` from repo root when you want the Vite UI and local API to come up together for browser validation
+
+If local auth or Firestore calls still fail, refresh ADC:
+
+```bash
+gcloud auth login
+gcloud auth application-default login
+```
+
 ## Deploy API
 
 ```bash
@@ -76,6 +92,45 @@ That build config also sets `logging: CLOUD_LOGGING_ONLY` so triggers using a de
 ```bash
 bash scripts/deploy_ui_cloudrun.sh ssai-f6191 europe-west1 .context/deploy/ssai-f6191.ui.env
 ```
+
+## Donna Live Test Surface
+
+Use these sibling-named services when you need a fresh Cloud Run URL for Donna/front-door testing while keeping the same `ssai-f6191` project and `career-concierge` Firestore database:
+
+- API service: `career-concierge-api-donna-live`
+- UI service: `career-concierge-suite-donna-live`
+- Deterministic UI URL: `https://career-concierge-suite-donna-live-480846059254.europe-west1.run.app`
+- Deterministic API URL: `https://career-concierge-api-donna-live-480846059254.europe-west1.run.app`
+- Service alias UI URL: `https://career-concierge-suite-donna-live-tpcap5aa5a-ew.a.run.app`
+- Service alias API URL: `https://career-concierge-api-donna-live-tpcap5aa5a-ew.a.run.app`
+
+Current validated revisions as of 2026-05-08:
+
+- UI: `career-concierge-suite-donna-live-00004-th7`
+- API: `career-concierge-api-donna-live-00004-6zv`
+
+Deploy both in one pass with:
+
+```bash
+bash scripts/deploy_donna_live_test.sh ssai-f6191 europe-west1
+```
+
+Local non-committed env files expected by that helper:
+
+- `.context/deploy/ssai-f6191.donna-live.api.yaml`
+- `.context/deploy/ssai-f6191.donna-live.ui.env`
+
+The Donna UI env intentionally leaves `VITE_CONCIERGE_API_URL` unset so the browser can auto-target the sibling API URL for the fresh Cloud Run service.
+
+Smoke checks after deploy:
+
+```bash
+curl -sSI https://career-concierge-suite-donna-live-480846059254.europe-west1.run.app
+curl -sS https://career-concierge-api-donna-live-480846059254.europe-west1.run.app/health
+curl -sS https://career-concierge-api-donna-live-480846059254.europe-west1.run.app/v1/public/config
+```
+
+`POST /v1/live/token` should return `401` without a Firebase user token. Validate the actual Gemini microphone/session path from an authenticated browser session.
 
 ## Public Access Requirement
 
@@ -195,8 +250,11 @@ Current public-intake behavior:
 - Gemini Live now defaults to `gemini-3.1-flash-live-preview`, the current official Google Live model; `gemini-2.5-flash-native-audio-preview-12-2025` remains available only as a controlled fallback option
 - Gemini Smart Start sessions now share the same explicit intake-action tool contract as ElevenLabs Ghost, so Google Live can move sections, focus fields, write values, clear values, update route/preferences, and summarize the visible form through deterministic tool calls
 - Gemini compact Smart Start mode now suppresses live mic relay while Gemini is speaking, which prevents the lane from interrupting or clipping its own response mid-turn
+- Gemini Live clients now treat `serverContent.interrupted` as an immediate playback drain: active audio stops, queued PCM/audio buffers clear, and mic suppression releases so the user can keep speaking
+- Gemini Live `goAway` frames now surface an operator-visible reconnect warning instead of disappearing into console logs; if the socket closes after the warning, restart the voice session from the Smart Start rail
 - Gemini compact Smart Start mode now opens with the first question on its own and only enables the mic after that opening turn, which removes the silent-start seam and reduces early session drops
 - Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; do not use `professional_dna.voice_agent_voice_id` to reason about the public Gemini voice lane
+- Follow-up hardening: move Gemini Live intake tools out of ephemeral-token `liveConnectConstraints` only after a coordinated API/client contract pass, because the current token route still owns the full connect config shape
 - `POST /v1/voice/elevenlabs/session` now provides signed ElevenLabs session URLs for authenticated users when `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` are present
 - the ElevenLabs intake lane now runs on the ElevenLabs React SDK with contextual updates, action feed telemetry, and intake-safe client tools for screen movement and field entry
 - the Smart Start workspace is now a single guided intake surface with:

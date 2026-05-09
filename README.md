@@ -14,6 +14,17 @@ This fork carries that pattern into a dedicated concierge-led career acceleratio
 - Current API URL: `https://career-concierge-api-tpcap5aa5a-ew.a.run.app`
 - Current UI URL: `https://career-concierge-suite-tpcap5aa5a-ew.a.run.app`
 
+## Donna Live Test Environment
+
+Use this environment for Donna/front-door UAT before promoting changes back into the canonical suite services. It runs in the same `ssai-f6191` project and points at the same `career-concierge` Firestore database.
+
+- API service: `career-concierge-api-donna-live`
+- UI service: `career-concierge-suite-donna-live`
+- Deterministic UI URL: `https://career-concierge-suite-donna-live-480846059254.europe-west1.run.app`
+- Deterministic API URL: `https://career-concierge-api-donna-live-480846059254.europe-west1.run.app`
+- Service alias UI URL: `https://career-concierge-suite-donna-live-tpcap5aa5a-ew.a.run.app`
+- Service alias API URL: `https://career-concierge-api-donna-live-tpcap5aa5a-ew.a.run.app`
+
 ## Local Development
 
 Prerequisites:
@@ -33,6 +44,13 @@ Setup:
    - For production Cloud Run sibling deployments, leave `VITE_CONCIERGE_API_URL` unset unless the UI must call a non-sibling API.
 4. Start the app:
    - `npm run dev`
+   - or `npm run dev:local` to start the Vite UI and local API together
+
+Local API auth note:
+
+- the frontend defaults to Firebase project `ssai-f6191`
+- the local API now also pins Firebase Admin verification to `ssai-f6191` unless `FIREBASE_PROJECT_ID` is set explicitly
+- this prevents localhost auth drift when your active `gcloud` project is something else
 
 ## Voice Engine Routing
 
@@ -51,6 +69,9 @@ The client-facing Smart Start rail no longer exposes the internal Ghost tool-act
 The intake UI itself is now a single guided workspace with a compact Smart Start shell, one visible section at a time, and a locked processing state while artifacts are generated.
 Gemini is now aligned to Google’s current Live API family, with `gemini-3.1-flash-live-preview` as the default model and the older `gemini-2.5-flash-native-audio-preview-12-2025` retained only for controlled fallback and regression checks.
 Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; the legacy Professional DNA `voice_agent_voice_id` field no longer overrides the admin-selected Gemini voice.
+Donna is now the default front-door OS experience. The suite/grid is treated as a filing cabinet or explicit escape hatch; primary Smart Start, brief, plan, wiki, and live-session actions should stay in Donna's A2UI canvas unless the user chooses `Open full view`.
+Donna voice is now launched from the chat composer mic control as the primary interaction. That click requests browser microphone permission immediately, opens Donna's live A2UI canvas, and passes the approved stream into Gemini Live so users are not asked to start the session a second time.
+Gemini Live now handles server interruption events by stopping queued playback and releasing mic suppression, and it surfaces `goAway` session rotation warnings instead of only logging them.
 
 Provider options:
 
