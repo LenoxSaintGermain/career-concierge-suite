@@ -224,6 +224,7 @@ interface DonnaChatLaneProps {
   onOpenWiki?: (focusedKey?: string | null) => void;
   onSceneChange?: (scene: DonnaScene) => void;
   onStartLiveSession?: () => void;
+  onEndLiveSession?: () => void;
   onPrePurchaseIntakeSeed?: (
     payload: { intent: ClientIntent; preferences: ClientPreferences; answers: IntakeAnswers } | null
   ) => void;
@@ -288,6 +289,7 @@ export function DonnaChatLane({
   onOpenWiki,
   onSceneChange,
   onStartLiveSession,
+  onEndLiveSession,
   onPrePurchaseIntakeSeed,
   canvasCommand = null,
   liveSessionActive = false,
@@ -624,13 +626,24 @@ export function DonnaChatLane({
   const handleVoicePress = () => {
     setBlooming(true);
     setTimeout(() => setBlooming(false), 680);
+
+    // If live session is active, the orb is the END control
+    if (liveSessionActive) {
+      onEndLiveSession?.();
+      return;
+    }
+
     if (!user) {
       pushExchange('Talk to Donna.', 'Sign in first, then I can open the live line.');
       onAuthRequest('login');
       return;
     }
+
     setDonnaState('listening');
-    pushExchange('Talk to Donna.', 'Opening the live line now.');
+    // Only announce if we're transitioning — don't add noise if already on concierge_sync
+    if (canvasState !== 'concierge_sync') {
+      pushExchange('Talk to Donna.', 'Opening the live line now.');
+    }
     handleCanvasTransition('concierge_sync');
     onStartLiveSession?.();
   };
@@ -1232,8 +1245,8 @@ export function DonnaChatLane({
       {a2uiSlot || children ? (
         <div className="relative z-10 px-4 pb-3">
           <div className="mx-auto max-w-[960px] space-y-3">
-            {toolNotice ? (
-              <div className="border border-[#22424A] bg-[#07161A]/60 px-3 py-2 font-data text-[9px] uppercase tracking-[0.2em] text-[#8EA3A7]">
+            {isAdminUser && toolNotice ? (
+              <div className="border border-[#22424A] bg-[#07161A]/60 px-3 py-2 font-data text-[9px] uppercase tracking-[0.2em] text-[#8EA3A7]/60">
                 {toolNotice}
               </div>
             ) : null}
@@ -1310,7 +1323,7 @@ export function DonnaChatLane({
             className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${STATUS_DOT[donnaState]}`}
           />
           <span className="font-data text-[10px] uppercase tracking-[0.18em] text-[#8EA3A7]">
-            {liveSessionLaunching ? 'Requesting microphone' : liveSessionActive ? 'Live line open' : STATUS_LABEL[donnaState]}
+            {liveSessionLaunching ? 'Requesting microphone' : liveSessionActive ? 'Live line open · tap ◼ to end' : STATUS_LABEL[donnaState]}
           </span>
         </motion.div>
         <motion.div
@@ -1326,12 +1339,20 @@ export function DonnaChatLane({
           <button
             type="button"
             onClick={handleVoicePress}
-            disabled={liveSessionActive || liveSessionLaunching}
-            aria-label={liveSessionActive ? 'Donna live line is active' : liveSessionLaunching ? 'Donna is requesting microphone access' : 'Start Donna voice'}
-            className="relative ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#8DD9BF]/50 bg-[#8DD9BF]/10 text-[#DCE7E8] transition-all hover:bg-[#8DD9BF]/18 disabled:opacity-70"
+            disabled={liveSessionLaunching}
+            aria-label={liveSessionActive ? 'End Donna live session' : liveSessionLaunching ? 'Donna is requesting microphone access' : 'Start Donna voice'}
+            className={`relative ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all disabled:opacity-70 ${
+              liveSessionActive
+                ? 'border-[#8DD9BF]/80 bg-[#8DD9BF]/20 hover:bg-red-900/30 hover:border-red-400/60'
+                : 'border-[#8DD9BF]/50 bg-[#8DD9BF]/10 hover:bg-[#8DD9BF]/18'
+            }`}
           >
-            <span className="absolute inset-0 rounded-full border border-[#8DD9BF]/20 animate-[pulse_2.4s_ease-in-out_infinite]" />
-            <span className="font-data text-[14px] leading-none">{liveSessionActive ? '●' : liveSessionLaunching ? '◌' : '◉'}</span>
+            {liveSessionActive && (
+              <span className="absolute inset-0 rounded-full border border-[#8DD9BF]/30 animate-[pulse_1.8s_ease-in-out_infinite]" />
+            )}
+            <span className="font-data text-[14px] leading-none text-[#DCE7E8]">
+              {liveSessionActive ? '◼' : liveSessionLaunching ? '◌' : '◉'}
+            </span>
           </button>
           <div className="min-w-0 flex-1">
             <input
@@ -1356,24 +1377,21 @@ export function DonnaChatLane({
               ) : null}
             </AnimatePresence>
           </div>
-          <button
-            type="submit"
-            disabled={!inputValue.trim()}
-            className="mr-2 border px-3 py-2 font-data text-[10px] uppercase tracking-[0.22em] transition-all duration-200 disabled:opacity-30"
-            style={{
-              borderColor: '#8DD9BF',
-              backgroundColor: 'rgba(141,217,191,0.1)',
-              color: '#DCE7E8',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(141,217,191,0.18)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(141,217,191,0.1)';
-            }}
-          >
-            Send
-          </button>
+          <AnimatePresence>
+            {inputValue.trim() ? (
+              <motion.button
+                type="submit"
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ duration: 0.15 }}
+                className="mr-2 shrink-0 border border-[#8DD9BF]/70 bg-[#8DD9BF]/10 px-4 py-2 font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/18"
+                style={{ borderRadius: 20 }}
+              >
+                Send
+              </motion.button>
+            ) : null}
+          </AnimatePresence>
         </motion.div>
       </motion.form>
     </div>

@@ -1165,6 +1165,12 @@ export function GeminiLivePanel(props: {
     };
   }, []);
 
+  // Shell surface — pure audio runtime, no visible chrome.
+  // DonnaChatLane canvas + dock own all visual controls for this context.
+  if (compactLayout && props.surfaceHint === 'shell') {
+    return <div aria-hidden="true" style={{ display: 'none' }} />;
+  }
+
   if (compactLayout) {
     return (
       <section className="border border-[#4A4338]/70 bg-[#101719] p-4 text-[#EFE8DC] shadow-[0_18px_46px_rgba(1,8,12,0.28)]">

@@ -323,6 +323,12 @@ export function DonnaShell({
               }}
               onSceneChange={setScene}
               onStartLiveSession={() => void startLiveSessionFromDonna()}
+              onEndLiveSession={() => {
+                setVoiceOpen(false);
+                setVoiceLaunchPending(false);
+                initialLiveMicStream?.getTracks().forEach((track) => track.stop());
+                setInitialLiveMicStream(null);
+              }}
               onPrePurchaseIntakeSeed={setPrePurchaseIntakeSeed}
               canvasCommand={canvasCommand}
               liveSessionActive={voiceOpen}
