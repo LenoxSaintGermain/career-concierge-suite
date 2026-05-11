@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { A2UICard } from './A2UICard';
 
-type PackageId = 'smart_start' | 'premier' | 'cjs';
+type PackageId = 'smart_start' | 'premier' | 'cjs' | 'concierge';
 
 interface PackageSelectCardsProps {
   onSelect: (packageId: PackageId) => void;
@@ -41,6 +41,14 @@ const packages: Array<{
     cta: 'Explore CJS →',
     delay: 160,
   },
+  {
+    id: 'concierge',
+    eyebrow: 'MYCONCIERGE',
+    title: 'MyConcierge',
+    body: 'Ongoing human career partner support for navigation, decisions, accountability, and strategic operating rhythm.',
+    cta: 'Explore MyConcierge →',
+    delay: 240,
+  },
 ];
 
 export function PackageSelectCards({ onSelect, onAskDonna }: PackageSelectCardsProps) {
@@ -49,27 +57,29 @@ export function PackageSelectCards({ onSelect, onAskDonna }: PackageSelectCardsP
       className="space-y-3"
       exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.3, ease: 'easeOut' } }}
     >
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {packages.map((item) => (
-          <A2UICard key={item.id} delay={item.delay} className="flex h-full flex-col">
-            <div className="font-data text-[9px] uppercase tracking-[0.28em] text-[#8DD9BF]">
-              {item.eyebrow}
-            </div>
-            <h3 className="mt-3 font-editorial text-2xl italic text-[#DCE7E8]">
-              {item.title}
-            </h3>
-            <p className="mt-3 flex-1 font-body text-sm leading-6 text-[#8EA3A7]">
-              {item.body}
-            </p>
-            <button
-              type="button"
-              onClick={() => onSelect(item.id)}
-              className="mt-5 border border-[#8DD9BF]/70 px-3 py-2 text-left font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/10"
-              style={{ borderRadius: 0 }}
-            >
-              {item.cta}
-            </button>
-          </A2UICard>
+          <React.Fragment key={item.id}>
+            <A2UICard delay={item.delay} className="flex h-full flex-col">
+              <div className="font-data text-[9px] uppercase tracking-[0.28em] text-[#8DD9BF]">
+                {item.eyebrow}
+              </div>
+              <h3 className="mt-3 font-editorial text-2xl italic text-[#DCE7E8]">
+                {item.title}
+              </h3>
+              <p className="mt-3 flex-1 font-body text-sm leading-6 text-[#8EA3A7]">
+                {item.body}
+              </p>
+              <button
+                type="button"
+                onClick={() => onSelect(item.id)}
+                className="mt-5 border border-[#8DD9BF]/70 px-3 py-2 text-left font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/10"
+                style={{ borderRadius: 0 }}
+              >
+                {item.cta}
+              </button>
+            </A2UICard>
+          </React.Fragment>
         ))}
       </div>
       <button

@@ -38,6 +38,7 @@ export type DonnaCanvasState =
   | 'intake_inline'
   | 'dna_processing'
   | 'dna_reveal'
+  | 'offerings_menu'
   | 'plan_active'
   | 'concierge_sync';
 
@@ -53,6 +54,30 @@ type DonnaMessage = {
   id: string;
   role: 'donna' | 'user';
   text: string;
+};
+
+type PackagePath = 'smart_start' | 'premier' | 'cjs' | 'concierge';
+
+type PrePurchaseAnswers = {
+  name: string;
+  targetRole: string;
+  targetIndustry: string;
+  salaryRange: string;
+  desiredOutcome: string;
+  otherOutcome: string;
+  pressure: string;
+  proof: string;
+  supportPace: string;
+  linkedinUrl: string;
+};
+
+type BespokeOffering = {
+  id: string;
+  title: string;
+  price: number;
+  isSubscription: boolean;
+  description: string;
+  preview: string;
 };
 
 const STATUS_DOT: Record<DonnaState, string> = {
@@ -276,6 +301,165 @@ const getBriefExcerpt = (client: ClientDoc | null, wiki: ClientWiki | null) => {
   };
 };
 
+const INDUSTRIES = [
+  'All Industries', 'Accounting & Auditing', 'Advertising', 'Aerospace & Defense', 'Agribusiness',
+  'Agriculture', 'Air Transportation', 'Airlines', 'Apparel & Fashion', 'Architecture', 'Arts & Culture',
+  'Asset Management', 'Assisted Living', 'Automotive', 'Banking', 'Beauty & Personal Care', 'Biotechnology',
+  'Blockchain & Web3', 'Bookkeeping', 'Business Consulting', 'Business Process Outsourcing (BPO)',
+  'Cannabis Industry', 'Charitable Organizations', 'Chemical Manufacturing', 'Child & Family Services',
+  'Cloud Computing', 'Coaching & Training', 'Commercial Construction', 'Commercial Real Estate',
+  'Communications & Public Relations', 'Community & Social Services', 'Computer Hardware',
+  'Consumer Electronics', 'Consumer Goods', 'Courier & Delivery Services', 'Cruise Lines', 'Cybersecurity',
+  'Data Centers & Hosting Services', 'Defense & Military', 'Digital Marketing', 'Drone Services',
+  'E-Commerce', 'Education (Higher)', 'Education (K-12)', 'EdTech', 'Electrical & Specialty Trades',
+  'Emergency Services', 'Engineering', 'Environmental Science', 'Environmental Services', 'Esports',
+  'Event Planning', 'Fashion', 'Federal Government', 'Film & Television', 'FinTech', 'Fishing',
+  'Fitness & Wellness', 'Food & Beverage Manufacturing', 'Forestry', 'Foundations & Philanthropy',
+  'Freight & Logistics', 'Game Development', 'Gig Economy', 'Graphic Design', 'Grocery & Supermarkets',
+  'Health Insurance', 'Healthcare (Clinical)', 'HealthTech', 'Heavy & Civil Engineering', 'Higher Education',
+  'Home Furnishings', 'Hospitals & Clinics', 'Hotel & Resort Management', 'Human Resources & Staffing',
+  'Humanitarian Aid', 'Industrial Machinery', 'Influencer Marketing', 'Information Technology (IT)',
+  'Infrastructure', 'Insurance', 'Interior Design', 'International Development', 'Investment Management',
+  'IT Services & Consulting', 'Journalism & News Media', 'Laboratories', 'Landscaping & Groundskeeping',
+  'Legal Services', 'Life Sciences', 'Local Government', 'Machine Learning & AI', 'Management Consulting',
+  'Manufacturing (General)', 'Market Research', 'Maritime/Shipping', 'Marketing', 'Mechanical Trades',
+  'Medical Devices', 'Mental Health Services', 'Metaverse & XR (AR/VR)', 'Mining', 'Mortgage & Lending',
+  'Motion Pictures & Video', 'Museums & Cultural Institutions', 'Music Industry', 'Natural Gas',
+  'NGO / Nonprofit', 'Nuclear Energy', 'Nursing', 'Oil & Gas Extraction', 'Online Learning',
+  'Outdoor Recreation', 'Packaging & Printing', 'Performing Arts', 'Personal Services',
+  'Pharmaceutical Production', 'Philanthropy', 'Photography', 'Physical Therapy', 'Plastics & Rubber',
+  'Political Organizations', 'Primary Education', 'Private Equity', 'Private Practice (Healthcare)',
+  'Professional Sports', 'Property Management', 'Public Health', 'Public Sector', 'Publishing',
+  'Rail Transportation', 'Real Estate (Residential)', 'Real Estate Development', 'Recreation Management',
+  'Renewable Energy', 'Residential Building Construction', 'Restaurant & Food Services', 'Retail',
+  'Ride-Share & Gig Platforms', 'Scientific Research', 'Secondary Education', 'Security Services',
+  'Social Media & Influencer Marketing', 'Social Services', 'Software Development', 'Solar Energy',
+  'Space Exploration & Technology', 'Specialty Contractors', 'Sports Coaching', 'Sports Medicine',
+  'Staffing & Recruiting', 'State Government', 'Streaming Services', 'Supply Chain Management',
+  'Talent Management', 'Technology', 'Technical Training', 'Telecommunications',
+  'Textile & Apparel Manufacturing', 'Tourism', 'Tour Operators', 'Town & City Planning',
+  'Trade & Vocational Training', 'Transportation', 'Travel Agencies', 'Trucking', 'Urban Planning',
+  'Utilities (General)', 'Venture Capital', 'Video Game Development', 'Visual Arts', 'Vocational Education',
+  'Warehousing & Storage', 'Waste Management & Recycling', 'Water & Wastewater Services', 'Web Development',
+  'Wellness Coaching', 'Wind Energy',
+];
+
+const SALARY_RANGES = [
+  '$100k-$120k', '$120k-$140k', '$140k-$160k', '$160k-$180k', '$180k-$200k', '$200k-$250k',
+  '$250k-$300k', '$300k-$350k', '$350k-$400k', '$400k-$450k', '$450k-$500k', '$500K+',
+];
+
+const DESIRED_OUTCOMES = [
+  'New position / clients',
+  'Professional Stability',
+  'Professional Advancement',
+  'Increased Compensation',
+  'Increased Visibility',
+  'Other',
+];
+
+const DNA_PHASES = ['Analyzing', 'Defining', 'Creating'];
+const INTELLIGENCE_CATEGORIES = [
+  'Recruiter Visibility',
+  'AI Readiness',
+  'Leadership Positioning',
+  'Market Competitiveness',
+  'Career Momentum',
+  'Compensation Opportunity',
+];
+
+const BESPOKE_OFFERINGS: Record<PackagePath, BespokeOffering[]> = {
+  smart_start: [],
+  cjs: [
+    { id: 'resume', title: 'Resume & LinkedIn Optimization', price: 149, isSubscription: false, description: 'AI-optimized resume and LinkedIn profile engineered for ATS dominance and executive hiring manager visibility.', preview: 'Finalized: 42 Keyword Optimizations, 12 Structural Enhancements applied...' },
+    { id: 'brand-positioning', title: 'Executive Brand Positioning Suite', price: 249, isSubscription: false, description: 'Your professional narrative engineered for executive visibility - bio, brand narrative, and leadership positioning statement.', preview: 'Narrative Sync: Leadership Tone Calibrated, Executive Bio Drafted...' },
+    { id: 'strategy', title: 'Search Strategy', price: 99, isSubscription: false, description: 'Multi-channel search strategy across Online Job Platforms, Recruiter Platforms, and Fortune 500 Career Portals.', preview: 'Strategy Map: 3 Core Channels, 15 Target Platforms Identified...' },
+    { id: 'apply', title: 'Search and Apply Support', price: 199, isSubscription: false, description: '30-day intensive search and apply campaign across your personalized platform mix.', preview: 'Campaign Ready: 30-Day Intensive Schedule, 45+ Application Targets...' },
+    { id: 'ats-audit', title: 'ATS Dominance Audit', price: 99, isSubscription: false, description: 'ATS compatibility score, keyword density analysis, and competitor benchmark comparison.', preview: 'Audit Results: 14 Critical Gaps found, Industry Benchmark: Top 5%...' },
+    { id: 'research', title: 'Employer Research', price: 79, isSubscription: false, description: 'Deep-dive employer intelligence beyond the job description - culture, financials, fit scoring.', preview: 'Insights: Culture Deep-Dive, Salary Benchmarking, Financial Health...' },
+    { id: 'interview', title: 'Interview Preparation', price: 129, isSubscription: false, description: 'Personalized question sets, talking points, and follow-up strategy for your target role.', preview: 'Prep Suite: 12 High-Probability Questions, Custom Follow-up templates...' },
+    { id: 'negotiation', title: 'Salary Negotiation', price: 149, isSubscription: false, description: 'Market-data compensation analysis and negotiation playbook calibrated to your value prop.', preview: 'Playbook: Target range $XXXk, 3 Strategic Leverage Points...' },
+    { id: 'linkedin-search', title: 'LinkedIn Target Intelligence', price: 99, isSubscription: false, description: 'Stakeholder search queries and decision-maker targeting across your industry.', preview: 'Search Ready: 12 Stakeholder Queries, 5 Connection Templates generated...' },
+  ],
+  premier: [
+    { id: 'assessment', title: 'AI Assessment', price: 149, isSubscription: false, description: 'AI Readiness Assessment decoding how AI aligns with your professional journey and immediate technical advantages.', preview: 'Score: 88/100 Readiness. Priority: Agentic Workflows & Multi-modal logic...' },
+    { id: 'gap', title: 'AI Gap Analysis', price: 129, isSubscription: false, description: 'Distance mapping between your current capabilities and the AI-driven future of your specific industry role.', preview: 'Gap Metrics: 4 Critical Skill Deficits identified, 3 Transition paths...' },
+    { id: 'acceleration-blueprint', title: 'AI Career Acceleration Blueprint', price: 199, isSubscription: false, description: 'Practical roadmap for becoming AI-competitive with industry-specific opportunities and productivity implementation.', preview: 'Blueprint: 90-Day Implementation Cycle, 5 High-Value AI Use-cases...' },
+    { id: 'insights', title: 'AI Insights Report', price: 149, isSubscription: false, description: 'Strategic AI Insights translated into practical, role-specific priorities for professional visibility.', preview: 'Strategic Brief: Top 3 Productivity Hacks, 1 Disruptive Risk Mitigated...' },
+    { id: 'resource', title: 'AI Resource Guide', price: 79, isSubscription: false, description: 'Curated free and premium learning assets selected to expand AI knowledge based on your DNA.', preview: 'Curated Stack: 5 Core Courses, 12 Specialized Toolkits, 3 Communities...' },
+    { id: 'training', title: 'AI Training Guide', price: 179, isSubscription: false, description: 'Holistic AI Training Plan aligning professional goals with the AI capabilities that matter most for your advancement.', preview: 'Roadmap: 90-Day Implementation Cycle, Weekly Milestone structure...' },
+    { id: 'productivity-stack', title: 'AI Productivity Stack Setup', price: 249, isSubscription: false, description: 'Personalized AI operating system - tool recommendations, automation suggestions, and prompt systems.', preview: 'Stack Configured: 4 Primary Agents, 12 Workflow Automations...' },
+    { id: 'course', title: 'Bespoke AI Course', price: 299, isSubscription: false, description: 'Fully customized learning journey designed around your specific areas of interest and career path.', preview: 'Syllabus: 6 Modules, 14 Lab Sessions, 1 Capstone Project Framework...' },
+  ],
+  concierge: [
+    { id: 'essential', title: 'MyConcierge Essential', price: 99, isSubscription: true, description: 'Dedicated human career partner with onboarding, answers, navigation, and accountability support.', preview: 'Support Level: Essential. Priority response < 4hrs...' },
+    { id: 'pro', title: 'MyConcierge Pro', price: 249, isSubscription: true, description: 'Strategic career orchestration - monthly strategy sessions, AI optimization, quarterly reviews.', preview: 'Support Level: Pro (Strategic). Priority Response < 2hrs...' },
+    { id: 'executive', title: 'MyConcierge Executive', price: 499, isSubscription: true, description: 'Dedicated strategic partner - leadership positioning, salary negotiation, white-glove service.', preview: 'Support Level: Executive. Priority Queue + Direct Concierge Access...' },
+    { id: 'elite', title: 'MyConcierge Elite', price: 999, isSubscription: true, description: 'Full-spectrum professional orchestration - weekly strategy sessions, dedicated concierge lead.', preview: 'Support Level: Elite. Weekly Execution Check-ins + Executive Sourcing...' },
+  ],
+};
+
+const MY_CONCIERGE_UPGRADE_ID = 'concierge_essential';
+
+const parseCompFloor = (range: string) => Number(range.match(/\d+/)?.[0] ?? 0);
+
+function deriveIndicatorScores(
+  answers: PrePurchaseAnswers,
+  resumeFile?: File | null,
+  linkedinUrl?: string
+) {
+  const compHigh = parseCompFloor(answers.salaryRange) >= 200;
+  return [
+    { key: 'recruiter_visibility', label: 'Recruiter Visibility', value: 55 + (resumeFile ? 7 : 0) + (linkedinUrl ? 5 : 0) },
+    { key: 'ai_readiness', label: 'AI Readiness', value: 81 },
+    { key: 'leadership_strength', label: 'Leadership Strength', value: compHigh ? 'High' : 'Developing' },
+    { key: 'market_competitive', label: 'Market Competitiveness', value: answers.targetIndustry ? 74 : 68 },
+    { key: 'career_momentum', label: 'Career Momentum', value: 89 },
+    { key: 'comp_opportunity', label: 'Comp Opportunity', value: '+12%' },
+  ];
+}
+
+function buildOfferingBriefSections(item: BespokeOffering, answers: PrePurchaseAnswers) {
+  const target = answers.targetRole.trim() || 'your target role';
+  const sector = answers.targetIndustry || 'your market';
+  const range = answers.salaryRange || 'your target compensation range';
+  const outcome =
+    answers.desiredOutcome === 'Other'
+      ? answers.otherOutcome.trim() || 'your stated outcome'
+      : answers.desiredOutcome || 'your stated outcome';
+
+  return [
+    {
+      label: 'Executive Summary',
+      body: `${item.title} is recommended because it directly supports ${outcome.toLowerCase()} for ${target}.`,
+    },
+    {
+      label: 'Intelligence Findings',
+      body: `Current signal points to ${sector} positioning with compensation pressure around ${range}.`,
+    },
+    {
+      label: 'Strategic Insights',
+      body: 'The strongest move is to compress the gap between visible proof, market language, and next-step execution.',
+    },
+    {
+      label: 'Personalized Recommendations',
+      body: `Use this service to turn the ${target} narrative into a sharper artifact, workflow, or support lane.`,
+    },
+    {
+      label: 'Preview Snippet',
+      body: item.preview,
+    },
+    {
+      label: 'Hidden Premium Recommendations',
+      body: 'Full recommendations unlock after account creation so Donna can preserve the sequence and keep the OS context consistent.',
+    },
+    {
+      label: 'Conversion CTA',
+      body: 'Select this item to add it to your suite and carry the recommendation into checkout/account creation.',
+    },
+  ];
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export function DonnaChatLane({
   user,
@@ -308,24 +492,66 @@ export function DonnaChatLane({
   const [composerExpanded, setComposerExpanded] = useState(false);
   const [canvasState, setCanvasState] = useState<DonnaCanvasState>('landing');
   const [canvasSlotVisible, setCanvasSlotVisible] = useState(true);
-  const [selectedPackageId, setSelectedPackageId] = useState<'smart_start' | 'premier' | 'cjs' | null>(null);
+  const [selectedPackageId, setSelectedPackageId] = useState<PackagePath | null>(null);
   const [inlineAuthVisible, setInlineAuthVisible] = useState(false);
   const [toolNotice, setToolNotice] = useState<string | null>(null);
   const [calibrationInput, setCalibrationInput] = useState('');
   const [calibrationAnswer, setCalibrationAnswer] = useState('');
-  const [prePurchaseAnswers, setPrePurchaseAnswers] = useState({
+  const [prePurchaseAnswers, setPrePurchaseAnswers] = useState<PrePurchaseAnswers>({
     name: '',
     targetRole: '',
+    targetIndustry: '',
+    salaryRange: '',
+    desiredOutcome: '',
+    otherOutcome: '',
     pressure: '',
     proof: '',
     supportPace: 'standard',
+    linkedinUrl: '',
   });
+  const [selectedOfferings, setSelectedOfferings] = useState<string[]>([]);
+  const [addConciergeUpgrade, setAddConciergeUpgrade] = useState(false);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
+  const [dnaPhaseIndex, setDnaPhaseIndex] = useState(0);
+  const [dnaCategoryIndex, setDnaCategoryIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef(crypto.randomUUID());
   const thinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const canvasTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const intakeComplete = Boolean(client?.intake?.completed_at || wiki?.intake_complete);
+  const mappedTargetRole = prePurchaseAnswers.targetRole.trim() || getTargetRole(client, wiki);
+  const normalizedLinkedInUrl = prePurchaseAnswers.linkedinUrl.trim();
+  const isPrePurchaseReady = Boolean(
+    prePurchaseAnswers.targetRole.trim() &&
+      prePurchaseAnswers.targetIndustry &&
+      prePurchaseAnswers.salaryRange &&
+      prePurchaseAnswers.desiredOutcome &&
+      (prePurchaseAnswers.desiredOutcome !== 'Other' || prePurchaseAnswers.otherOutcome.trim())
+  );
+  const allOfferings = useMemo(() => Object.values(BESPOKE_OFFERINGS).flat(), []);
+  const oneTimeTotal = useMemo(
+    () =>
+      selectedOfferings
+        .map((id) => allOfferings.find((item) => item.id === id))
+        .filter((item): item is BespokeOffering => Boolean(item && !item.isSubscription))
+        .reduce((sum, item) => sum + item.price, 0),
+    [allOfferings, selectedOfferings]
+  );
+  const monthlyTotal = useMemo(
+    () =>
+      selectedOfferings
+        .map((id) => allOfferings.find((item) => item.id === id))
+        .filter((item): item is BespokeOffering => Boolean(item && item.isSubscription))
+        .reduce((sum, item) => sum + item.price, 0) + (addConciergeUpgrade ? 99 : 0),
+    [addConciergeUpgrade, allOfferings, selectedOfferings]
+  );
+  const indicators = useMemo(
+    () => deriveIndicatorScores(prePurchaseAnswers, resumeFile, normalizedLinkedInUrl),
+    [normalizedLinkedInUrl, prePurchaseAnswers, resumeFile]
+  );
 
   const quickActions = useMemo(() => {
     if (!user) {
@@ -390,6 +616,7 @@ export function DonnaChatLane({
     return () => {
       if (canvasTimerRef.current) clearTimeout(canvasTimerRef.current);
       if (thinkTimerRef.current) clearTimeout(thinkTimerRef.current);
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
       if (user) endSession(sid);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -470,9 +697,23 @@ export function DonnaChatLane({
 
   useEffect(() => {
     if (canvasState !== 'dna_processing' || !canvasSlotVisible) return;
-    deliverDonnaResponse('', "Here's what I have on you.", 'a2ui_trigger');
-    const timer = setTimeout(() => handleCanvasTransition('dna_reveal'), 3000);
-    return () => clearTimeout(timer);
+    deliverDonnaResponse('', "I'm mapping the professional signal now.", 'a2ui_trigger');
+    setDnaPhaseIndex(0);
+    setDnaCategoryIndex(0);
+    const phaseTimer = setInterval(
+      () => setDnaPhaseIndex((current) => Math.min(current + 1, DNA_PHASES.length - 1)),
+      3000
+    );
+    const categoryTimer = setInterval(
+      () => setDnaCategoryIndex((current) => (current + 1) % INTELLIGENCE_CATEGORIES.length),
+      1000
+    );
+    const revealTimer = setTimeout(() => handleCanvasTransition('dna_reveal'), 9000);
+    return () => {
+      clearInterval(phaseTimer);
+      clearInterval(categoryTimer);
+      clearTimeout(revealTimer);
+    };
   }, [canvasSlotVisible, canvasState, deliverDonnaResponse, handleCanvasTransition]);
 
   useEffect(() => {
@@ -658,10 +899,30 @@ export function DonnaChatLane({
     handleCanvasTransition('intake_inline');
   };
 
+  const handleResumeUpload = (file: File | null) => {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    setResumeFile(file);
+    if (!file) {
+      setResumeUploading(false);
+      return;
+    }
+    setResumeUploading(true);
+    resumeTimerRef.current = setTimeout(() => setResumeUploading(false), 1500);
+  };
+
+  const toggleOffering = (id: string) => {
+    setSelectedOfferings((current) => {
+      if (selectedPackageId === 'concierge') return current.includes(id) ? [] : [id];
+      return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+    });
+  };
+
   const briefExcerpt = getBriefExcerpt(client, wiki);
   const targetRole = getTargetRole(client, wiki);
   const selectedPackageLabel =
-    selectedPackageId === 'premier'
+    selectedPackageId === 'concierge'
+      ? 'MyConcierge'
+      : selectedPackageId === 'premier'
       ? 'SkillSync Ai Premier'
       : selectedPackageId === 'cjs'
         ? 'Concierge Job Search'
@@ -673,16 +934,28 @@ export function DonnaChatLane({
     // If they answered the calibration question, use it as primary pressure context
     const pressure = prePurchaseAnswers.pressure.trim() || calibrationAnswer;
     const proof = prePurchaseAnswers.proof.trim();
+    const desiredOutcome =
+      prePurchaseAnswers.desiredOutcome === 'Other'
+        ? prePurchaseAnswers.otherOutcome.trim()
+        : prePurchaseAnswers.desiredOutcome;
     const pace =
       prePurchaseAnswers.supportPace === 'straight' || prePurchaseAnswers.supportPace === 'story'
         ? prePurchaseAnswers.supportPace
         : 'standard';
-    const focus = selectedPackageId === 'cjs' ? 'job_search' : selectedPackageId === 'premier' ? 'leadership' : 'skills';
+    const focus =
+      selectedPackageId === 'cjs'
+        ? 'job_search'
+        : selectedPackageId === 'premier' || selectedPackageId === 'concierge'
+          ? 'leadership'
+          : 'skills';
     const answers: IntakeAnswers = {
       preferred_name: name || undefined,
       current_or_target_job_title: target,
       target_title: target,
       target: target || selectedPackageLabel,
+      target_sector: prePurchaseAnswers.targetIndustry || undefined,
+      comp_range: prePurchaseAnswers.salaryRange || undefined,
+      desired_outcome: desiredOutcome || undefined,
       pressure_breaks: pressure,
       work_style: proof,
       constraints: `Selected package: ${selectedPackageLabel}`,
@@ -690,6 +963,12 @@ export function DonnaChatLane({
       focus,
       pre_purchase_source: 'donna_a2ui_front_door',
       selected_package: selectedPackageId ?? 'smart_start',
+      resume_file_name: resumeFile?.name,
+      linkedin_profile: normalizedLinkedInUrl || undefined,
+      selected_offerings: selectedOfferings.length ? selectedOfferings.join(', ') : undefined,
+      one_time_total: oneTimeTotal ? `$${oneTimeTotal.toFixed(2)}` : undefined,
+      monthly_total: monthlyTotal ? `$${monthlyTotal.toFixed(2)}` : undefined,
+      add_concierge_upgrade: addConciergeUpgrade ? true : undefined,
     };
 
     return {
@@ -700,7 +979,18 @@ export function DonnaChatLane({
       },
       answers,
     };
-  }, [calibrationAnswer, prePurchaseAnswers, selectedPackageId, selectedPackageLabel]);
+  }, [
+    addConciergeUpgrade,
+    calibrationAnswer,
+    monthlyTotal,
+    normalizedLinkedInUrl,
+    oneTimeTotal,
+    prePurchaseAnswers,
+    resumeFile,
+    selectedOfferings,
+    selectedPackageId,
+    selectedPackageLabel,
+  ]);
 
   const renderA2UISlot = () => {
     if (!canvasSlotVisible) return null;
@@ -776,27 +1066,29 @@ export function DonnaChatLane({
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             {fallbackSections.map((section, index) => (
-              <A2UICard key={section.key} delay={index * 80}>
-                <div className="font-data text-[9px] uppercase tracking-[0.24em] text-[#8DD9BF]">
-                  {section.heading}
-                </div>
-                <p className="mt-3 font-body text-sm leading-6 text-[#DCE7E8]/85">
-                  {section.body.slice(0, 220)}
-                  {section.body.length > 220 ? '...' : ''}
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    pushExchange(
-                      'Donna, update this.',
-                      'Tell me what changed, and I will treat it as new context for the next pass.'
-                    )
-                  }
-                  className="mt-4 font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/70 transition-colors hover:text-[#DCE7E8]"
-                >
-                  Donna, update this
-                </button>
-              </A2UICard>
+              <React.Fragment key={section.key}>
+                <A2UICard delay={index * 80}>
+                  <div className="font-data text-[9px] uppercase tracking-[0.24em] text-[#8DD9BF]">
+                    {section.heading}
+                  </div>
+                  <p className="mt-3 font-body text-sm leading-6 text-[#DCE7E8]/85">
+                    {section.body.slice(0, 220)}
+                    {section.body.length > 220 ? '...' : ''}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      pushExchange(
+                        'Donna, update this.',
+                        'Tell me what changed, and I will treat it as new context for the next pass.'
+                      )
+                    }
+                    className="mt-4 font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/70 transition-colors hover:text-[#DCE7E8]"
+                  >
+                    Donna, update this
+                  </button>
+                </A2UICard>
+              </React.Fragment>
             ))}
           </div>
         </div>
@@ -893,8 +1185,8 @@ export function DonnaChatLane({
             <button
               type="button"
               onClick={() => {
-                pushExchange('Show me how.', "Here's what's available. Choose the right entry point.", 'chip_action');
-                handleCanvasTransition('package_selection');
+                pushExchange('Show me how.', "First I need the target. Then I'll recommend the right path.", 'chip_action');
+                handleCanvasTransition('intake_inline');
               }}
               className="border border-[#8DD9BF]/70 px-5 py-2.5 font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/10"
               style={{ borderRadius: 0 }}
@@ -922,8 +1214,14 @@ export function DonnaChatLane({
       return (
         <PackageSelectCards
           onSelect={(packageId) => {
-            setSelectedPackageId(packageId);
-            startInlineIntake();
+            setSelectedPackageId(packageId as PackagePath);
+            if (packageId === 'smart_start') {
+              setSelectedOfferings(['smart_start']);
+            } else {
+              setSelectedOfferings([]);
+            }
+            pushExchange('Path selected.', 'Good. I am mapping the professional signal now.', 'a2ui_trigger');
+            handleCanvasTransition('dna_processing');
           }}
           onAskDonna={() =>
             pushExchange(
@@ -967,9 +1265,9 @@ export function DonnaChatLane({
             Smart Start calibration
           </h3>
           <p className="mt-3 max-w-2xl font-body text-sm leading-7 text-[#8EA3A7]">
-            You selected {selectedPackageLabel}. I will map the target role, pressure points,
-            evidence, constraints, and pace of support in one guided pass. This will seed your suite
-            if you create an account after the brief preview.
+            I will map the target, market, compensation, desired outcome, pressure points, proof,
+            and professional source material first. Then I will recommend the right Career Concierge
+            path before you create an account.
           </p>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3 md:col-span-2">
@@ -1000,7 +1298,78 @@ export function DonnaChatLane({
             </label>
             <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3">
               <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
-                ACT 02: PRESSURE
+                ACT 02: INDUSTRY
+              </div>
+              <select
+                value={prePurchaseAnswers.targetIndustry}
+                onChange={(event) =>
+                  setPrePurchaseAnswers((current) => ({ ...current, targetIndustry: event.target.value }))
+                }
+                className="mt-2 w-full bg-transparent font-body text-sm text-[#DCE7E8] outline-none"
+              >
+                <option value="">Select industry</option>
+                {INDUSTRIES.map((industry) => (
+                  <option key={industry} value={industry}>
+                    {industry}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3">
+              <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
+                ACT 03: COMPENSATION
+              </div>
+              <select
+                value={prePurchaseAnswers.salaryRange}
+                onChange={(event) =>
+                  setPrePurchaseAnswers((current) => ({ ...current, salaryRange: event.target.value }))
+                }
+                className="mt-2 w-full bg-transparent font-body text-sm text-[#DCE7E8] outline-none"
+              >
+                <option value="">Select range</option>
+                {SALARY_RANGES.map((range) => (
+                  <option key={range} value={range}>
+                    {range}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3 md:col-span-2">
+              <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
+                ACT 04: OUTCOME
+              </div>
+              <select
+                value={prePurchaseAnswers.desiredOutcome}
+                onChange={(event) =>
+                  setPrePurchaseAnswers((current) => ({
+                    ...current,
+                    desiredOutcome: event.target.value,
+                    otherOutcome: event.target.value === 'Other' ? current.otherOutcome : '',
+                  }))
+                }
+                className="mt-2 w-full bg-transparent font-body text-sm text-[#DCE7E8] outline-none"
+              >
+                <option value="">Select outcome</option>
+                {DESIRED_OUTCOMES.map((outcome) => (
+                  <option key={outcome} value={outcome}>
+                    {outcome}
+                  </option>
+                ))}
+              </select>
+              {prePurchaseAnswers.desiredOutcome === 'Other' ? (
+                <input
+                  value={prePurchaseAnswers.otherOutcome}
+                  onChange={(event) =>
+                    setPrePurchaseAnswers((current) => ({ ...current, otherOutcome: event.target.value }))
+                  }
+                  placeholder="Describe the outcome"
+                  className="mt-3 w-full border-t border-[#22424A] bg-transparent pt-3 font-body text-sm text-[#DCE7E8] outline-none placeholder:text-[#8EA3A7]/40"
+                />
+              ) : null}
+            </label>
+            <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3">
+              <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
+                ACT 05: PRESSURE
               </div>
               <input
                 value={prePurchaseAnswers.pressure}
@@ -1013,7 +1382,7 @@ export function DonnaChatLane({
             </label>
             <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3">
               <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
-                ACT 03: EVIDENCE
+                ACT 06: EVIDENCE
               </div>
               <input
                 value={prePurchaseAnswers.proof}
@@ -1026,7 +1395,7 @@ export function DonnaChatLane({
             </label>
             <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3">
               <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
-                ACT 04: PACE
+                ACT 07: PACE
               </div>
               <select
                 value={prePurchaseAnswers.supportPace}
@@ -1040,15 +1409,64 @@ export function DonnaChatLane({
                 <option value="story">More context and story</option>
               </select>
             </label>
+            <label className="block border border-dashed border-[#22424A] bg-[#07161A]/40 px-3 py-3">
+              <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
+                ACT 08: PROFESSIONAL BRIEF
+              </div>
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(event) => handleResumeUpload(event.target.files?.[0] ?? null)}
+                className="mt-2 w-full font-data text-[10px] uppercase tracking-[0.18em] text-[#8EA3A7] file:mr-3 file:border file:border-[#22424A] file:bg-transparent file:px-3 file:py-2 file:font-data file:text-[9px] file:uppercase file:tracking-[0.2em] file:text-[#DCE7E8]"
+              />
+              {resumeUploading ? (
+                <div className="mt-3 flex items-center gap-2">
+                  {[0, 1, 2].map((bar) => (
+                    <motion.span
+                      key={bar}
+                      className="h-5 w-1 bg-[#8DD9BF]"
+                      animate={{ scaleY: [0.35, 1, 0.35], opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 0.7, delay: bar * 0.12, repeat: Infinity }}
+                    />
+                  ))}
+                  <span className="font-data text-[9px] uppercase tracking-[0.2em] text-[#8DD9BF]">
+                    Scanning file signal
+                  </span>
+                </div>
+              ) : (
+                <p className="mt-2 font-body text-xs text-[#8EA3A7]/60">
+                  {resumeFile
+                    ? `Brief synchronized: ${resumeFile.name}`
+                    : 'Optional PDF only. Adds signal to the Professional DNA preview.'}
+                </p>
+              )}
+            </label>
+            <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3 md:col-span-2">
+              <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
+                ACT 09: LINKEDIN PROFILE
+              </div>
+              <input
+                value={prePurchaseAnswers.linkedinUrl}
+                onChange={(event) =>
+                  setPrePurchaseAnswers((current) => ({ ...current, linkedinUrl: event.target.value }))
+                }
+                placeholder="https://www.linkedin.com/in/..."
+                className="mt-2 w-full bg-transparent font-body text-sm text-[#DCE7E8] outline-none placeholder:text-[#8EA3A7]/40"
+              />
+              <p className="mt-2 font-body text-xs text-[#8EA3A7]/60">
+                Donna will use this as profile context only inside Career Concierge.
+              </p>
+            </label>
           </div>
           <button
             type="button"
+            disabled={!isPrePurchaseReady}
             onClick={() => {
               onPrePurchaseIntakeSeed?.(buildPrePurchaseSeed());
-              pushExchange('Finish Smart Start.', 'Give me a moment.', 'a2ui_trigger');
-              handleCanvasTransition('dna_processing');
+              pushExchange('Map my Professional DNA.', "Good. Choose the path Donna should price around.", 'a2ui_trigger');
+              handleCanvasTransition('package_selection');
             }}
-            className="mt-5 border border-[#8DD9BF]/70 px-4 py-2 font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/10"
+            className="mt-5 border border-[#8DD9BF]/70 px-4 py-2 font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/10 disabled:cursor-not-allowed disabled:border-[#22424A] disabled:text-[#8EA3A7]/30 disabled:hover:bg-transparent"
             style={{ borderRadius: 0 }}
           >
             Map my Professional DNA →
@@ -1059,20 +1477,43 @@ export function DonnaChatLane({
 
     if (canvasState === 'dna_processing') {
       return (
-        <A2UICard>
-          <div className="font-data text-[9px] uppercase tracking-[0.28em] text-[#8DD9BF]">
-            ACT: MAPPING PROFESSIONAL DNA
-          </div>
-          <p className="mt-3 font-body text-sm text-[#8EA3A7]">
-            Analyzing target: {targetRole}
-          </p>
-          <div className="mt-6 h-[3px] overflow-hidden bg-[#22424A]">
+        <A2UICard className="overflow-hidden">
+          <div className="flex flex-col items-center py-8 text-center">
             <motion.div
-              className="h-full bg-[#8DD9BF]"
-              initial={{ x: '-100%' }}
-              animate={{ x: '100%' }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-            />
+              className="relative flex h-48 w-48 items-center justify-center rounded-full border border-dashed border-[#8DD9BF]/20"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
+            >
+              <motion.div
+                className="h-20 w-20 rounded-[20%] border border-[#8DD9BF]/20 bg-[#07161A]"
+                animate={{
+                  scale: [1, 1.15, 1],
+                  boxShadow: [
+                    '0 0 0 0 rgba(141,217,191,0)',
+                    '0 0 40px 10px rgba(141,217,191,0.2)',
+                    '0 0 0 0 rgba(141,217,191,0)',
+                  ],
+                }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </motion.div>
+            <h3 className="mt-7 font-editorial text-[28px] italic text-[#DCE7E8]">
+              Mapping Professional DNA
+            </h3>
+            <p className="mt-2 font-data text-[10px] uppercase tracking-[0.28em] text-[#8EA3A7]/50">
+              Target: {mappedTargetRole}
+            </p>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${dnaPhaseIndex}-${dnaCategoryIndex}`}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                className="mt-6 font-data text-[11px] uppercase tracking-[0.3em] text-[#8DD9BF]"
+              >
+                ◆ {DNA_PHASES[dnaPhaseIndex]} {INTELLIGENCE_CATEGORIES[dnaCategoryIndex]}...
+              </motion.div>
+            </AnimatePresence>
           </div>
         </A2UICard>
       );
@@ -1087,6 +1528,39 @@ export function DonnaChatLane({
           <h3 className="mt-3 font-editorial text-3xl italic text-[#DCE7E8]">
             Here's what I have on you.
           </h3>
+          <div className="mt-6">
+            <p className="font-data text-[10px] uppercase tracking-[0.28em] text-[#8EA3A7]/50">
+              Professional DNA Indicators
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+              {indicators.map((indicator, index) => (
+                <motion.div
+                  key={indicator.key}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.06 }}
+                  className="border border-[#22424A]/70 bg-[#07161A]/50 p-3"
+                >
+                  <p className="font-data text-[9px] uppercase tracking-widest text-[#8EA3A7]/40">
+                    {indicator.label}
+                  </p>
+                  <p className="mt-2 font-editorial text-2xl italic text-[#8DD9BF]">
+                    {indicator.value}
+                  </p>
+                  {typeof indicator.value === 'number' ? (
+                    <div className="mt-2 h-[2px] rounded-full bg-[#22424A]">
+                      <motion.div
+                        className="h-full rounded-full bg-[#8DD9BF]/50"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${indicator.value}%` }}
+                        transition={{ duration: 1.5, delay: index * 0.06 + 0.3 }}
+                      />
+                    </div>
+                  ) : null}
+                </motion.div>
+              ))}
+            </div>
+          </div>
           <p className="mt-3 font-body text-sm leading-7 text-[#DCE7E8]/85">
             {briefExcerpt.positioning}
           </p>
@@ -1102,19 +1576,17 @@ export function DonnaChatLane({
               type="button"
               onClick={() => {
                 if (user) {
-                  pushExchange('Continue the sequence.', "Here's the sequence.", 'a2ui_trigger');
-                  handleCanvasTransition('plan_active');
+                  pushExchange('Review recommendations.', "Here's the suite Donna recommends from this signal.", 'a2ui_trigger');
+                  handleCanvasTransition('offerings_menu');
                   return;
                 }
-                onPrePurchaseIntakeSeed?.(buildPrePurchaseSeed());
-                setInlineAuthVisible(true);
-                onAuthRequest('register');
-                pushExchange('Create my suite.', 'One step. Then your suite is ready.', 'a2ui_trigger');
+                pushExchange('Review recommendations.', "Here's the suite Donna recommends from this signal.", 'a2ui_trigger');
+                handleCanvasTransition('offerings_menu');
               }}
               className="border border-[#8DD9BF]/70 px-4 py-2 font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/10"
               style={{ borderRadius: 0 }}
             >
-              {user ? 'Continue the sequence →' : 'Create my suite →'}
+              Review recommendations →
             </button>
             <button
               type="button"
@@ -1146,6 +1618,252 @@ export function DonnaChatLane({
               {children}
             </div>
           ) : null}
+        </A2UICard>
+      );
+    }
+
+    if (canvasState === 'offerings_menu') {
+      const packageKey = selectedPackageId ?? 'smart_start';
+      const items = BESPOKE_OFFERINGS[packageKey] ?? [];
+      const hasSelection = selectedOfferings.length > 0 || packageKey === 'smart_start';
+
+      return (
+        <A2UICard className="max-h-[62vh] overflow-y-auto">
+          <div className="font-data text-[10px] uppercase tracking-[0.28em] text-[#8DD9BF]">
+            Recommended Suite
+          </div>
+          <h3 className="mt-3 font-editorial text-3xl italic text-[#DCE7E8]">
+            {selectedPackageLabel}
+          </h3>
+          <p className="mt-3 max-w-2xl font-body text-sm leading-7 text-[#8EA3A7]">
+            Donna is pricing the next best path from your target, market, compensation range, and
+            Professional DNA indicators. Select only the pieces you want active.
+          </p>
+
+          <div className="mt-6 flex items-center justify-between border-b border-[#22424A]/40 pb-4">
+            <div>
+              <p className="font-data text-[8px] uppercase tracking-widest text-[#8EA3A7]/30">
+                One-Time Fee
+              </p>
+              <p className="font-editorial text-2xl italic text-[#8DD9BF]">
+                ${oneTimeTotal.toFixed(2)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-data text-[8px] uppercase tracking-widest text-[#8EA3A7]/30">
+                Monthly Service
+              </p>
+              <p className="font-editorial text-2xl italic text-[#8DD9BF]">
+                ${monthlyTotal.toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          {packageKey === 'cjs' || packageKey === 'premier' ? (
+            <button
+              type="button"
+              onClick={() => {
+                setAddConciergeUpgrade((current) => !current);
+                setSelectedOfferings((current) =>
+                  addConciergeUpgrade
+                    ? current.filter((id) => id !== MY_CONCIERGE_UPGRADE_ID)
+                    : [...new Set([...current, MY_CONCIERGE_UPGRADE_ID])]
+                );
+              }}
+              className={`mt-5 w-full border px-4 py-4 text-left transition-colors ${
+                addConciergeUpgrade
+                  ? 'border-[#8DD9BF]/40 bg-[#8DD9BF]/[0.04]'
+                  : 'border-[#22424A]/60 bg-[#07161A]/40 hover:border-[#8DD9BF]/30'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="font-data text-[9px] uppercase tracking-[0.24em] text-[#8DD9BF]">
+                    MyConcierge Add-On
+                  </div>
+                  <p className="mt-2 font-body text-sm leading-6 text-[#DCE7E8]/80">
+                    Add human navigation, answer support, and accountability for $99/month.
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {[
+                      'Priority Support',
+                      'Strategic Launch Session',
+                      'Done-With-You Execution',
+                      'Accountability & Momentum Syncs',
+                      'Advanced AI Tool Optimization',
+                      'Direct Concierge Messaging',
+                    ].map((valueProp) => (
+                      <span
+                        key={valueProp}
+                        className="font-data text-[8px] uppercase tracking-[0.18em] text-[#8EA3A7]/60"
+                      >
+                        ◆ {valueProp}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <span className="font-editorial text-2xl italic text-[#8DD9BF]">
+                  {addConciergeUpgrade ? 'Added' : '+$99/mo'}
+                </span>
+              </div>
+            </button>
+          ) : null}
+
+          {packageKey === 'smart_start' ? (
+            <div className="mt-5 border border-[#8DD9BF]/30 bg-[#8DD9BF]/[0.04] px-4 py-4">
+              <div className="font-data text-[9px] uppercase tracking-[0.24em] text-[#8DD9BF]">
+                ◆ Strategic Match
+              </div>
+              <h4 className="mt-2 font-editorial text-2xl italic text-[#DCE7E8]">
+                Smart Start Calibration
+              </h4>
+              <p className="mt-2 font-body text-sm leading-6 text-[#8EA3A7]">
+                Begin with the single guided pass that creates the operating brief and gives Donna
+                the context needed to route your next move.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {items.map((item, index) => {
+                const selected = selectedOfferings.includes(item.id);
+                const briefSections = buildOfferingBriefSections(item, prePurchaseAnswers);
+                return (
+                  <motion.button
+                    key={item.id}
+                    type="button"
+                    onClick={() => toggleOffering(item.id)}
+                    className={`relative border px-4 py-4 text-left transition-colors ${
+                      selected
+                        ? 'border-[#8DD9BF]/40 bg-[#8DD9BF]/[0.04] shadow-[0_0_24px_rgba(141,217,191,0.06)]'
+                        : 'border-[#22424A]/60 bg-[#07161A]/40 hover:border-[#8DD9BF]/30'
+                    }`}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                  >
+                    {index === 0 ? (
+                      <span className="absolute right-3 top-3 font-data text-[9px] uppercase tracking-widest text-[#8DD9BF]">
+                        ◆ Strategic Match
+                      </span>
+                    ) : null}
+                    <div className="pr-24">
+                      <h4 className="font-editorial text-xl italic text-[#DCE7E8]">
+                        {item.title}
+                      </h4>
+                      <p className="mt-1 font-data text-[10px] uppercase tracking-[0.22em] text-[#8DD9BF]">
+                        ${item.price}
+                        {item.isSubscription ? '/mo' : ''}
+                      </p>
+                    </div>
+                    <p className="mt-3 font-body text-sm leading-6 text-[#8EA3A7]">
+                      {item.description}
+                    </p>
+                    <AnimatePresence>
+                      {selected ? (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-4 overflow-hidden border border-[#8DD9BF]/20 bg-[#8DD9BF]/[0.04] px-3 py-3"
+                        >
+                          <p className="font-data text-[9px] uppercase tracking-[0.24em] text-[#8DD9BF]">
+                            Strategic Intelligence Brief
+                          </p>
+                          <div className="mt-3 grid gap-3">
+                            {briefSections.map((section) => (
+                              <div key={section.label} className="border-t border-[#22424A]/60 pt-3">
+                                <div className="font-data text-[8px] uppercase tracking-[0.22em] text-[#8EA3A7]/50">
+                                  {section.label}
+                                </div>
+                                <p className="mt-1 font-body text-xs leading-5 text-[#DCE7E8]/75">
+                                  {section.body}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                          {item.id === 'linkedin-search' && normalizedLinkedInUrl ? (
+                            <div className="mt-3 border-t border-[#22424A]/70 pt-3">
+                              <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8DD9BF]">
+                                LinkedIn Intelligence Terminal
+                              </div>
+                              <p className="mt-2 font-data text-[10px] uppercase tracking-[0.18em] text-[#8EA3A7]/70">
+                                Query: {mappedTargetRole} recruiter {prePurchaseAnswers.targetIndustry || 'target market'}
+                              </p>
+                              <p className="mt-1 break-all font-body text-xs text-[#8EA3A7]/60">
+                                Profile context: {normalizedLinkedInUrl}
+                              </p>
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  window.open(
+                                    `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
+                                      `${mappedTargetRole} recruiter ${prePurchaseAnswers.targetIndustry || ''}`.trim()
+                                    )}`,
+                                    '_blank',
+                                    'noopener,noreferrer'
+                                  );
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  window.open(
+                                    `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
+                                      `${mappedTargetRole} recruiter ${prePurchaseAnswers.targetIndustry || ''}`.trim()
+                                    )}`,
+                                    '_blank',
+                                    'noopener,noreferrer'
+                                  );
+                                }}
+                                className="mt-3 inline-flex border border-[#8DD9BF]/50 px-3 py-2 font-data text-[9px] uppercase tracking-[0.2em] text-[#DCE7E8]"
+                              >
+                                Run Search ↗
+                              </span>
+                            </div>
+                          ) : null}
+                        </motion.div>
+                      ) : null}
+                    </AnimatePresence>
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[#22424A]/60 pt-5">
+            <button
+              type="button"
+              disabled={!hasSelection}
+              onClick={() => {
+                onPrePurchaseIntakeSeed?.(buildPrePurchaseSeed());
+                if (!user) {
+                  setInlineAuthVisible(true);
+                  onAuthRequest('register');
+                  pushExchange('Secure my suite.', 'One step. Then your suite is ready.', 'a2ui_trigger');
+                  handleCanvasTransition('dna_reveal');
+                  return;
+                }
+                pushExchange('Secure my suite.', 'I have saved this suite path. Here is the sequence.', 'a2ui_trigger');
+                handleCanvasTransition('plan_active');
+              }}
+              className="border border-[#8DD9BF]/70 px-4 py-2 font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/10 disabled:cursor-not-allowed disabled:border-[#22424A] disabled:text-[#8EA3A7]/30 disabled:hover:bg-transparent"
+              style={{ borderRadius: 0 }}
+            >
+              Secure Your Suite →
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                pushExchange('Adjust inputs.', "Let's tune the inputs before locking the suite.", 'a2ui_trigger');
+                handleCanvasTransition('intake_inline');
+              }}
+              className="font-data text-[10px] uppercase tracking-[0.22em] text-[#8EA3A7]/70 transition-colors hover:text-[#DCE7E8]"
+            >
+              ← Adjust inputs
+            </button>
+          </div>
         </A2UICard>
       );
     }

@@ -127,9 +127,45 @@ export function DonnaShell({
 
   const sessionContext = useMemo(() => {
     const parts: string[] = [];
+    const seededAnswers = prePurchaseIntakeSeed?.answers ?? {};
+    const intakeAnswers = client?.intake?.answers ?? seededAnswers;
     if (clientLoaded) parts.push(`Client loaded: yes`);
     if (firstName) parts.push(`Client name: ${firstName}`);
-    if (wiki?.target_role) parts.push(`Target role: ${wiki.target_role}`);
+    const targetRole =
+      wiki?.target_role ||
+      (typeof intakeAnswers.current_or_target_job_title === 'string'
+        ? intakeAnswers.current_or_target_job_title
+        : typeof intakeAnswers.target_title === 'string'
+          ? intakeAnswers.target_title
+          : '');
+    if (targetRole) parts.push(`Target role: ${targetRole}`);
+    if (typeof intakeAnswers.target_sector === 'string') {
+      parts.push(`Target sector: ${intakeAnswers.target_sector}`);
+    }
+    if (typeof intakeAnswers.comp_range === 'string') {
+      parts.push(`Compensation range: ${intakeAnswers.comp_range}`);
+    }
+    if (typeof intakeAnswers.desired_outcome === 'string') {
+      parts.push(`Desired outcome: ${intakeAnswers.desired_outcome}`);
+    }
+    if (typeof intakeAnswers.selected_package === 'string') {
+      parts.push(`Selected package: ${intakeAnswers.selected_package}`);
+    }
+    if (typeof intakeAnswers.selected_offerings === 'string') {
+      parts.push(`Selected offerings: ${intakeAnswers.selected_offerings}`);
+    }
+    if (typeof intakeAnswers.one_time_total === 'string') {
+      parts.push(`One-time total: ${intakeAnswers.one_time_total}`);
+    }
+    if (typeof intakeAnswers.monthly_total === 'string') {
+      parts.push(`Monthly total: ${intakeAnswers.monthly_total}`);
+    }
+    if (intakeAnswers.add_concierge_upgrade === true) {
+      parts.push('MyConcierge upgrade: selected');
+    }
+    if (typeof intakeAnswers.linkedin_profile === 'string') {
+      parts.push(`LinkedIn profile supplied: yes`);
+    }
     if (wiki?.focus_label) parts.push(`Focus: ${wiki.focus_label}`);
     if (wiki?.sections.length) {
       parts.push(`Compiled wiki sections: ${wiki.sections.map((section) => section.key).join(', ')}`);
@@ -137,7 +173,7 @@ export function DonnaShell({
     parts.push(wiki?.intake_complete || client?.intake?.completed_at ? 'Intake status: complete' : 'Intake status: not yet complete');
     if (isAdminUser) parts.push('Session type: operator');
     return parts.join('\n');
-  }, [client?.intake?.completed_at, clientLoaded, firstName, isAdminUser, wiki]);
+  }, [client?.intake?.answers, client?.intake?.completed_at, clientLoaded, firstName, isAdminUser, prePurchaseIntakeSeed, wiki]);
 
   const shellGhostCallbacks: GhostCallbacks = useMemo(
     () => ({
@@ -340,7 +376,15 @@ export function DonnaShell({
                   mode={authCardMode}
                   registrationSeed={authCardMode === 'register' ? prePurchaseIntakeSeed : null}
                   onSuccess={() => {
+                    const selectedPackage = prePurchaseIntakeSeed?.answers.selected_package;
+                    const selectedOfferings = prePurchaseIntakeSeed?.answers.selected_offerings;
                     setAuthCardMode(null);
+                    issueCanvasCommand('concierge_sync', {
+                      donnaText: selectedOfferings
+                        ? `Your ${selectedPackage || 'Career Concierge'} suite is secured. I have the selected offerings and will keep the next step here.`
+                        : 'Your Career Concierge suite is secured. I will keep the next step here.',
+                      notice: 'Donna saved the pre-purchase context.',
+                    });
                     setPrePurchaseIntakeSeed(null);
                   }}
                   onDismiss={() => setAuthCardMode(null)}
