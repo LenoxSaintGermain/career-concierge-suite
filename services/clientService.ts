@@ -75,12 +75,18 @@ export const saveIntake = async (uid: string, payload: {
 }) => {
   const ref = doc(db, CLIENTS_COLLECTION, uid);
   const now = Timestamp.now();
+  // Persist preferred_name as display_name so wiki compiles with real name
+  const preferredName = typeof payload.answers.preferred_name === 'string'
+    ? payload.answers.preferred_name.trim()
+    : '';
+  const namePatch = preferredName ? { display_name: preferredName } : {};
   await setDoc(
     ref,
     {
       intent: payload.intent,
       preferences: payload.preferences,
       intake: { answers: payload.answers, completed_at: now },
+      ...namePatch,
       updated_at: now,
     },
     { merge: true }

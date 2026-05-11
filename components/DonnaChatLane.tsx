@@ -32,6 +32,8 @@ const A2UI_ENTER = {
 type DonnaState = 'idle' | 'listening' | 'thinking' | 'speaking';
 export type DonnaCanvasState =
   | 'landing'
+  | 'donna_reads_you'
+  | 'gap_reveal'
   | 'package_selection'
   | 'intake_inline'
   | 'dna_processing'
@@ -309,7 +311,10 @@ export function DonnaChatLane({
   const [selectedPackageId, setSelectedPackageId] = useState<'smart_start' | 'premier' | 'cjs' | null>(null);
   const [inlineAuthVisible, setInlineAuthVisible] = useState(false);
   const [toolNotice, setToolNotice] = useState<string | null>(null);
+  const [calibrationInput, setCalibrationInput] = useState('');
+  const [calibrationAnswer, setCalibrationAnswer] = useState('');
   const [prePurchaseAnswers, setPrePurchaseAnswers] = useState({
+    name: '',
     targetRole: '',
     pressure: '',
     proof: '',
@@ -501,7 +506,7 @@ export function DonnaChatLane({
     }
     if (action === 'ready') {
       pushExchange("I'm ready to begin.", JOURNEY_A_COPY.ready);
-      handleCanvasTransition('package_selection');
+      handleCanvasTransition('donna_reads_you');
       return;
     }
     if (action === 'live') {
@@ -571,7 +576,7 @@ export function DonnaChatLane({
         setTimeout(() => onSceneChange?.('calibration'), 500);
       } else if (/(ready|begin|smart start|start)/.test(lowered)) {
         donnaReply = JOURNEY_A_COPY.ready;
-        setTimeout(() => handleCanvasTransition('package_selection'), 500);
+        setTimeout(() => handleCanvasTransition('donna_reads_you'), 500);
       } else if (/(voice|live|talk|mic|microphone|session)/.test(lowered)) {
         donnaReply = 'I can open the live lane as soon as you sign in. I have your access card ready.';
         setTimeout(() => onAuthRequest('login'), 500);
@@ -663,8 +668,10 @@ export function DonnaChatLane({
         : 'Smart Start';
 
   const buildPrePurchaseSeed = useCallback(() => {
+    const name = prePurchaseAnswers.name.trim();
     const target = prePurchaseAnswers.targetRole.trim();
-    const pressure = prePurchaseAnswers.pressure.trim();
+    // If they answered the calibration question, use it as primary pressure context
+    const pressure = prePurchaseAnswers.pressure.trim() || calibrationAnswer;
     const proof = prePurchaseAnswers.proof.trim();
     const pace =
       prePurchaseAnswers.supportPace === 'straight' || prePurchaseAnswers.supportPace === 'story'
@@ -672,6 +679,7 @@ export function DonnaChatLane({
         : 'standard';
     const focus = selectedPackageId === 'cjs' ? 'job_search' : selectedPackageId === 'premier' ? 'leadership' : 'skills';
     const answers: IntakeAnswers = {
+      preferred_name: name || undefined,
       current_or_target_job_title: target,
       target_title: target,
       target: target || selectedPackageLabel,
@@ -692,7 +700,7 @@ export function DonnaChatLane({
       },
       answers,
     };
-  }, [prePurchaseAnswers, selectedPackageId, selectedPackageLabel]);
+  }, [calibrationAnswer, prePurchaseAnswers, selectedPackageId, selectedPackageLabel]);
 
   const renderA2UISlot = () => {
     if (!canvasSlotVisible) return null;
@@ -795,6 +803,121 @@ export function DonnaChatLane({
       );
     }
 
+    if (canvasState === 'donna_reads_you') {
+      return (
+        <A2UICard>
+          <div className="font-data text-[10px] uppercase tracking-[0.28em] text-[#8DD9BF]">
+            SC. 01 · CALIBRATION
+          </div>
+          <h3 className="mt-3 font-editorial text-3xl italic text-[#DCE7E8]">
+            What's the gap you're trying to close?
+          </h3>
+          <p className="mt-3 font-body text-sm leading-7 text-[#8EA3A7]">
+            One sentence is enough. I will read the signal.
+          </p>
+          <div className="mt-5">
+            <input
+              autoFocus
+              value={calibrationInput}
+              onChange={(e) => setCalibrationInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && calibrationInput.trim()) {
+                  const answer = calibrationInput.trim();
+                  setCalibrationAnswer(answer);
+                  setCalibrationInput('');
+                  pushExchange(answer, 'Understood. Here is where one session puts you.', 'chip_action');
+                  handleCanvasTransition('gap_reveal');
+                }
+              }}
+              placeholder="e.g. I am stuck at director and can't get to VP."
+              className="w-full border-b border-[#22424A] bg-transparent py-3 font-body text-sm text-[#DCE7E8] outline-none placeholder:text-[#8EA3A7]/40 focus:border-[#8DD9BF]/60"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={!calibrationInput.trim()}
+            onClick={() => {
+              const answer = calibrationInput.trim();
+              setCalibrationAnswer(answer);
+              setCalibrationInput('');
+              pushExchange(answer, 'Understood. Here is where one session puts you.', 'chip_action');
+              handleCanvasTransition('gap_reveal');
+            }}
+            className="mt-5 border border-[#8DD9BF]/70 px-4 py-2 font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/10 disabled:opacity-30 disabled:cursor-default"
+            style={{ borderRadius: 0 }}
+          >
+            CONTINUE →
+          </button>
+        </A2UICard>
+      );
+    }
+
+    if (canvasState === 'gap_reveal') {
+      return (
+        <A2UICard>
+          <div className="font-data text-[10px] uppercase tracking-[0.28em] text-[#8DD9BF]">
+            SC. 02 · THE DELTA
+          </div>
+          <h3 className="mt-3 font-editorial text-3xl italic text-[#DCE7E8]">
+            One session closes that gap.
+          </h3>
+          {calibrationAnswer ? (
+            <p className="mt-3 font-body text-sm leading-7 text-[#8EA3A7]/70 italic">
+              "{calibrationAnswer}"
+            </p>
+          ) : null}
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="border border-[#22424A] bg-[#07161A]/40 px-4 py-4">
+              <div className="font-data text-[9px] uppercase tracking-[0.24em] text-[#8EA3A7]/60">
+                NOW
+              </div>
+              <p className="mt-2 font-body text-sm leading-6 text-[#DCE7E8]/70">
+                Signal is there. The frame and the file are not. That's what slows the move.
+              </p>
+            </div>
+            <div className="border border-[#8DD9BF]/30 bg-[#8DD9BF]/[0.04] px-4 py-4">
+              <div className="font-data text-[9px] uppercase tracking-[0.24em] text-[#8DD9BF]">
+                AFTER ONE SESSION
+              </div>
+              <p className="mt-2 font-body text-sm leading-6 text-[#DCE7E8]/85">
+                Calibrated brief. Clear positioning. The next move sequenced. Built from what you already have.
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 border-t border-[#22424A]/60 pt-4">
+            <div className="font-data text-[10px] uppercase tracking-[0.2em] text-[#8EA3A7]/50">
+              ONE SESSION FROM $2.4K · FULL SUITE FROM $6K
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                pushExchange('Show me how.', "Here's what's available. Choose the right entry point.", 'chip_action');
+                handleCanvasTransition('package_selection');
+              }}
+              className="border border-[#8DD9BF]/70 px-5 py-2.5 font-data text-[10px] uppercase tracking-[0.22em] text-[#DCE7E8] transition-colors hover:bg-[#8DD9BF]/10"
+              style={{ borderRadius: 0 }}
+            >
+              SHOW ME HOW →
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                pushExchange(
+                  'Not yet.',
+                  'That is fine. I will be here when the timing is right. Say you are ready to begin when you want to move.'
+                )
+              }
+              className="font-data text-[10px] uppercase tracking-[0.22em] text-[#8EA3A7]/60 transition-colors hover:text-[#DCE7E8]"
+            >
+              NOT YET
+            </button>
+          </div>
+        </A2UICard>
+      );
+    }
+
     if (canvasState === 'package_selection') {
       return (
         <PackageSelectCards
@@ -849,6 +972,19 @@ export function DonnaChatLane({
             if you create an account after the brief preview.
           </p>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3 md:col-span-2">
+              <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
+                ACT 00: YOUR NAME
+              </div>
+              <input
+                value={prePurchaseAnswers.name}
+                onChange={(event) =>
+                  setPrePurchaseAnswers((current) => ({ ...current, name: event.target.value }))
+                }
+                placeholder="First name"
+                className="mt-2 w-full bg-transparent font-body text-sm text-[#DCE7E8] outline-none placeholder:text-[#8EA3A7]/40"
+              />
+            </label>
             <label className="block border border-[#22424A] bg-[#07161A]/40 px-3 py-3">
               <div className="font-data text-[9px] uppercase tracking-[0.22em] text-[#8EA3A7]/60">
                 ACT 01: TARGET
