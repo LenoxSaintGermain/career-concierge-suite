@@ -5,6 +5,7 @@ import { fetchClientWiki } from '../services/wikiService';
 import { fetchClientMemory } from '../services/memoryService';
 import { ClientMemory, GeminiLiveTokenResponse } from '../types';
 import type { GhostAction, GhostCallbacks } from '../hooks/useGhostVoice';
+import { LIVE_INTAKE_FUNCTION_DECLARATIONS, LIVE_INTAKE_TOOL_CONFIG } from '../api/config/liveIntakeTools';
 
 function buildMemoryContext(memory: ClientMemory, wikiLen: number): string {
   const BUDGET = 8000;
@@ -714,6 +715,10 @@ export function GeminiLivePanel(props: {
 
       const session = await ai.live.connect({
         model: token.model,
+        config: {
+          tools: [{ functionDeclarations: LIVE_INTAKE_FUNCTION_DECLARATIONS }],
+          toolConfig: LIVE_INTAKE_TOOL_CONFIG,
+        },
         callbacks: {
           onopen: () => {
             console.info('[GeminiLive] WebSocket open — awaiting setupComplete');

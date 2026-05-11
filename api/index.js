@@ -5823,8 +5823,6 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
     activityHandling,
     startSensitivity,
     endSensitivity,
-    tools: [{ functionDeclarations: LIVE_INTAKE_FUNCTION_DECLARATIONS }],
-    toolConfig: LIVE_INTAKE_TOOL_CONFIG,
   });
 
   try {
@@ -5863,6 +5861,7 @@ app.post('/v1/live/token', requireAuth, async (_req, res) => {
       expires_at: expiresAt.toISOString(),
     });
   } catch (error) {
+    console.error('[live/token] token create failed', sanitizeError(error, 'live_token_failed'));
     return res.status(502).json({
       error: 'live_token_failed',
       detail: sanitizeError(error, 'live_token_failed'),
