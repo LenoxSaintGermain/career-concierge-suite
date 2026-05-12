@@ -71,6 +71,8 @@ Gemini is now aligned to Google’s current Live API family, with `gemini-3.1-fl
 Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; the legacy Professional DNA `voice_agent_voice_id` field no longer overrides the admin-selected Gemini voice.
 Donna is now the default front-door OS experience. The suite/grid is treated as a filing cabinet or explicit escape hatch; primary Smart Start, brief, plan, wiki, and live-session actions should stay in Donna's A2UI canvas unless the user chooses `Open full view`.
 Donna voice is now launched from the chat composer mic control as the primary interaction. That click requests browser microphone permission immediately, opens Donna's live A2UI canvas, and passes the approved stream into Gemini Live so users are not asked to start the session a second time.
+Donna front-door behavior is configurable from Admin -> `Voice` through the `donna` config surface: voice-first default, one-click launch, opening turn copy, live dock detail, suite escape visibility, workflow routing posture, visual intensity, and operator diagnostics.
+Admins can now see Donna-shell Gemini Live diagnostics inline, including mic permission, token, setupComplete, opening turn, tool calls, interruption, goAway, close/reconnect, and playback events.
 Gemini Live now handles server interruption events by stopping queued playback and releasing mic suppression, and it surfaces `goAway` session rotation warnings instead of only logging them.
 
 Provider options:
@@ -117,6 +119,7 @@ Admin controls expose:
 - route/model selection
 - prompt appendices
 - speaker / temperature / max length
+- Donna front-door runtime and visual controls
 
 ## Backlog Completion Pass (E2E Demo Surfaces)
 

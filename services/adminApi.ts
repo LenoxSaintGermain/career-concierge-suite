@@ -69,6 +69,18 @@ const BRAND_SUBHEADER_SCALE_SET = new Set<BrandSubheaderScale>(BRAND_SUBHEADER_S
 const BRAND_BODY_DENSITY_SET = new Set<BrandBodyDensity>(BRAND_BODY_DENSITIES as BrandBodyDensity[]);
 const BRAND_TILE_EMPHASIS_SET = new Set<BrandTileEmphasis>(BRAND_TILE_EMPHASES as BrandTileEmphasis[]);
 const BRAND_OVERLAY_STYLE_SET = new Set<BrandOverlayStyle>(BRAND_OVERLAY_STYLES as BrandOverlayStyle[]);
+const DEFAULT_DONNA_CONFIG: AppConfig['donna'] = {
+  voice_first_default: true,
+  auto_start_live: true,
+  opening_turn_text:
+    'Open the Smart Start session now. Greet the client briefly in one sentence, then ask the single best first question for the currently visible section. Do not wait for the client to speak first.',
+  composer_mode: 'voice_first',
+  live_dock_detail_level: 'standard',
+  suite_escape_visible: true,
+  workflow_routing_posture: 'agentic',
+  visual_theme_intensity: 'quiet',
+  operator_diagnostics_visible: true,
+};
 const normalizeDnaVoiceModel = (value: unknown): AppConfig['professional_dna']['voice_model'] =>
   value === 'elevenlabs_ghost' || value === 'elevenlabs_conversational' ? 'elevenlabs_ghost' : 'gemini_live';
 
@@ -252,6 +264,52 @@ const normalizeBrandConfig = (input: unknown): BrandConfig => {
     },
     modules: normalizedModules,
   } as BrandConfig;
+};
+
+const normalizeDonnaConfig = (input: unknown): AppConfig['donna'] => {
+  const source = input && typeof input === 'object' ? (input as any) : {};
+  return {
+    voice_first_default:
+      typeof source.voice_first_default === 'boolean'
+        ? source.voice_first_default
+        : DEFAULT_DONNA_CONFIG.voice_first_default,
+    auto_start_live:
+      typeof source.auto_start_live === 'boolean' ? source.auto_start_live : DEFAULT_DONNA_CONFIG.auto_start_live,
+    opening_turn_text:
+      String(source.opening_turn_text ?? '').trim() || DEFAULT_DONNA_CONFIG.opening_turn_text,
+    composer_mode:
+      source.composer_mode === 'text_first'
+        ? 'text_first'
+        : source.composer_mode === 'balanced'
+          ? 'balanced'
+          : DEFAULT_DONNA_CONFIG.composer_mode,
+    live_dock_detail_level:
+      source.live_dock_detail_level === 'diagnostic'
+        ? 'diagnostic'
+        : source.live_dock_detail_level === 'minimal'
+          ? 'minimal'
+          : DEFAULT_DONNA_CONFIG.live_dock_detail_level,
+    suite_escape_visible:
+      typeof source.suite_escape_visible === 'boolean'
+        ? source.suite_escape_visible
+        : DEFAULT_DONNA_CONFIG.suite_escape_visible,
+    workflow_routing_posture:
+      source.workflow_routing_posture === 'module_first'
+        ? 'module_first'
+        : source.workflow_routing_posture === 'balanced'
+          ? 'balanced'
+          : DEFAULT_DONNA_CONFIG.workflow_routing_posture,
+    visual_theme_intensity:
+      source.visual_theme_intensity === 'cinematic'
+        ? 'cinematic'
+        : source.visual_theme_intensity === 'standard'
+          ? 'standard'
+          : DEFAULT_DONNA_CONFIG.visual_theme_intensity,
+    operator_diagnostics_visible:
+      typeof source.operator_diagnostics_visible === 'boolean'
+        ? source.operator_diagnostics_visible
+        : DEFAULT_DONNA_CONFIG.operator_diagnostics_visible,
+  };
 };
 
 const normalizeCuratedMediaItem = (input: unknown, index: number): CuratedMediaItem => {
@@ -495,6 +553,7 @@ const normalizeAdminConfig = (input: any): AppConfig => {
       live_vad_start_sensitivity: source?.voice?.live_vad_start_sensitivity === 'low' ? 'low' : 'high',
       live_vad_end_sensitivity: source?.voice?.live_vad_end_sensitivity === 'low' ? 'low' : 'high',
     },
+    donna: normalizeDonnaConfig(source?.donna),
     safety: {
       tone_guard_enabled: Boolean(source?.safety?.tone_guard_enabled ?? true),
     },
@@ -546,6 +605,7 @@ export const fetchPublicConfig = async (): Promise<PublicConfig> => {
       active_panel: source?.voice?.active_panel === 'elevenlabs' ? 'elevenlabs' : 'gemini_live',
       gemini_live_model: String(source?.voice?.gemini_live_model ?? ''),
     },
+    donna: normalizeDonnaConfig(source?.donna),
   };
 };
 

@@ -104,10 +104,10 @@ Use these sibling-named services when you need a fresh Cloud Run URL for Donna/f
 - Service alias UI URL: `https://career-concierge-suite-donna-live-tpcap5aa5a-ew.a.run.app`
 - Service alias API URL: `https://career-concierge-api-donna-live-tpcap5aa5a-ew.a.run.app`
 
-Current validated revisions as of 2026-05-08:
+Current validated revisions as of 2026-05-12:
 
-- UI: `career-concierge-suite-donna-live-00004-th7`
-- API: `career-concierge-api-donna-live-00004-6zv`
+- UI: `career-concierge-suite-donna-live-00013-4ss`
+- API: `career-concierge-api-donna-live-00010-h44`
 
 Deploy both in one pass with:
 
@@ -244,6 +244,8 @@ Current public-intake behavior:
 - if `ELEVENLABS_AGENT_ID` is present, `/v1/public/config` exposes the public agent ID
 - admin voice controls expose a `Public intake lane` selector with `gemini_live` and `elevenlabs`
 - `/v1/public/config` now follows the saved `voice.public_panel_provider` default from Firestore
+- `/v1/public/config` also exposes the `donna` front-door config: voice-first default, one-click live launch, opening turn, live dock detail, suite escape visibility, workflow routing posture, visual intensity, and operator diagnostics visibility
+- Admin -> `Voice` now includes the `Donna front door` panel so product owners can tune those behaviors without code edits
 - the intake concierge step follows that selector and mounts the chosen lane directly inside the Smart Start workspace
 - the intake concierge step no longer exposes a client-visible lane switcher; the live lane is now fully controlled from Admin
 - admin `Voice model` and `Public intake lane` controls now save in lockstep so the public lane does not drift from the saved Professional DNA voice choice
@@ -253,6 +255,7 @@ Current public-intake behavior:
 - Gemini Live clients now treat `serverContent.interrupted` as an immediate playback drain: active audio stops, queued PCM/audio buffers clear, and mic suppression releases so the user can keep speaking
 - Gemini Live `goAway` frames now surface an operator-visible reconnect warning instead of disappearing into console logs; if the socket closes after the warning, restart the voice session from the Smart Start rail
 - Gemini compact Smart Start mode now opens with the first question on its own and only enables the mic after that opening turn, which removes the silent-start seam and reduces early session drops
+- Donna-shell Gemini Live sessions buffer operator diagnostics for mic permission, token, setupComplete, opening turn, tool calls, interruption, goAway, close, reconnect, and playback errors; admins see the buffer inline when `donna.operator_diagnostics_visible` is enabled
 - Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; do not use `professional_dna.voice_agent_voice_id` to reason about the public Gemini voice lane
 - Gemini Live token hardening: keep intake tools out of ephemeral-token `liveConnectConstraints`. The token route should mint identity/model/system/VAD constraints only; the client `live.connect(...)` call owns the deterministic Smart Start tool declarations and tool config.
 - `POST /v1/voice/elevenlabs/session` now provides signed ElevenLabs session URLs for authenticated users when `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` are present

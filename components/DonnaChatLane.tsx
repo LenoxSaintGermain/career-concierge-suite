@@ -18,6 +18,7 @@ import { A2UICard } from './A2UICard';
 import { IntakeFlow } from './IntakeFlow';
 import { PackageSelectCards } from './PackageSelectCards';
 import type { DonnaScene } from './SceneRail';
+import type { GeminiLiveDiagnosticEvent } from './GeminiLivePanel';
 
 // ─── Motion constants ─────────────────────────────────────────────────────────
 const SPRING = { type: 'spring', stiffness: 260, damping: 28, mass: 0.8 } as const;
@@ -102,13 +103,14 @@ const ORB_ANIMATION: Record<DonnaState, string> = {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-function DonnaWaveform({ active }: { active: boolean }) {
+function DonnaWaveform({ active, accentColor = '#8DD9BF' }: { active: boolean; accentColor?: string }) {
   return (
     <div className="flex items-center gap-[2px] h-[10px]">
       {[0, 1, 2, 3, 4].map((i) => (
         <motion.div
           key={i}
-          className="w-[2px] bg-[#8DD9BF] rounded-sm"
+          className="w-[2px] rounded-sm"
+          style={{ backgroundColor: accentColor }}
           animate={
             active
               ? {
@@ -162,14 +164,14 @@ function DonnaSentences({ text, primary = false }: { text: string; primary?: boo
 }
 
 // Full-width waveform bar field — used in the concierge sync card
-function DonnaBarfield({ active }: { active: boolean }) {
+function DonnaBarfield({ active, accentColor = '#8DD9BF' }: { active: boolean; accentColor?: string }) {
   return (
     <div className="flex items-center gap-[2px] h-[20px] w-full overflow-hidden my-5 px-0.5">
       {Array.from({ length: 38 }, (_, i) => (
         <motion.div
           key={i}
           className="flex-1 rounded-[1px]"
-          style={{ background: '#8DD9BF', minWidth: '2px' }}
+          style={{ background: accentColor, minWidth: '2px' }}
           animate={
             active
               ? {
@@ -259,6 +261,8 @@ interface DonnaChatLaneProps {
   liveSessionActive?: boolean;
   liveSessionLaunching?: boolean;
   liveSessionContent?: React.ReactNode;
+  liveDiagnostics?: GeminiLiveDiagnosticEvent[];
+  liveDiagnosticsVisible?: boolean;
   children?: React.ReactNode;
 }
 
@@ -481,6 +485,8 @@ export function DonnaChatLane({
   liveSessionActive = false,
   liveSessionLaunching = false,
   liveSessionContent,
+  liveDiagnostics = [],
+  liveDiagnosticsVisible = false,
   children,
 }: DonnaChatLaneProps) {
   const [messages, setMessages] = useState<DonnaMessage[]>([]);
@@ -521,6 +527,27 @@ export function DonnaChatLane({
   const canvasTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const donnaConfig = publicConfig.donna;
+  const voiceFirstComposer = donnaConfig.voice_first_default && donnaConfig.composer_mode !== 'text_first';
+  const quietVisuals = donnaConfig.visual_theme_intensity === 'quiet';
+  const cinematicVisuals = donnaConfig.visual_theme_intensity === 'cinematic';
+  const accentColor = quietVisuals ? '#C4A86F' : '#8DD9BF';
+  const accentRgb = quietVisuals ? '196,168,111' : '141,217,191';
+  const secondaryAccent = quietVisuals ? '#A89D8D' : '#8EA3A7';
+  const fieldBackground = quietVisuals
+    ? 'linear-gradient(180deg, rgba(28,31,30,0.82), rgba(13,18,19,0.96))'
+    : 'linear-gradient(180deg, rgba(13,35,41,0.78), rgba(5,17,21,0.96))';
+  const rootBackground = quietVisuals
+    ? 'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(196,168,111,0.08) 0%, transparent 68%), #071316'
+    : cinematicVisuals
+      ? 'radial-gradient(ellipse 88% 66% at 50% 100%, rgba(45,197,194,0.13) 0%, transparent 70%), #07161A'
+    : '#07161A';
+  const donnaThemeStyle = {
+    '--donna-accent': accentColor,
+    '--donna-accent-rgb': accentRgb,
+    '--donna-secondary': secondaryAccent,
+  } as React.CSSProperties;
+
   const intakeComplete = Boolean(client?.intake?.completed_at || wiki?.intake_complete);
   const mappedTargetRole = prePurchaseAnswers.targetRole.trim() || getTargetRole(client, wiki);
   const normalizedLinkedInUrl = prePurchaseAnswers.linkedinUrl.trim();
@@ -552,6 +579,10 @@ export function DonnaChatLane({
     () => deriveIndicatorScores(prePurchaseAnswers, resumeFile, normalizedLinkedInUrl),
     [normalizedLinkedInUrl, prePurchaseAnswers, resumeFile]
   );
+  const suiteRoutingCopy =
+    donnaConfig.workflow_routing_posture === 'module_first'
+      ? 'I can open the suite when you ask, but Donna will keep the current thread active.'
+      : 'The suite is the filing cabinet. Stay here and I will stage the next best step first.';
 
   const quickActions = useMemo(() => {
     if (!user) {
@@ -567,11 +598,11 @@ export function DonnaChatLane({
       ];
     }
     return [
-      { label: 'Talk to Donna now', action: 'live' as const },
+      { label: voiceFirstComposer ? 'Talk to Donna now' : 'Ask Donna now', action: 'live' as const },
       { label: 'Open Your Brief →', action: 'brief' as const },
       { label: 'Open Your Plan →', action: 'plan' as const },
     ];
-  }, [intakeComplete, user]);
+  }, [intakeComplete, user, voiceFirstComposer]);
 
   const openingMessage = useMemo(
     () => buildOpeningMessage(user, client, wiki, memory),
@@ -755,9 +786,13 @@ export function DonnaChatLane({
         pushExchange(label, 'I can open the live lane as soon as you sign in. I have your access card ready.');
         onAuthRequest('login');
       } else {
-        pushExchange(label, 'Opening the live line now.');
         handleCanvasTransition('concierge_sync');
-        onStartLiveSession?.();
+        if (donnaConfig.auto_start_live) {
+          pushExchange(label, 'Opening the live line now.');
+          onStartLiveSession?.();
+        } else {
+          pushExchange(label, 'The live card is staged. Tap Open Microphone when you are ready.');
+        }
       }
       return;
     }
@@ -829,7 +864,7 @@ export function DonnaChatLane({
       }
     } else if (!intakeComplete) {
       if (/(suite|show me the suite|open suite)/.test(lowered)) {
-        donnaReply = 'The suite is the filing cabinet. Stay here and I will stage Smart Start first.';
+        donnaReply = suiteRoutingCopy;
       } else if (/(start|begin|intake|smart start|calibrate)/.test(lowered)) {
         donnaReply = "Good choice. Let's get you calibrated.";
         setTimeout(() => handleCanvasTransition('intake_inline'), 500);
@@ -852,7 +887,10 @@ export function DonnaChatLane({
       donnaReply = 'Showing the compiled client knowledge I am working from.';
       setTimeout(() => onOpenWiki?.(focusedSection), 500);
     } else if (/(suite|show me the suite|open suite)/.test(lowered)) {
-      donnaReply = 'The suite is available from the header when you want the filing cabinet. I can keep the work here in Donna.';
+      donnaReply =
+        donnaConfig.workflow_routing_posture === 'module_first'
+          ? 'Opening the suite is available from the header. I will keep the live thread here when you return.'
+          : 'The suite is available from the header when you want the filing cabinet. I can keep the work here in Donna.';
     } else {
       donnaReply = 'I can open your brief, your plan, or the suite. Ask me to show the knowledge I am working from if you want to see what I know.';
     }
@@ -888,10 +926,15 @@ export function DonnaChatLane({
     setDonnaState('listening');
     // Only announce if we're transitioning — don't add noise if already on concierge_sync
     if (canvasState !== 'concierge_sync') {
-      pushExchange('Talk to Donna.', 'Opening the live line now.');
+      pushExchange(
+        'Talk to Donna.',
+        donnaConfig.auto_start_live
+          ? 'Opening the live line now.'
+          : 'The live card is staged. Tap Open Microphone when you are ready.'
+      );
     }
     handleCanvasTransition('concierge_sync');
-    onStartLiveSession?.();
+    if (donnaConfig.auto_start_live) onStartLiveSession?.();
   };
 
   const startInlineIntake = () => {
@@ -1910,7 +1953,7 @@ export function DonnaChatLane({
             I will pull from the Career Concierge OS, your brief, plan, wiki, and saved context while
             we talk.
           </p>
-          <DonnaBarfield active={liveSessionActive} />
+          <DonnaBarfield active={liveSessionActive} accentColor={accentColor} />
           {liveSessionActive ? (
             <div className="border border-[#22424A]/60 bg-[#07161A]/50 px-4 py-3">
               <div className="font-data text-[9px] uppercase tracking-[0.24em] text-[#8EA3A7]">
@@ -1947,7 +1990,10 @@ export function DonnaChatLane({
   const composerActive = composerExpanded || Boolean(inputValue.trim()) || liveSessionActive || liveSessionLaunching;
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#07161A]">
+    <div
+      className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#07161A]"
+      style={{ ...donnaThemeStyle, background: rootBackground }}
+    >
 
       {/* ── Ambient field layers ── */}
       {/* Layer 2: radial glow driven by DonnaState */}
@@ -1955,13 +2001,28 @@ export function DonnaChatLane({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 70% 50% at 50% 100%, rgba(45,197,194,0.11) 0%, transparent 70%), radial-gradient(circle at 18% 18%, rgba(141,217,191,0.08), transparent 30%), linear-gradient(180deg, rgba(2,8,12,0.62), transparent 38%, rgba(1,5,8,0.78))',
+            quietVisuals
+              ? 'radial-gradient(ellipse 70% 50% at 50% 100%, rgba(196,168,111,0.10) 0%, transparent 70%), radial-gradient(circle at 18% 18%, rgba(244,241,235,0.045), transparent 30%), linear-gradient(180deg, rgba(2,8,12,0.62), transparent 38%, rgba(1,5,8,0.78))'
+              : 'radial-gradient(ellipse 70% 50% at 50% 100%, rgba(45,197,194,0.11) 0%, transparent 70%), radial-gradient(circle at 18% 18%, rgba(141,217,191,0.08), transparent 30%), linear-gradient(180deg, rgba(2,8,12,0.62), transparent 38%, rgba(1,5,8,0.78))',
           animation: ORB_ANIMATION[donnaState],
         }}
       />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[linear-gradient(110deg,transparent_0%,rgba(141,217,191,0.08)_42%,transparent_62%)] opacity-70" />
-      <div className="pointer-events-none absolute -left-24 bottom-20 h-72 w-72 rounded-full bg-[#8DD9BF]/[0.07] blur-3xl" />
-      <div className="pointer-events-none absolute -right-28 top-28 h-96 w-96 rounded-full bg-[#2DC5C2]/[0.06] blur-3xl" />
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-48 opacity-70"
+        style={{
+          background: quietVisuals
+            ? 'linear-gradient(110deg,transparent 0%,rgba(196,168,111,0.065) 42%,transparent 62%)'
+            : 'linear-gradient(110deg,transparent 0%,rgba(141,217,191,0.08) 42%,transparent 62%)',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute -left-24 bottom-20 h-72 w-72 rounded-full blur-3xl"
+        style={{ backgroundColor: `rgba(${accentRgb},${quietVisuals ? 0.045 : 0.07})` }}
+      />
+      <div
+        className="pointer-events-none absolute -right-28 top-28 h-96 w-96 rounded-full blur-3xl"
+        style={{ backgroundColor: `rgba(${quietVisuals ? '196,168,111' : '45,197,194'},${quietVisuals ? 0.035 : 0.06})` }}
+      />
       {/* Layer 3: film grain */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -1981,7 +2042,9 @@ export function DonnaChatLane({
             transition={{ duration: 0.08 }}
             style={{
               background:
-                'radial-gradient(ellipse 80% 60% at 50% 90%, rgba(45,197,194,0.08), transparent)',
+                quietVisuals
+                  ? 'radial-gradient(ellipse 80% 60% at 50% 90%, rgba(196,168,111,0.08), transparent)'
+                  : 'radial-gradient(ellipse 80% 60% at 50% 90%, rgba(45,197,194,0.08), transparent)',
             }}
           />
         )}
@@ -1994,7 +2057,9 @@ export function DonnaChatLane({
           width: '60%',
           height: '40%',
           background:
-            'radial-gradient(ellipse 60% 40% at 50% 85%, rgba(45,197,194,0.07) 0%, transparent 70%)',
+            quietVisuals
+              ? 'radial-gradient(ellipse 60% 40% at 50% 85%, rgba(196,168,111,0.06) 0%, transparent 70%)'
+              : 'radial-gradient(ellipse 60% 40% at 50% 85%, rgba(45,197,194,0.07) 0%, transparent 70%)',
           animation: ORB_ANIMATION[donnaState],
         }}
       />
@@ -2118,6 +2183,32 @@ export function DonnaChatLane({
         </div>
       ) : null}
 
+      {liveDiagnosticsVisible && liveDiagnostics.length ? (
+        <div className="relative z-20 px-4 pb-3">
+          <div className="mx-auto max-w-[960px] border border-[#4A4338]/80 bg-[#101719]/90 p-3 shadow-[0_16px_42px_rgba(1,8,12,0.22)]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-data text-[9px] uppercase tracking-[0.24em]" style={{ color: accentColor }}>
+                Live diagnostics
+              </div>
+              <div className="font-data text-[9px] uppercase tracking-[0.18em] text-[#8EA3A7]/55">
+                {liveDiagnostics.length} events
+              </div>
+            </div>
+            <div className="mt-2 grid max-h-[118px] gap-1 overflow-y-auto pr-1 md:grid-cols-2">
+              {liveDiagnostics.slice(0, donnaConfig.live_dock_detail_level === 'diagnostic' ? 10 : 4).map((event) => (
+                <div key={event.id} className="border-l pl-2 text-[10px] leading-4 text-[#DCE7E8]/70" style={{ borderColor: `rgba(${accentRgb},0.44)` }}>
+                  <span className="font-data uppercase tracking-[0.14em] text-[#8EA3A7]/60">
+                    {event.type}
+                  </span>
+                  {' '}
+                  {event.detail}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* ── Thinking indicator ── */}
       <AnimatePresence>
         {donnaThinking && (
@@ -2157,11 +2248,12 @@ export function DonnaChatLane({
         }}
         transition={SPRING}
         style={{
-          borderColor: composerActive ? 'rgba(141,217,191,0.34)' : '#22424A',
-          background:
-            'linear-gradient(180deg, rgba(13,35,41,0.78), rgba(5,17,21,0.96))',
+          borderColor: composerActive ? `rgba(${accentRgb},0.34)` : '#22424A',
+          background: fieldBackground,
           boxShadow: composerActive
-            ? '0 -24px 80px rgba(20, 71, 77, 0.28)'
+            ? quietVisuals
+              ? '0 -24px 80px rgba(71, 58, 34, 0.20)'
+              : '0 -24px 80px rgba(20, 71, 77, 0.28)'
             : '0 -10px 40px rgba(1, 8, 12, 0.22)',
           backdropFilter: 'blur(18px)',
         }}
@@ -2172,9 +2264,22 @@ export function DonnaChatLane({
           animate={{ opacity: composerActive ? 1 : 0.72, y: composerActive ? 0 : 2 }}
           transition={SPRING}
         >
-          <DonnaWaveform active={donnaState === 'speaking' || donnaState === 'thinking'} />
+          <DonnaWaveform
+            active={donnaState === 'speaking' || donnaState === 'thinking'}
+            accentColor={accentColor}
+          />
           <span
-            className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${STATUS_DOT[donnaState]}`}
+            className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
+              donnaState === 'idle' ? '' : STATUS_DOT[donnaState].replace(/bg-\[[^\]]+\](?:\/\d+)?/g, '')
+            }`}
+            style={{
+              backgroundColor:
+                donnaState === 'idle'
+                  ? `rgba(${accentRgb},0.28)`
+                  : donnaState === 'thinking'
+                    ? `rgba(${accentRgb},0.62)`
+                    : accentColor,
+            }}
           />
           <span className="font-data text-[10px] uppercase tracking-[0.18em] text-[#8EA3A7]">
             {liveSessionLaunching ? 'Requesting microphone' : liveSessionActive ? 'Live line open · tap ◼ to end' : STATUS_LABEL[donnaState]}
@@ -2183,7 +2288,7 @@ export function DonnaChatLane({
         <motion.div
           className="mx-auto flex max-w-[720px] items-center gap-2 border"
           animate={{
-            borderColor: composerActive ? 'rgba(141,217,191,0.58)' : 'rgba(34,66,74,0.78)',
+            borderColor: composerActive ? `rgba(${accentRgb},0.58)` : 'rgba(34,66,74,0.78)',
             backgroundColor: composerActive ? 'rgba(7,22,26,0.86)' : 'rgba(7,22,26,0.48)',
             borderRadius: composerActive ? 28 : 999,
             minHeight: composerActive ? 58 : 48,
@@ -2195,14 +2300,17 @@ export function DonnaChatLane({
             onClick={handleVoicePress}
             disabled={liveSessionLaunching}
             aria-label={liveSessionActive ? 'End Donna live session' : liveSessionLaunching ? 'Donna is requesting microphone access' : 'Start Donna voice'}
-            className={`relative ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all disabled:opacity-70 ${
-              liveSessionActive
-                ? 'border-[#8DD9BF]/80 bg-[#8DD9BF]/20 hover:bg-red-900/30 hover:border-red-400/60'
-                : 'border-[#8DD9BF]/50 bg-[#8DD9BF]/10 hover:bg-[#8DD9BF]/18'
-            }`}
+            className="relative ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all disabled:opacity-70 hover:bg-red-900/20"
+            style={{
+              borderColor: liveSessionActive ? `rgba(${accentRgb},0.8)` : `rgba(${accentRgb},0.5)`,
+              backgroundColor: liveSessionActive ? `rgba(${accentRgb},0.18)` : `rgba(${accentRgb},0.09)`,
+            }}
           >
             {liveSessionActive && (
-              <span className="absolute inset-0 rounded-full border border-[#8DD9BF]/30 animate-[pulse_1.8s_ease-in-out_infinite]" />
+              <span
+                className="absolute inset-0 rounded-full border animate-[pulse_1.8s_ease-in-out_infinite]"
+                style={{ borderColor: `rgba(${accentRgb},0.3)` }}
+              />
             )}
             <span className="font-data text-[14px] leading-none text-[#DCE7E8]">
               {liveSessionActive ? '◼' : liveSessionLaunching ? '◌' : '◉'}
@@ -2215,7 +2323,15 @@ export function DonnaChatLane({
               onChange={(e) => setInputValue(e.target.value)}
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
-              placeholder={liveSessionLaunching ? 'Approve mic permission…' : liveSessionActive ? 'Donna is listening. Type if you need to.' : 'Speak first, or type to Donna…'}
+              placeholder={
+                liveSessionLaunching
+                  ? 'Approve mic permission...'
+                  : liveSessionActive
+                    ? 'Donna is listening. Type if you need to.'
+                    : voiceFirstComposer
+                      ? 'Speak first, or type to Donna...'
+                      : 'Type to Donna, or tap the voice orb...'
+              }
               className="w-full bg-transparent font-body text-sm text-[#DCE7E8] outline-none placeholder:text-[#8EA3A7]/40"
             />
             <AnimatePresence>
@@ -2226,7 +2342,13 @@ export function DonnaChatLane({
                   exit={{ opacity: 0, y: -3 }}
                   className="mt-1 font-data text-[8px] uppercase tracking-[0.2em] text-[#8EA3A7]/55"
                 >
-                  {liveSessionLaunching ? 'Browser permission prompt is active' : liveSessionActive ? 'Voice-first mode active' : 'One tap opens microphone + live session'}
+                  {liveSessionLaunching
+                    ? 'Browser permission prompt is active'
+                    : liveSessionActive
+                      ? 'Voice-first mode active'
+                      : voiceFirstComposer
+                        ? 'One tap opens microphone + live session'
+                        : 'Text-first mode with voice available'}
                 </motion.div>
               ) : null}
             </AnimatePresence>

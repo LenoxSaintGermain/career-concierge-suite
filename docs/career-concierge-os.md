@@ -49,7 +49,7 @@ The client-facing suite is a modular OS-style workspace built around:
 
 Donna is now the primary front-door surface for the A2UI pivot. The module grid remains the Career Concierge OS filing system, but Journey A primary actions stay inside the Donna canvas: the unauthenticated opening uses three concise chips, package selection renders as inline A2UI cards, Smart Start can stage inline, and brief/plan previews materialize before any full-suite module view is opened. The right-edge Scene Rail provides ambient arrival/calibration/co-design context, and returning-client auth is exposed as a quiet peripheral marker rather than a competing primary CTA. Pre-purchase Smart Start answers can seed the new account during registration, and returning clients now see compact wiki/artifact cards plus inline brief/plan reveals before choosing `Open full view ↗`. The live concierge lane can also mount inside the Donna canvas so the user stays in the front-door experience longer.
 Unauthenticated first-arrival chrome stays intentionally minimal: the header does not expose suite/admin/live controls, and returning-client auth remains a peripheral Donna entry instead of the primary path. Legacy suite surfaces must preserve the same boundary if reintroduced; Smart Start intent updates should redirect back to Donna's guided canvas, not reopen the intake module as a filing-cabinet destination.
-For signed-in users, Donna's chat composer is voice-first. The mic control is the primary live-session launch point: it requests browser microphone permission in the same user gesture, opens the `concierge_sync` canvas, and hands the approved stream to Gemini Live auto-start so there is no second “Start Voice Session” step. While permission is pending, Donna shows a cinematic waiting state instead of another call-to-action.
+For signed-in users, Donna's chat composer is voice-first. The mic control is the primary live-session launch point: it requests browser microphone permission in the same user gesture, opens the `concierge_sync` canvas, and hands the approved stream to Gemini Live auto-start so there is no second “Start Voice Session” step. While permission is pending, Donna shows a cinematic waiting state instead of another call-to-action. The front-door behavior is now governed by the `donna` config surface: voice-first default, one-click live launch, opening turn copy, live dock detail, suite escape visibility, workflow routing posture, visual intensity, and operator diagnostic visibility.
 
 Intent routing now matters to the actual suite behavior:
 
@@ -94,6 +94,7 @@ Modules should feel like guided surfaces inside one OS, not isolated product pag
 - Gemini Smart Start text prompts and context refreshes now flow through Live realtime text input instead of the older client-content turn path, which prevents `1007 invalid argument` socket closes during the opening question on `gemini-3.1-flash-live-preview`
 - Gemini Live now drains playback on `serverContent.interrupted`, clearing active audio and queued PCM/audio buffers before releasing mic suppression back to the speaker
 - Gemini Live now warns the session when Google sends `goAway`; if the socket rotates closed after that warning, the user can explicitly restart the voice session
+- Donna shell sessions now buffer client-side Live lifecycle diagnostics for admin/operator review, including mic permission, token, setupComplete, opening turn, tool calls, interruption, goAway, close, reconnect, and playback errors
 - the ElevenLabs Ghost lane now uses the React SDK plus a signed-session API route, contextual updates, and intake-safe client tools so Donna can move screens, focus fields, write answers, and summarize the intake state live
 - the client-facing Smart Start rail no longer renders the internal Ghost tool-action feed, and Gemini live transcript extraction now waits longer between passes so the UI does not thrash the extraction endpoint mid-conversation
 - the live transcript surfaces in both Gemini and ElevenLabs now render inside explicit dark cards so in-session text stays readable against the editorial intake canvas
@@ -169,6 +170,7 @@ The admin console is the operational control plane for:
 - agent registry visibility with read/write scope policy
 - model routing
 - voice provider routing
+- Donna front-door runtime, workflow, visual, and operator-diagnostic controls
 - Gemini Live transcription, interruption, and VAD tuning
 - prompt appendices and ROM tuning
 - Professional DNA research configuration for model path, prompt appendix, section lists, section order, company-posture notes, research domains, dossier refresh window, intake hero media, and Smart Start voice-agent controls
@@ -382,6 +384,8 @@ Donna live-test services are the UAT lane for the agentic front-door work before
 - API: `career-concierge-api-donna-live`
 - deterministic UI URL: `https://career-concierge-suite-donna-live-480846059254.europe-west1.run.app`
 - deterministic API URL: `https://career-concierge-api-donna-live-480846059254.europe-west1.run.app`
+- validated 2026-05-12 UI revision: `career-concierge-suite-donna-live-00013-4ss`
+- validated 2026-05-12 API revision: `career-concierge-api-donna-live-00010-h44`
 
 Promotion back to canonical `career-concierge-suite` / `career-concierge-api` should happen only after authenticated browser UAT confirms Donna login/onboarding, inline account creation, wiki seeding, and live Gemini microphone/session behavior. Keep the Donna live-test service as the reviewable environment until then, then open a scoped PR against the canonical Career Concierge suite repository/main branch and deploy the canonical services after approval.
 

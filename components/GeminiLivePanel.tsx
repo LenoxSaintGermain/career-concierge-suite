@@ -23,7 +23,17 @@ function buildMemoryContext(memory: ClientMemory, wikiLen: number): string {
   return lines.join('\n');
 }
 
-type LiveState = 'idle' | 'connecting' | 'connected' | 'error';
+export type LiveState = 'idle' | 'connecting' | 'connected' | 'error';
+export type GeminiLiveDiagnosticLevel = 'info' | 'warn' | 'error';
+export interface GeminiLiveDiagnosticEvent {
+  id: string;
+  timestamp: string;
+  type: string;
+  detail: string;
+  level: GeminiLiveDiagnosticLevel;
+  state: LiveState;
+  launchId?: number;
+}
 const PCM_SMOOTHING_BUFFER_MS = 70;
 const PCM_PLAYBACK_LOOKAHEAD_SEC = 0.07;
 const GEMINI_CAPTURE_WORKLET_PATH = '/audio-processors/capture.worklet.js';
@@ -155,6 +165,9 @@ export function GeminiLivePanel(props: {
   launchId?: number;
   initialMicStream?: MediaStream | null;
   onInitialMicStreamConsumed?: () => void;
+  openingTurnText?: string;
+  diagnosticsVisible?: boolean;
+  onDiagnosticEvent?: (event: GeminiLiveDiagnosticEvent) => void;
 }) {
   const [state, setState] = useState<LiveState>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +182,7 @@ export function GeminiLivePanel(props: {
   const [loadingSceneIndex, setLoadingSceneIndex] = useState(0);
   const [activeStoryScene, setActiveStoryScene] = useState<StorySceneId>('arrival');
   const [actionLog, setActionLog] = useState<GhostAction[]>([]);
+  const [diagnostics, setDiagnostics] = useState<GeminiLiveDiagnosticEvent[]>([]);
 
   const sessionRef = useRef<any>(null);
   const storyRailRef = useRef<HTMLDivElement | null>(null);
@@ -260,6 +274,22 @@ export function GeminiLivePanel(props: {
     setActionLog((prev) => [action, ...prev].slice(0, 20));
     return action;
   }, []);
+  const recordDiagnostic = useCallback(
+    (type: string, detail: string, level: GeminiLiveDiagnosticLevel = 'info') => {
+      const event: GeminiLiveDiagnosticEvent = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        timestamp: new Date().toISOString(),
+        type,
+        detail,
+        level,
+        state,
+        launchId: props.launchId,
+      };
+      setDiagnostics((prev) => [event, ...prev].slice(0, 40));
+      props.onDiagnosticEvent?.(event);
+    },
+    [props, state],
+  );
   const resolveToolResult = (result: unknown, fallback: string) => {
     if (result === undefined || result === null || result === '') return fallback;
     return typeof result === 'string' || typeof result === 'number' ? result : fallback;
@@ -385,21 +415,24 @@ export function GeminiLivePanel(props: {
   const sendOpeningTurn = useCallback(() => {
     if (!sessionRef.current || !setupCompleteRef.current || openingTurnSentRef.current) return;
     console.info('[GeminiLive] Sending opening turn');
+    recordDiagnostic('opening_turn_send', 'Sending configured Donna opening turn to Gemini Live.');
     introTurnPendingRef.current = true;
     openingTurnSentRef.current = true;
     promptSentAtRef.current = performance.now();
     try {
       sessionRef.current.sendRealtimeInput({
         text:
+          props.openingTurnText ||
           'Open the Smart Start session now. Greet the client briefly in one sentence, then ask the single best first question for the currently visible section. Do not wait for the client to speak first.',
       });
     } catch (error: any) {
       console.warn('[GeminiLive] Opening turn failed:', error?.message);
+      recordDiagnostic('opening_turn_error', error?.message || 'Opening turn send failed.', 'error');
       introTurnPendingRef.current = false;
       openingTurnSentRef.current = false;
       setError(error?.message ?? 'Unable to open the live intake turn.');
     }
-  }, []);
+  }, [props.openingTurnText, recordDiagnostic]);
 
   const sendTextTurn = useCallback((text: string) => {
     if (!sessionRef.current || !setupCompleteRef.current) {
@@ -659,6 +692,7 @@ export function GeminiLivePanel(props: {
       await audio.play();
     } catch (e: any) {
       setMicSuppressed(false);
+      recordDiagnostic('audio_playback_error', e?.message ?? 'Unable to play Live audio.', 'error');
       setError(e?.message ?? 'Unable to play Live audio.');
       if (activeAudioUrlRef.current === audioUrl) {
         activeAudioUrlRef.current = null;
@@ -672,8 +706,10 @@ export function GeminiLivePanel(props: {
     setState('connecting');
     setTranscript('');
     setActionLog([]);
+    setDiagnostics([]);
     setMicSuppressed(false);
     setLatencyMs(null);
+    recordDiagnostic('session_start', 'Starting Gemini Live session and requesting context.');
     expectedCloseRef.current = false;
     socketReadyRef.current = false;
     setupCompleteRef.current = false;
@@ -696,6 +732,7 @@ export function GeminiLivePanel(props: {
         props.surfaceHint === 'shell' ? 'shell' : props.sessionContext;
       const token = await createGeminiLiveToken(contextWithSurface, wikiText, memoryText);
       setTokenInfo(token);
+      recordDiagnostic('live_token_ok', `Ephemeral token received for ${token.model}.`);
       const ai = new GoogleGenAI({
         apiKey: token.token_name,
         httpOptions: { apiVersion: 'v1alpha' },
@@ -722,12 +759,19 @@ export function GeminiLivePanel(props: {
         callbacks: {
           onopen: () => {
             console.info('[GeminiLive] WebSocket open — awaiting setupComplete');
+            recordDiagnostic('websocket_open', 'WebSocket open; waiting for setupComplete.');
             socketReadyRef.current = true;
           },
           onmessage: async (message: any) => {
             // --- Setup handshake: wait for server to confirm session is ready ---
             if (message?.setupComplete) {
               console.info('[GeminiLive] setupComplete received', message.setupComplete?.sessionId ? `session=${message.setupComplete.sessionId}` : '');
+              recordDiagnostic(
+                'setup_complete',
+                message.setupComplete?.sessionId
+                  ? `Setup complete: ${message.setupComplete.sessionId}.`
+                  : 'Setup complete received.',
+              );
               setupCompleteRef.current = true;
               setState('connected');
               if (compactLayout) {
@@ -738,6 +782,7 @@ export function GeminiLivePanel(props: {
             // --- GoAway: server is about to disconnect ---
             if (message?.goAway) {
               console.warn('[GeminiLive] goAway received — timeLeft:', message.goAway.timeLeft);
+              recordDiagnostic('go_away', `Server goAway received; timeLeft=${message.goAway.timeLeft ?? 'unknown'}.`, 'warn');
               setError('Gemini is rotating this Live session. If the voice lane closes, use Start Voice Session to reconnect.');
               return;
             }
@@ -747,6 +792,10 @@ export function GeminiLivePanel(props: {
               return;
             }
             if (Array.isArray(message?.toolCall?.functionCalls) && message.toolCall.functionCalls.length) {
+              recordDiagnostic(
+                'tool_call',
+                message.toolCall.functionCalls.map((call: any) => String(call?.name || 'unknown')).join(', '),
+              );
               const functionResponses = await Promise.all(
                 message.toolCall.functionCalls.map(async (call: any) => {
                   const name = String(call?.name || '').trim();
@@ -771,14 +820,17 @@ export function GeminiLivePanel(props: {
               if (sessionRef.current && setupCompleteRef.current) {
                 try {
                   sessionRef.current.sendToolResponse({ functionResponses });
+                  recordDiagnostic('tool_response', `${functionResponses.length} tool response(s) sent.`);
                 } catch (e: any) {
                   console.warn('[GeminiLive] sendToolResponse failed:', e?.message);
+                  recordDiagnostic('tool_response_error', e?.message || 'Tool response send failed.', 'error');
                 }
               }
             }
             const parts = message?.serverContent?.modelTurn?.parts || [];
             if (message?.serverContent?.interrupted) {
               console.info('[GeminiLive] serverContent.interrupted received — stopping active playback');
+              recordDiagnostic('interrupted', 'Server interrupted playback; queued audio was cleared.', 'warn');
               stopActivePlayback(true);
               introTurnPendingRef.current = false;
               return;
@@ -795,6 +847,10 @@ export function GeminiLivePanel(props: {
                 if (!firstByteAtRef.current && promptSentAtRef.current) {
                   firstByteAtRef.current = performance.now();
                   setLatencyMs(Math.max(0, Math.round(firstByteAtRef.current - promptSentAtRef.current)));
+                  recordDiagnostic(
+                    'first_audio_byte',
+                    `First audio byte after ${Math.max(0, Math.round(firstByteAtRef.current - promptSentAtRef.current))}ms.`,
+                  );
                 }
                 const chunk = String(part.inlineData.data).replace(/\s+/g, '');
                 if (mimeType.toLowerCase().startsWith('audio/pcm')) {
@@ -808,6 +864,7 @@ export function GeminiLivePanel(props: {
               }
             }
             if (message?.serverContent?.turnComplete) {
+              recordDiagnostic('turn_complete', 'Model turn completed.');
               const shouldStartMicAfterIntro = compactLayout && introTurnPendingRef.current && !micEnabled;
               const initialMicStream = initialMicStreamRef.current;
               introTurnPendingRef.current = false;
@@ -827,6 +884,7 @@ export function GeminiLivePanel(props: {
                   if (!sessionRef.current || micEnabled) return;
                   void startMic(initialMicStream ?? undefined)
                     .then(() => {
+                      recordDiagnostic('mic_started_after_intro', 'Initial microphone stream connected after opening turn.');
                       if (initialMicStream) {
                         initialMicStreamRef.current = null;
                         props.onInitialMicStreamConsumed?.();
@@ -841,6 +899,7 @@ export function GeminiLivePanel(props: {
           onerror: (event: any) => {
             const detail = String(event?.message || event?.error || 'Live session error');
             console.error('[GeminiLive] onerror:', detail);
+            recordDiagnostic('websocket_error', detail, 'error');
             setupCompleteRef.current = false;
             setError(detail);
             setState('error');
@@ -849,6 +908,11 @@ export function GeminiLivePanel(props: {
             const code = event?.code ?? 'unknown';
             const reason = event?.reason ?? '';
             console.info(`[GeminiLive] onclose code=${code} reason="${reason}" expected=${expectedCloseRef.current}`);
+            recordDiagnostic(
+              'websocket_close',
+              `code=${code} reason="${reason}" expected=${expectedCloseRef.current}`,
+              expectedCloseRef.current ? 'info' : 'warn',
+            );
             notifyTranscriptReady(true);
             stopMic();
             stopCamera();
@@ -861,6 +925,7 @@ export function GeminiLivePanel(props: {
             if (shouldRecoverOpening) {
               reconnectCountRef.current += 1;
               console.info('[GeminiLive] Auto-reconnecting (attempt', reconnectCountRef.current, ')');
+              recordDiagnostic('auto_reconnect', `Attempt ${reconnectCountRef.current} after unexpected close.`, 'warn');
               setState('connecting');
               setError('Reopening Gemini voice lane…');
               window.setTimeout(() => {
@@ -883,6 +948,7 @@ export function GeminiLivePanel(props: {
       // NOT here — sending before setupComplete causes protocol violations.
     } catch (e: any) {
       setState('error');
+      recordDiagnostic('session_start_error', e?.message ?? 'Unable to start the live voice session.', 'error');
       setError(e?.message ?? 'Unable to start the live voice session.');
     }
   };
@@ -907,13 +973,16 @@ export function GeminiLivePanel(props: {
   const startCamera = async () => {
     if (!sessionRef.current) {
       setError('Connect Live session before starting camera relay.');
+      recordDiagnostic('camera_blocked', 'Camera requested before Live session connected.', 'warn');
       return;
     }
     try {
+      recordDiagnostic('camera_permission_request', 'Requesting camera relay permission.');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       cameraStreamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraEnabled(true);
+      recordDiagnostic('camera_started', 'Camera relay stream connected.');
 
       const canvas = document.createElement('canvas');
       clearCameraLoop();
@@ -943,6 +1012,7 @@ export function GeminiLivePanel(props: {
         }
       }, 1200);
     } catch (e: any) {
+      recordDiagnostic('camera_error', e?.message ?? 'Unable to start camera relay.', 'error');
       setError(e?.message ?? 'Unable to start camera relay.');
     }
   };
@@ -1068,24 +1138,35 @@ export function GeminiLivePanel(props: {
   const startMic = async (providedStream?: MediaStream) => {
     if (!sessionRef.current) {
       setError('Connect Live session before starting microphone stream.');
+      recordDiagnostic('mic_blocked', 'Microphone requested before Live session connected.', 'warn');
       return;
     }
     try {
+      recordDiagnostic(
+        providedStream ? 'mic_stream_reuse' : 'mic_permission_request',
+        providedStream ? 'Using pre-approved Donna microphone stream.' : 'Requesting microphone permission.',
+      );
       const stream = providedStream ?? await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       micStreamRef.current = stream;
       try {
         await startAudioWorkletMicStream(stream);
+        recordDiagnostic('mic_started', 'Microphone connected through AudioWorklet PCM path.');
       } catch (workletError) {
         console.warn('[GeminiLive] AudioWorklet mic path unavailable, falling back to legacy PCM stream.', workletError);
+        recordDiagnostic('mic_worklet_fallback', 'AudioWorklet unavailable; trying legacy PCM path.', 'warn');
         try {
           await startLegacyPcmMicStream(stream);
+          recordDiagnostic('mic_started', 'Microphone connected through legacy PCM path.');
         } catch (pcmError) {
           console.warn('[GeminiLive] Legacy PCM mic path unavailable, falling back to MediaRecorder.', pcmError);
+          recordDiagnostic('mic_mediarecorder_fallback', 'Legacy PCM unavailable; using MediaRecorder path.', 'warn');
           await startMediaRecorderFallback(stream);
+          recordDiagnostic('mic_started', 'Microphone connected through MediaRecorder path.');
         }
       }
       setMicEnabled(true);
     } catch (e: any) {
+      recordDiagnostic('mic_error', e?.message ?? 'Unable to start microphone stream.', 'error');
       setError(e?.message ?? 'Unable to start microphone stream.');
     }
   };
@@ -1170,6 +1251,25 @@ export function GeminiLivePanel(props: {
     };
   }, []);
 
+  const diagnosticsPanel = props.diagnosticsVisible && diagnostics.length ? (
+    <div className="border border-[#5E5548]/70 bg-[#1A2223] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-[#C4A86F]">Operator diagnostics</div>
+        <div className="text-[9px] uppercase tracking-[0.18em] text-[#A89D8D]">{diagnostics.length} events</div>
+      </div>
+      <div className="mt-3 max-h-[160px] space-y-2 overflow-y-auto pr-1">
+        {diagnostics.slice(0, 8).map((event) => (
+          <div key={event.id} className="border-l border-[#C4A86F]/40 pl-3 text-xs leading-relaxed text-[#D8D0C3]">
+            <div className="font-data text-[9px] uppercase tracking-[0.16em] text-[#A89D8D]">
+              {event.type} · {event.level}
+            </div>
+            <div>{event.detail}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
   // Shell surface — pure audio runtime, no visible chrome.
   // DonnaChatLane canvas + dock own all visual controls for this context.
   if (compactLayout && props.surfaceHint === 'shell') {
@@ -1202,6 +1302,8 @@ export function GeminiLivePanel(props: {
               {props.lockedMessage || 'The live guide has stepped out while the suite processes your intake.'}
             </div>
           ) : null}
+
+          {diagnosticsPanel}
 
           <div className="flex flex-wrap gap-2">
             {props.autoStart && state !== 'connected' ? (

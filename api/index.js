@@ -149,6 +149,7 @@ app.get('/v1/public/config', async (_req, res) => {
         active_panel: activePublicPanel,
         gemini_live_model: nonEmpty(config.voice?.gemini_live_model) || geminiLiveModelDefault,
       },
+      donna: config.donna || DEFAULT_APP_CONFIG.donna,
     },
   });
 });
@@ -1136,6 +1137,18 @@ const DEFAULT_APP_CONFIG = {
     live_vad_start_sensitivity: geminiLiveVadStartDefault === 'low' ? 'low' : 'high',
     live_vad_end_sensitivity: geminiLiveVadEndDefault === 'low' ? 'low' : 'high',
   },
+  donna: {
+    voice_first_default: true,
+    auto_start_live: true,
+    opening_turn_text:
+      'Open the Smart Start session now. Greet the client briefly in one sentence, then ask the single best first question for the currently visible section. Do not wait for the client to speak first.',
+    composer_mode: 'voice_first',
+    live_dock_detail_level: 'standard',
+    suite_escape_visible: true,
+    workflow_routing_posture: 'agentic',
+    visual_theme_intensity: 'quiet',
+    operator_diagnostics_visible: true,
+  },
   safety: {
     tone_guard_enabled: true,
   },
@@ -1414,6 +1427,7 @@ const normalizeConfig = (input = {}) => {
   const operations = source.operations && typeof source.operations === 'object' ? source.operations : {};
   const media = source.media && typeof source.media === 'object' ? source.media : {};
   const voice = source.voice && typeof source.voice === 'object' ? source.voice : {};
+  const donna = source.donna && typeof source.donna === 'object' ? source.donna : {};
   const professionalDna =
     source.professional_dna && typeof source.professional_dna === 'object' ? source.professional_dna : {};
   const safety = source.safety && typeof source.safety === 'object' ? source.safety : {};
@@ -1654,6 +1668,50 @@ const normalizeConfig = (input = {}) => {
         voice.live_vad_end_sensitivity,
         DEFAULT_APP_CONFIG.voice.live_vad_end_sensitivity
       ),
+    },
+    donna: {
+      voice_first_default:
+        typeof donna.voice_first_default === 'boolean'
+          ? donna.voice_first_default
+          : DEFAULT_APP_CONFIG.donna.voice_first_default,
+      auto_start_live:
+        typeof donna.auto_start_live === 'boolean'
+          ? donna.auto_start_live
+          : DEFAULT_APP_CONFIG.donna.auto_start_live,
+      opening_turn_text:
+        nonEmpty(donna.opening_turn_text) || DEFAULT_APP_CONFIG.donna.opening_turn_text,
+      composer_mode:
+        donna.composer_mode === 'text_first'
+          ? 'text_first'
+          : donna.composer_mode === 'balanced'
+            ? 'balanced'
+            : DEFAULT_APP_CONFIG.donna.composer_mode,
+      live_dock_detail_level:
+        donna.live_dock_detail_level === 'diagnostic'
+          ? 'diagnostic'
+          : donna.live_dock_detail_level === 'minimal'
+            ? 'minimal'
+            : DEFAULT_APP_CONFIG.donna.live_dock_detail_level,
+      suite_escape_visible:
+        typeof donna.suite_escape_visible === 'boolean'
+          ? donna.suite_escape_visible
+          : DEFAULT_APP_CONFIG.donna.suite_escape_visible,
+      workflow_routing_posture:
+        donna.workflow_routing_posture === 'module_first'
+          ? 'module_first'
+          : donna.workflow_routing_posture === 'balanced'
+            ? 'balanced'
+            : DEFAULT_APP_CONFIG.donna.workflow_routing_posture,
+      visual_theme_intensity:
+        donna.visual_theme_intensity === 'cinematic'
+          ? 'cinematic'
+          : donna.visual_theme_intensity === 'standard'
+            ? 'standard'
+            : DEFAULT_APP_CONFIG.donna.visual_theme_intensity,
+      operator_diagnostics_visible:
+        typeof donna.operator_diagnostics_visible === 'boolean'
+          ? donna.operator_diagnostics_visible
+          : DEFAULT_APP_CONFIG.donna.operator_diagnostics_visible,
     },
     safety: {
       tone_guard_enabled:

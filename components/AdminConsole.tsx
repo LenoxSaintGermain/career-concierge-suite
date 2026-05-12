@@ -2444,6 +2444,147 @@ export function AdminConsole({ open, onClose, onSaved, isAdminUser }: Props) {
           </div>
         </Panel>
 
+        <Panel title="Donna front door" eyebrow="Agentic experience" meta={config.donna.workflow_routing_posture}>
+          <div className="grid gap-2 md:grid-cols-2">
+            <ToggleField
+              checked={config.donna.voice_first_default}
+              onChange={(checked) =>
+                setConfig((prev) => (prev ? { ...prev, donna: { ...prev.donna, voice_first_default: checked } } : prev))
+              }
+              label="Voice-first composer"
+              hint="Keeps Donna as the primary surface instead of the suite grid."
+            />
+            <ToggleField
+              checked={config.donna.auto_start_live}
+              onChange={(checked) =>
+                setConfig((prev) => (prev ? { ...prev, donna: { ...prev.donna, auto_start_live: checked } } : prev))
+              }
+              label="One-click live launch"
+              hint="Mic approval and Live start happen from the same Donna control."
+            />
+            <ToggleField
+              checked={config.donna.suite_escape_visible}
+              onChange={(checked) =>
+                setConfig((prev) => (prev ? { ...prev, donna: { ...prev.donna, suite_escape_visible: checked } } : prev))
+              }
+              label="Show suite escape"
+              hint="The suite remains the OS filing cabinet, not the default front door."
+            />
+            <ToggleField
+              checked={config.donna.operator_diagnostics_visible}
+              onChange={(checked) =>
+                setConfig((prev) =>
+                  prev ? { ...prev, donna: { ...prev.donna, operator_diagnostics_visible: checked } } : prev
+                )
+              }
+              label="Operator diagnostics"
+              hint="Shows Live lifecycle events to admins and operators."
+            />
+            <SelectField
+              label="Composer mode"
+              value={config.donna.composer_mode}
+              options={[
+                { value: 'voice_first', label: 'Voice first' },
+                { value: 'balanced', label: 'Balanced' },
+                { value: 'text_first', label: 'Text first' },
+              ]}
+              onChange={(value) =>
+                setConfig((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        donna: {
+                          ...prev.donna,
+                          composer_mode:
+                            value === 'text_first' ? 'text_first' : value === 'balanced' ? 'balanced' : 'voice_first',
+                        },
+                      }
+                    : prev
+                )
+              }
+            />
+            <SelectField
+              label="Live dock detail"
+              value={config.donna.live_dock_detail_level}
+              options={[
+                { value: 'minimal', label: 'Minimal' },
+                { value: 'standard', label: 'Standard' },
+                { value: 'diagnostic', label: 'Diagnostic' },
+              ]}
+              onChange={(value) =>
+                setConfig((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        donna: {
+                          ...prev.donna,
+                          live_dock_detail_level:
+                            value === 'diagnostic' ? 'diagnostic' : value === 'minimal' ? 'minimal' : 'standard',
+                        },
+                      }
+                    : prev
+                )
+              }
+            />
+            <SelectField
+              label="Workflow routing"
+              value={config.donna.workflow_routing_posture}
+              options={[
+                { value: 'agentic', label: 'Agentic' },
+                { value: 'balanced', label: 'Balanced' },
+                { value: 'module_first', label: 'Module first' },
+              ]}
+              onChange={(value) =>
+                setConfig((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        donna: {
+                          ...prev.donna,
+                          workflow_routing_posture:
+                            value === 'module_first' ? 'module_first' : value === 'balanced' ? 'balanced' : 'agentic',
+                        },
+                      }
+                    : prev
+                )
+              }
+            />
+            <SelectField
+              label="Visual intensity"
+              value={config.donna.visual_theme_intensity}
+              options={[
+                { value: 'quiet', label: 'Quiet OS match' },
+                { value: 'standard', label: 'Standard' },
+                { value: 'cinematic', label: 'Cinematic' },
+              ]}
+              onChange={(value) =>
+                setConfig((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        donna: {
+                          ...prev.donna,
+                          visual_theme_intensity:
+                            value === 'cinematic' ? 'cinematic' : value === 'standard' ? 'standard' : 'quiet',
+                        },
+                      }
+                    : prev
+                )
+              }
+            />
+            <div className="md:col-span-2">
+              <TextAreaField
+                label="Donna opening turn"
+                value={config.donna.opening_turn_text}
+                onChange={(value) =>
+                  setConfig((prev) => (prev ? { ...prev, donna: { ...prev.donna, opening_turn_text: value } } : prev))
+                }
+                minHeight="min-h-24"
+              />
+            </div>
+          </div>
+        </Panel>
+
         <div className="grid gap-2">
           <Panel title="Provider and transport" eyebrow="Runtime" meta={config.voice.provider}>
             <div className="grid gap-2">

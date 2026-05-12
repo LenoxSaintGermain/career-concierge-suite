@@ -870,6 +870,17 @@ export interface AppConfig {
     live_vad_start_sensitivity: 'high' | 'low';
     live_vad_end_sensitivity: 'high' | 'low';
   };
+  donna: {
+    voice_first_default: boolean;
+    auto_start_live: boolean;
+    opening_turn_text: string;
+    composer_mode: 'voice_first' | 'balanced' | 'text_first';
+    live_dock_detail_level: 'minimal' | 'standard' | 'diagnostic';
+    suite_escape_visible: boolean;
+    workflow_routing_posture: 'agentic' | 'balanced' | 'module_first';
+    visual_theme_intensity: 'quiet' | 'standard' | 'cinematic';
+    operator_diagnostics_visible: boolean;
+  };
   safety: {
     tone_guard_enabled: boolean;
   };
@@ -902,6 +913,7 @@ export interface PublicConfig {
     active_panel: 'gemini_live' | 'elevenlabs';
     gemini_live_model: string;
   };
+  donna: AppConfig['donna'];
 }
 
 export interface AdminSystemOverview {

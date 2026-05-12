@@ -12,7 +12,7 @@ import {
   PublicConfig,
   SuiteModuleId,
 } from '../types';
-import { GeminiLivePanel } from './GeminiLivePanel';
+import { GeminiLivePanel, type GeminiLiveDiagnosticEvent, type GeminiLiveDiagnosticLevel } from './GeminiLivePanel';
 import { ElevenLabsConvaiPanel } from './ElevenLabsConvaiPanel';
 import { AuthCard } from './AuthCard';
 import { DonnaChatLane, type DonnaCanvasCommand, type DonnaCanvasState } from './DonnaChatLane';
@@ -63,6 +63,7 @@ export function DonnaShell({
   const [voiceLaunchPending, setVoiceLaunchPending] = useState(false);
   const [liveLaunchId, setLiveLaunchId] = useState<number | null>(null);
   const [initialLiveMicStream, setInitialLiveMicStream] = useState<MediaStream | null>(null);
+  const [liveDiagnostics, setLiveDiagnostics] = useState<GeminiLiveDiagnosticEvent[]>([]);
   const [osOpen, setOsOpen] = useState(false);
   const [scene, setScene] = useState<DonnaScene>(user ? 'calibration' : 'arrival');
   const [canvasCommand, setCanvasCommand] = useState<DonnaCanvasCommand | null>(null);
@@ -75,6 +76,9 @@ export function DonnaShell({
   const firstName = getFirstName(client, wiki, user);
   const activePanel = publicConfig.voice.active_panel;
   const elevenlabsAgentId = publicConfig.voice.elevenlabs_agent_id || '';
+  const donnaConfig = publicConfig.donna;
+  const liveDiagnosticsVisible =
+    isAdminUser && donnaConfig.operator_diagnostics_visible && donnaConfig.live_dock_detail_level !== 'minimal';
 
   useEffect(() => {
     setScene(user ? 'calibration' : 'arrival');
@@ -85,6 +89,26 @@ export function DonnaShell({
     onOpenModule(id);
   };
 
+  const appendLiveDiagnostic = (event: GeminiLiveDiagnosticEvent) => {
+    setLiveDiagnostics((prev) => [event, ...prev].slice(0, 40));
+  };
+
+  const recordShellDiagnostic = (
+    type: string,
+    detail: string,
+    level: GeminiLiveDiagnosticLevel = 'info'
+  ) => {
+    appendLiveDiagnostic({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: new Date().toISOString(),
+      type,
+      detail,
+      level,
+      state: voiceOpen ? 'connected' : voiceLaunchPending ? 'connecting' : 'idle',
+      launchId: liveLaunchId ?? undefined,
+    });
+  };
+
   const startLiveSessionFromDonna = async () => {
     if (!user) {
       setAuthCardMode('login');
@@ -93,6 +117,8 @@ export function DonnaShell({
 
     setOsOpen(false);
     setVoiceLaunchPending(true);
+    setLiveDiagnostics([]);
+    recordShellDiagnostic('donna_live_launch', 'Donna requested one-click microphone and Live start.');
     issueCanvasCommand('concierge_sync', {
       userText: 'Start voice.',
       donnaText: 'Opening the live line now.',
@@ -100,15 +126,18 @@ export function DonnaShell({
     });
 
     try {
+      recordShellDiagnostic('mic_permission_prompt', 'Browser microphone permission prompt requested.');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       setInitialLiveMicStream(stream);
       setVoiceOpen(true);
       setLiveLaunchId(Date.now());
       setVoiceLaunchPending(false);
+      recordShellDiagnostic('mic_permission_granted', 'Microphone permission granted; Live runtime mounting.');
     } catch (error: any) {
       setInitialLiveMicStream(null);
       setVoiceOpen(false);
       setVoiceLaunchPending(false);
+      recordShellDiagnostic('mic_permission_error', error?.message || 'Microphone permission did not complete.', 'error');
       issueCanvasCommand('concierge_sync', {
         donnaText: error?.message
           ? `I could not reach the microphone: ${error.message}`
@@ -270,6 +299,9 @@ export function DonnaShell({
           launchId={liveLaunchId ?? undefined}
           initialMicStream={initialLiveMicStream}
           onInitialMicStreamConsumed={() => setInitialLiveMicStream(null)}
+          openingTurnText={donnaConfig.opening_turn_text}
+          diagnosticsVisible={liveDiagnosticsVisible && donnaConfig.live_dock_detail_level === 'diagnostic'}
+          onDiagnosticEvent={appendLiveDiagnostic}
         />
       )
     ) : null;
@@ -329,13 +361,15 @@ export function DonnaShell({
                     Admin
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => setOsOpen(true)}
-                  className="font-data text-[10px] uppercase tracking-[0.2em] text-[#8EA3A7]/60 transition-opacity hover:text-[#8EA3A7]"
-                >
-                  Open Suite ↗
-                </button>
+                {donnaConfig.suite_escape_visible || isAdminUser ? (
+                  <button
+                    type="button"
+                    onClick={() => setOsOpen(true)}
+                    className="font-data text-[10px] uppercase tracking-[0.2em] text-[#8EA3A7]/60 transition-opacity hover:text-[#8EA3A7]"
+                  >
+                    Open Suite ↗
+                  </button>
+                ) : null}
               </>
             ) : null}
           </div>
@@ -370,6 +404,8 @@ export function DonnaShell({
               liveSessionActive={voiceOpen}
               liveSessionLaunching={voiceLaunchPending}
               liveSessionContent={liveSessionPanel}
+              liveDiagnostics={liveDiagnostics}
+              liveDiagnosticsVisible={liveDiagnosticsVisible}
             >
               {authCardMode ? (
                 <AuthCard
