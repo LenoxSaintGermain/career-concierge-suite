@@ -106,7 +106,7 @@ Use these sibling-named services when you need a fresh Cloud Run URL for Donna/f
 
 Current validated revisions as of 2026-05-12:
 
-- UI: `career-concierge-suite-donna-live-00013-4ss`
+- UI: `career-concierge-suite-donna-live-00014-mwt`
 - API: `career-concierge-api-donna-live-00010-h44`
 
 Deploy both in one pass with:

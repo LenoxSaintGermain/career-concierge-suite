@@ -384,7 +384,7 @@ Donna live-test services are the UAT lane for the agentic front-door work before
 - API: `career-concierge-api-donna-live`
 - deterministic UI URL: `https://career-concierge-suite-donna-live-480846059254.europe-west1.run.app`
 - deterministic API URL: `https://career-concierge-api-donna-live-480846059254.europe-west1.run.app`
-- validated 2026-05-12 UI revision: `career-concierge-suite-donna-live-00013-4ss`
+- validated 2026-05-12 UI revision: `career-concierge-suite-donna-live-00014-mwt`
 - validated 2026-05-12 API revision: `career-concierge-api-donna-live-00010-h44`
 
 Promotion back to canonical `career-concierge-suite` / `career-concierge-api` should happen only after authenticated browser UAT confirms Donna login/onboarding, inline account creation, wiki seeding, and live Gemini microphone/session behavior. Keep the Donna live-test service as the reviewable environment until then, then open a scoped PR against the canonical Career Concierge suite repository/main branch and deploy the canonical services after approval.
