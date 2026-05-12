@@ -29,6 +29,7 @@ import { AmbientGuide } from './components/AmbientGuide';
 import { DonnaShell } from './components/DonnaShell';
 import { canAccessAdminConfig, fetchPublicConfig } from './services/adminApi';
 import { cloneBrandConfig, getBrandModuleCopy, hexToRgba } from './config/brandSystem.js';
+import { DEFAULT_DONNA_CONFIG } from './config/donnaDefaults';
 import { fetchClientWiki } from './services/wikiService';
 import { fetchClientMemory } from './services/memoryService';
 
@@ -65,6 +66,7 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
     active_panel: 'gemini_live',
     gemini_live_model: '',
   },
+  donna: DEFAULT_DONNA_CONFIG,
 };
 
 const headerScaleClass = {

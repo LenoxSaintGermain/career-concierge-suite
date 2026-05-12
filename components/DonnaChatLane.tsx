@@ -19,6 +19,7 @@ import { IntakeFlow } from './IntakeFlow';
 import { PackageSelectCards } from './PackageSelectCards';
 import type { DonnaScene } from './SceneRail';
 import type { GeminiLiveDiagnosticEvent } from './GeminiLivePanel';
+import { DEFAULT_DONNA_CONFIG } from '../config/donnaDefaults';
 
 // ─── Motion constants ─────────────────────────────────────────────────────────
 const SPRING = { type: 'spring', stiffness: 260, damping: 28, mass: 0.8 } as const;
@@ -527,7 +528,7 @@ export function DonnaChatLane({
   const canvasTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const donnaConfig = publicConfig.donna;
+  const donnaConfig = publicConfig.donna ?? DEFAULT_DONNA_CONFIG;
   const voiceFirstComposer = donnaConfig.voice_first_default && donnaConfig.composer_mode !== 'text_first';
   const quietVisuals = donnaConfig.visual_theme_intensity === 'quiet';
   const cinematicVisuals = donnaConfig.visual_theme_intensity === 'cinematic';

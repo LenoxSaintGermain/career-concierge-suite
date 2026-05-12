@@ -19,6 +19,7 @@ import { DonnaChatLane, type DonnaCanvasCommand, type DonnaCanvasState } from '.
 import { SceneRail, type DonnaScene } from './SceneRail';
 import { WikiDrawer } from './WikiDrawer';
 import type { GhostCallbacks } from '../hooks/useGhostVoice';
+import { DEFAULT_DONNA_CONFIG } from '../config/donnaDefaults';
 
 interface DonnaShellProps {
   user: User | null;
@@ -76,7 +77,7 @@ export function DonnaShell({
   const firstName = getFirstName(client, wiki, user);
   const activePanel = publicConfig.voice.active_panel;
   const elevenlabsAgentId = publicConfig.voice.elevenlabs_agent_id || '';
-  const donnaConfig = publicConfig.donna;
+  const donnaConfig = publicConfig.donna ?? DEFAULT_DONNA_CONFIG;
   const liveDiagnosticsVisible =
     isAdminUser && donnaConfig.operator_diagnostics_visible && donnaConfig.live_dock_detail_level !== 'minimal';
 
