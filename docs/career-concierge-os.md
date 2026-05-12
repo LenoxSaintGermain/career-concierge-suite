@@ -350,10 +350,10 @@ The suite/grid must not regain Journey Guide, Smart Start, or live-session prima
 - ElevenLabs Ghost is now the primary guided intake lane when configured
 - Sesame remains feature-flagged off until a dedicated service exists
 - ElevenLabs Ghost is now a live selectable public-intake lane when the Cloud Run API env exposes an agent ID, an API key, and the saved admin config chooses it
-- Gemini Live now defaults to Google’s current `gemini-3.1-flash-live-preview` model; the older `gemini-2.5-flash-native-audio-preview-12-2025` lane remains available only as a controlled fallback
+- Gemini Live now defaults to Google’s current `gemini-3.1-flash-live-preview` model; `gemini-2.5-flash-native-audio-latest` and the older `gemini-2.5-flash-native-audio-preview-12-2025` lane remain available only as controlled fallbacks
 - Gemini Live env examples now point at `gemini-3.1-flash-live-preview` instead of the stale Gemini 2.5 native-audio preview value
 - Gemini Live now stops queued playback on server interruption events and surfaces session-rotation warnings on `goAway` so users are not left speaking over stale audio or silent disconnects
-- Gemini Live intake tools still require a coordinated API/client follow-up to move them out of ephemeral-token constraints without breaking the current connect config shape
+- Gemini Live intake tools are now kept out of ephemeral-token `liveConnectConstraints`; the token route owns identity/model/system/VAD constraints, while the client `live.connect(...)` call owns the deterministic Smart Start tool contract
 - the public-intake lane decision now follows `voice.public_panel_provider` as the canonical saved source instead of letting stale Professional DNA voice settings override the operator choice
 - Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; the older Professional DNA `voice_agent_voice_id` field is no longer allowed to shadow the saved Gemini voice
 - `POST /v1/voice/elevenlabs/session` now creates signed ElevenLabs sessions for authenticated users so the Ghost lane can run as a real SDK surface instead of a widget-only fallback
@@ -361,8 +361,8 @@ The suite/grid must not regain Journey Guide, Smart Start, or live-session prima
 - Google Workspace doc sync now prefers human-readable folder/document names, refuses UUID-like display names during auth backfill, reuses matching docs when registry entries are missing, recreates cleanly when a registry entry points at a deleted/inaccessible Google Doc, and archives same-title duplicates into `_Legacy duplicates` during sync instead of spraying new docs into the active folder
 - the Cloud Run API runtime now depends on Firestore data access via `roles/datastore.user` on the service account; without that role, admin config writes and admin telemetry surfaces will fail with `PERMISSION_DENIED`
 - admin media-pipeline status messaging now translates known provider/config mismatches into operator-safe language instead of leaking raw Gemini option errors
-- model routing is now governed by a shared Gemini/Veo catalog rather than ad hoc raw defaults, and Admin exposes quick presets for `Demo Quality`, `Balanced Production`, and `High Throughput`
-- stable `Gemini 2.5` routes are now the production defaults for suite, episode, and still-generation work; `Gemini 3.x` and `3.1` preview ids remain visible as explicit migration/testing options rather than silent defaults
+- model routing is now governed by a shared Gemini/Veo catalog rather than ad hoc raw defaults, and Admin exposes quick presets for `Gemini 3 Experimental`, `Demo Quality`, `Balanced Production`, and `High Throughput`
+- the catalog now includes the current Gemini 3 family routes exposed by Google AI Studio/API (`gemini-3.1-pro-preview`, `gemini-3-flash-preview`, `gemini-3.1-flash-lite`, `gemini-3.1-flash-image-preview`) while keeping stable Gemini 2.5 routes available for fallback and controlled regression checks
 - the current Episodes audit is documented in `docs/mvp/episodes_hero_critical_audit_2026-03-09.md`; the headline conclusion is that the player is demo-ready but the backend is still not truly scene-native because media packs remain one-image/one-video per episode
 - public HTTPS entrypoint expected for SPA and mobile clients
 

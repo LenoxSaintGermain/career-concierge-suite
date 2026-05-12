@@ -247,14 +247,14 @@ Current public-intake behavior:
 - the intake concierge step follows that selector and mounts the chosen lane directly inside the Smart Start workspace
 - the intake concierge step no longer exposes a client-visible lane switcher; the live lane is now fully controlled from Admin
 - admin `Voice model` and `Public intake lane` controls now save in lockstep so the public lane does not drift from the saved Professional DNA voice choice
-- Gemini Live now defaults to `gemini-3.1-flash-live-preview`, the current official Google Live model; `gemini-2.5-flash-native-audio-preview-12-2025` remains available only as a controlled fallback option
+- Gemini Live now defaults to `gemini-3.1-flash-live-preview`, the current Google Live API model; `gemini-2.5-flash-native-audio-latest` and `gemini-2.5-flash-native-audio-preview-12-2025` remain available only as controlled fallback options
 - Gemini Smart Start sessions now share the same explicit intake-action tool contract as ElevenLabs Ghost, so Google Live can move sections, focus fields, write values, clear values, update route/preferences, and summarize the visible form through deterministic tool calls
 - Gemini compact Smart Start mode now suppresses live mic relay while Gemini is speaking, which prevents the lane from interrupting or clipping its own response mid-turn
 - Gemini Live clients now treat `serverContent.interrupted` as an immediate playback drain: active audio stops, queued PCM/audio buffers clear, and mic suppression releases so the user can keep speaking
 - Gemini Live `goAway` frames now surface an operator-visible reconnect warning instead of disappearing into console logs; if the socket closes after the warning, restart the voice session from the Smart Start rail
 - Gemini compact Smart Start mode now opens with the first question on its own and only enables the mic after that opening turn, which removes the silent-start seam and reduces early session drops
 - Gemini public-lane voice selection now follows `voice.gemini_voice_name` directly; do not use `professional_dna.voice_agent_voice_id` to reason about the public Gemini voice lane
-- Follow-up hardening: move Gemini Live intake tools out of ephemeral-token `liveConnectConstraints` only after a coordinated API/client contract pass, because the current token route still owns the full connect config shape
+- Gemini Live token hardening: keep intake tools out of ephemeral-token `liveConnectConstraints`. The token route should mint identity/model/system/VAD constraints only; the client `live.connect(...)` call owns the deterministic Smart Start tool declarations and tool config.
 - `POST /v1/voice/elevenlabs/session` now provides signed ElevenLabs session URLs for authenticated users when `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` are present
 - the ElevenLabs intake lane now runs on the ElevenLabs React SDK with contextual updates, action feed telemetry, and intake-safe client tools for screen movement and field entry
 - the Smart Start workspace is now a single guided intake surface with:
@@ -592,8 +592,8 @@ If the console regresses into a single stacked form, treat that as a UX bug, not
 While a save request is in flight, the active edit surface is now locked to prevent silent overwrite of later keystrokes, and reload now explicitly confirms before discarding unsaved admin edits.
 The admin API client now retries transient `502`/`503`/`504` and browser-level fetch failures before surfacing an operator error.
 Cloud Run service account requirement: the API runtime service account must have `roles/datastore.user` in `ssai-f6191`; without it, `GET /v1/admin/media-pipeline`, `GET /v1/admin/orchestration-control-plane`, `GET /v1/admin/sample-personas`, and `PUT /v1/admin/config` will fail with Firestore `PERMISSION_DENIED`.
-Admin model routing now uses a shared Gemini/Veo catalog plus three fast presets: `Demo Quality`, `Balanced Production`, and `High Throughput`.
-Production defaults were moved to stable `Gemini 2.5` routes for suite, episodes, and still-generation work. Preview `Gemini 3.x` and `3.1` ids stay operator-selectable for controlled migration testing only.
+Admin model routing now uses a shared Gemini/Veo catalog plus four presets: `Gemini 3 Experimental`, `Demo Quality`, `Balanced Production`, and `High Throughput`.
+The catalog includes current Gemini 3 family routes (`gemini-3.1-pro-preview`, `gemini-3-flash-preview`, `gemini-3.1-flash-lite`, `gemini-3.1-flash-image-preview`) while keeping stable Gemini 2.5 routes available for fallback and controlled regression checks.
 Operator guidance: do not present Episodes as fully scene-native yet. The player is beat-aware, but the backend media pack still emits one image route and one video route per episode.
 
 ## Brand Studio Operating Notes

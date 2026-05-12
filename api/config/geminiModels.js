@@ -6,6 +6,26 @@ export const DEFAULT_GEMINI_VIDEO_MODEL = 'veo-3.1-generate-preview';
 
 export const GEMINI_TEXT_MODEL_OPTIONS = [
   {
+    id: 'gemini-3.1-pro-preview',
+    label: 'Gemini 3.1 Pro Preview',
+    note: 'Latest Gemini 3 Pro-class preview route for complex reasoning, multimodal synthesis, and agentic workflows.',
+  },
+  {
+    id: 'gemini-3-flash-preview',
+    label: 'Gemini 3 Flash Preview',
+    note: 'Latest Gemini 3 Flash route for lower-latency interactive work with stronger reasoning than 2.5 Flash.',
+  },
+  {
+    id: 'gemini-3.1-flash-lite',
+    label: 'Gemini 3.1 Flash-Lite',
+    note: 'Current cost-efficient Gemini 3.1 workhorse for high-volume utility and draft passes.',
+  },
+  {
+    id: 'gemini-3.1-flash-lite-preview',
+    label: 'Gemini 3.1 Flash-Lite Preview',
+    note: 'Preview variant retained for migration checks and access validation.',
+  },
+  {
     id: 'gemini-2.5-pro',
     label: 'Gemini 2.5 Pro',
     note: 'Highest-quality stable route for executive synthesis, suite artifacts, and hero episode writing.',
@@ -23,26 +43,21 @@ export const GEMINI_TEXT_MODEL_OPTIONS = [
   {
     id: 'gemini-3-pro-preview',
     label: 'Gemini 3 Pro Preview',
-    note: 'Preview route only. AI Studio now warns this preview is deprecated.',
-  },
-  {
-    id: 'gemini-3-flash-preview',
-    label: 'Gemini 3 Flash Preview',
-    note: 'Preview route for Gemini 3 experimentation. Keep off the primary production default.',
-  },
-  {
-    id: 'gemini-3.1-pro-preview',
-    label: 'Gemini 3.1 Pro Preview',
-    note: 'AI Studio migration target. Validate project access before promoting to production.',
-  },
-  {
-    id: 'gemini-3.1-flash-lite-preview',
-    label: 'Gemini 3.1 Flash-Lite Preview',
-    note: 'AI Studio migration target for low-cost utility work. Validate project access before production.',
+    note: 'Legacy Gemini 3 Pro preview retained only for compatibility with saved admin configs.',
   },
 ];
 
 export const GEMINI_IMAGE_MODEL_OPTIONS = [
+  {
+    id: 'gemini-3.1-flash-image-preview',
+    label: 'Gemini 3.1 Flash Image Preview',
+    note: 'Current Gemini 3.1 high-efficiency image route for migration and visual generation tests.',
+  },
+  {
+    id: 'gemini-3-pro-image-preview',
+    label: 'Gemini 3 Pro Image Preview',
+    note: 'Highest-quality Gemini 3 image preview route for premium visual generation tests.',
+  },
   {
     id: 'gemini-2.5-flash-image',
     label: 'Gemini 2.5 Flash Image',
@@ -52,11 +67,6 @@ export const GEMINI_IMAGE_MODEL_OPTIONS = [
     id: 'gemini-2.5-flash-image-preview',
     label: 'Gemini 2.5 Flash Image Preview',
     note: 'Legacy preview route kept for backward compatibility while migrations settle.',
-  },
-  {
-    id: 'gemini-3.1-flash-image-preview',
-    label: 'Gemini 3.1 Flash Image Preview',
-    note: 'AI Studio-style migration target. Validate access before promoting to production.',
   },
 ];
 
@@ -74,6 +84,15 @@ export const GEMINI_VIDEO_MODEL_OPTIONS = [
 ];
 
 export const GEMINI_ROUTE_PRESETS = [
+  {
+    id: 'gemini_3_experimental',
+    label: 'Gemini 3 Experimental',
+    summary: 'Routes text/image work through the current Gemini 3 family for controlled operator validation.',
+    suite_model: 'gemini-3.1-pro-preview',
+    binge_model: 'gemini-3-flash-preview',
+    image_model: 'gemini-3.1-flash-image-preview',
+    video_model: 'veo-3.1-generate-preview',
+  },
   {
     id: 'demo_quality',
     label: 'Demo Quality',

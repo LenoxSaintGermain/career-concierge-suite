@@ -7,6 +7,11 @@ export const GEMINI_LIVE_MODEL_OPTIONS = [
     note: 'Current official Google Live API model for real-time voice-first dialogue.',
   },
   {
+    id: 'gemini-2.5-flash-native-audio-latest',
+    label: 'Gemini 2.5 Flash Native Audio Latest',
+    note: 'Rolling fallback Live API lane for regression checks when the Gemini 3.1 live preview is unavailable.',
+  },
+  {
     id: 'gemini-2.5-flash-native-audio-preview-12-2025',
     label: 'Gemini 2.5 Flash Live Preview',
     note: 'Legacy fallback live model kept for controlled migration and regression checks.',
